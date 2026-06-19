@@ -42,10 +42,11 @@
       "clientId": "hrm-frontend",
       "name": "HRM Frontend (Next.js)",
       "enabled": true,
-      "publicClient": true,
+      "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
+      "secret": "change_in_prod",
       "protocol": "openid-connect",
       "redirectUris": [
         "http://localhost:3000/*",

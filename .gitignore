@@ -41,3 +41,4 @@ application-prod.yml
 # Logs
 *.log
 logs/
+frontend/.env.local

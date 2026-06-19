@@ -1,18 +1,21 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { Providers } from '@/components/providers'
 
 const inter = Inter({ subsets: ['latin', 'vietnamese'] })
 
 export const metadata: Metadata = {
-  title: 'HRM — Quản lý Nhân sự',
-  description: 'Hệ thống quản lý nhân sự doanh nghiệp nhà nước',
+  title: 'HRM — BVĐK Hà Nội NA',
+  description: 'Hệ thống quản lý nhân sự',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.className} bg-gray-50 text-gray-900 antialiased`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }
