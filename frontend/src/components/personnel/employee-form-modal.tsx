@@ -11,6 +11,7 @@ import {
   CONTRACT_TYPE_LABELS,
   type CreateEmployeeDto,
 } from '@/lib/personnel'
+import { getDepartments } from '@/lib/departments'
 
 const schema = z.object({
   employeeCode: z.string().min(1, 'Bắt buộc').max(20),
@@ -18,6 +19,7 @@ const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
   phone: z.string().optional(),
   position: z.string().optional(),
+  departmentId: z.string().optional(),
   contractType: z.enum(['INDEFINITE', 'FIXED_TERM_1Y', 'FIXED_TERM_2Y', 'PART_TIME', 'PROBATION']),
   startDate: z.string().min(1, 'Bắt buộc'),
   endDate: z.string().optional(),
@@ -40,6 +42,12 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
     enabled: isEdit,
   })
 
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: getDepartments,
+    staleTime: 5 * 60_000,
+  })
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { contractType: 'INDEFINITE' },
@@ -53,6 +61,7 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
         email: existing.email,
         phone: existing.phone ?? '',
         position: existing.position ?? '',
+        departmentId: existing.departmentId ?? '',
         contractType: existing.contractType,
         startDate: existing.startDate,
         endDate: existing.endDate ?? '',
@@ -66,6 +75,7 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
         ...data,
         phone: data.phone || undefined,
         position: data.position || undefined,
+        departmentId: data.departmentId || undefined,
         endDate: data.endDate || undefined,
       }
       return isEdit ? updateEmployee(editId!, payload) : createEmployee(payload)
@@ -103,9 +113,19 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
             </Field>
           </div>
 
-          <Field label="Chức vụ" error={errors.position?.message}>
-            <input {...register('position')} className="input" placeholder="Điều dưỡng, Bác sĩ..." />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Chức vụ" error={errors.position?.message}>
+              <input {...register('position')} className="input" placeholder="Điều dưỡng, Bác sĩ..." />
+            </Field>
+            <Field label="Phòng ban" error={errors.departmentId?.message}>
+              <select {...register('departmentId')} className="input">
+                <option value="">— Chọn phòng ban —</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
 
           <Field label="Loại hợp đồng *" error={errors.contractType?.message}>
             <select {...register('contractType')} className="input">
