@@ -13,6 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./keycloak/init-keycloak-schema.sql:/docker-entrypoint-initdb.d/init-keycloak-schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hrm"]
       interval: 10s
@@ -88,7 +89,7 @@ services:
     ports:
       - "8180:8180"
     volumes:
-      - ./infra/keycloak/realms:/opt/keycloak/data/import
+      - ./keycloak:/opt/keycloak/data/import
     depends_on:
       postgres:
         condition: service_healthy
