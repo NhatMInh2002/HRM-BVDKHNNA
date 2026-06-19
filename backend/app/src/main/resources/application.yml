@@ -32,7 +32,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/hrm}
+          # jwk-set-uri dùng khi backend chạy trong Docker (không dùng localhost)
+          # issuer-uri dùng khi chạy local trực tiếp (không Docker)
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/hrm/protocol/openid-connect/certs}
 
 server:
   port: 8080
