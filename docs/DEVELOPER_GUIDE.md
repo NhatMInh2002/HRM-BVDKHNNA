@@ -133,14 +133,89 @@ Khi thấy `Keycloak 24.0.4 on /` trong log là xong.
 
 ## 5. Tài khoản test
 
-Realm `hrm` được import tự động khi Keycloak khởi động từ `keycloak/hrm-realm.json`.
+> Tất cả tài khoản dưới đây được import **tự động** khi Keycloak khởi động từ `keycloak/hrm-realm.json`.  
+> Không cần tạo tay. Nếu mất → xem mục [Reset toàn bộ database](#reset-toàn-bộ-database).
 
-| Username | Mật khẩu | Role | Ghi chú |
+---
+
+### 5.1 Tài khoản ứng dụng HRM (đăng nhập SSO)
+
+| Username | Mật khẩu ban đầu | Role | Quyền hạn |
 |---|---|---|---|
-| `admin.hrm` | `Admin@123` | ADMIN | Đổi mật khẩu lần đầu đăng nhập |
-| `hr.manager` | `Hr@123456` | HR_MANAGER | Đổi mật khẩu lần đầu đăng nhập |
+| `admin.hrm` | `Admin@123` | `ADMIN` | Toàn quyền: xem/thêm/sửa/xóa tất cả module |
+| `hr.manager` | `Hr@123456` | `HR_MANAGER` | Quản lý nhân sự, lương, chấm công — không terminate nhân viên |
 
-Các roles hiện có: `ADMIN`, `HR_MANAGER`, `DEPARTMENT_MANAGER`, `EMPLOYEE`
+> **Lần đầu đăng nhập** Keycloak sẽ yêu cầu đổi mật khẩu. Đặt mật khẩu mới bất kỳ, độ dài ≥ 8 ký tự.
+
+**Thêm tài khoản test mới (nếu cần):**
+
+```bash
+# Lấy admin token Keycloak
+ADMIN_TOKEN=$(curl -sf -X POST http://localhost:8180/realms/master/protocol/openid-connect/token \
+  -d "client_id=admin-cli&grant_type=password&username=admin&password=admin_dev_pass" \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+# Tạo user mới
+curl -X POST http://localhost:8180/admin/realms/hrm/users \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "dept.manager",
+    "enabled": true,
+    "credentials": [{"type":"password","value":"Dev@123456","temporary":true}],
+    "realmRoles": ["DEPARTMENT_MANAGER"]
+  }'
+```
+
+---
+
+### 5.2 Tài khoản hạ tầng (services nội bộ)
+
+| Service | URL | Username | Password | Ghi chú |
+|---|---|---|---|---|
+| Keycloak Admin | http://localhost:8180 | `admin` | `admin_dev_pass` | Quản lý realm, client, user |
+| PostgreSQL | `localhost:5432` | `hrm` | `hrm_dev_pass` | DB: `hrm` |
+| MinIO Console | http://localhost:9001 | `hrm_minio` | `hrm_minio_dev` | Object storage |
+| OpenSearch | http://localhost:9200 | — | — | Security tắt trong dev |
+| Redis | `localhost:6379` | — | — | Không có auth trong dev |
+
+---
+
+### 5.3 Roles và quyền hạn chi tiết
+
+| Role | Xem DS nhân viên | Thêm/Sửa NV | Cho thôi việc | Xem lương | Duyệt nghỉ phép |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `ADMIN` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `HR_MANAGER` | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `DEPARTMENT_MANAGER` | ✅ (phòng ban) | ❌ | ❌ | ❌ | ✅ (phòng mình) |
+| `EMPLOYEE` | ❌ | ❌ | ❌ | ❌ (chỉ xem lương mình) | ❌ |
+
+---
+
+### 5.4 Lấy JWT token để test API (curl / Postman)
+
+```bash
+# Đăng nhập với admin.hrm (sau khi đã đổi mật khẩu lần đầu)
+TOKEN=$(curl -sf -X POST \
+  http://localhost:8180/realms/hrm/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=hrm-frontend" \
+  -d "client_secret=<KEYCLOAK_CLIENT_SECRET>" \
+  -d "username=admin.hrm" \
+  -d "password=<mật_khẩu_mới>" \
+  -d "grant_type=password" \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+echo $TOKEN   # paste vào Postman hoặc dùng trực tiếp trong curl
+```
+
+> `KEYCLOAK_CLIENT_SECRET` lấy từ file `frontend/.env.local` hoặc Keycloak Admin → Realm `hrm` → Clients → `hrm-frontend` → Credentials tab.
+
+Dùng token để gọi API:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/personnel/employees
+```
 
 ---
 
@@ -194,28 +269,14 @@ Checklist:
 
 ## 9. Gọi API với JWT
 
-Lấy access token từ Keycloak (dùng để test API bằng curl/Postman):
+> Xem [mục 5.4](#54-lấy-jwt-token-để-test-api-curl--postman) để lấy token trước.
 
 ```bash
-TOKEN=$(curl -s -X POST \
-  http://localhost:8180/realms/hrm/protocol/openid-connect/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=hrm-frontend" \
-  -d "client_secret=<KEYCLOAK_CLIENT_SECRET>" \
-  -d "username=admin.hrm" \
-  -d "password=<mật_khẩu_sau_khi_đổi>" \
-  -d "grant_type=password" \
-  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-```
-
-Gọi API nhân sự:
-
-```bash
-# Danh sách nhân viên
+# Danh sách nhân viên (có phân trang + tìm kiếm)
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/personnel/employees?page=0&size=10"
+  "http://localhost:8080/api/personnel/employees?page=0&size=10&keyword=nguyen"
 
-# Tạo nhân viên mới
+# Tạo nhân viên mới (cần role ADMIN hoặc HR_MANAGER)
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -228,6 +289,10 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "startDate": "2024-01-01"
   }' \
   "http://localhost:8080/api/personnel/employees"
+
+# Cho thôi việc (chỉ ADMIN)
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/personnel/employees/<id>/terminate"
 ```
 
 **ContractType hợp lệ:** `INDEFINITE`, `FIXED_TERM_1Y`, `FIXED_TERM_2Y`, `PART_TIME`, `PROBATION`
