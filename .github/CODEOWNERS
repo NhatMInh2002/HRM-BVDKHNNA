@@ -1,0 +1,18 @@
+# CODEOWNERS — HRM Project
+# Cập nhật username thực tế sau khi có team
+
+# Backend modules nhạy cảm — Tech Lead bắt buộc review
+/backend/module-payroll/          @tech-lead @backend-lead
+/backend/module-personnel/        @tech-lead
+/backend/infra/security/          @tech-lead
+
+# Tất cả backend còn lại
+/backend/                         @backend-lead
+
+# Frontend
+/frontend/                        @frontend-lead
+
+# CI/CD, security config, và docs pháp lý — Tech Lead bắt buộc
+/.github/                         @tech-lead
+/docs/compliance/                 @tech-lead
+/docs/adr/                        @tech-lead

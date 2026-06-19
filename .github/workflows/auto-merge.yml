@@ -1,0 +1,37 @@
+name: Auto-merge
+
+on:
+  # Trigger khi tất cả checks trên PR hoàn thành
+  check_suite:
+    types: [completed]
+  pull_request:
+    types: [labeled]
+
+jobs:
+  auto-merge:
+    name: Auto-merge khi tất cả checks pass
+    runs-on: ubuntu-latest
+    # Chỉ chạy trên PR được gán label 'auto-merge'
+    if: |
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'auto-merge')
+
+    permissions:
+      pull-requests: write
+      contents: write
+
+    steps:
+      - name: Chờ tất cả checks pass rồi merge
+        uses: pascalgn/automerge-action@v0.16.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: squash
+          MERGE_COMMIT_MESSAGE: |
+            {pullRequest.title} (#{pullRequest.number})
+
+            {pullRequest.body}
+          MERGE_LABELS: auto-merge
+          # Không merge nếu còn required review chưa approve
+          MERGE_REQUIRED_APPROVALS: 1
+          MERGE_RETRY_SLEEP: 60000   # chờ 60s giữa các lần retry
+          MERGE_RETRIES: 10
