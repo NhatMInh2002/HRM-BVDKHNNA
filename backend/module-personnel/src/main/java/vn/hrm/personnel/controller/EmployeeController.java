@@ -49,7 +49,8 @@ public class EmployeeController {
         @Valid @RequestBody EmployeeRequest req,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String createdBy = jwt.getClaimAsString("preferred_username");
+        String createdBy = jwt.getClaimAsString("preferred_username") != null
+            ? jwt.getClaimAsString("preferred_username") : jwt.getSubject();
         EmployeeResponse response = employeeService.create(req, createdBy);
         return ResponseEntity
             .created(URI.create("/api/personnel/employees/" + response.id()))
@@ -63,7 +64,8 @@ public class EmployeeController {
         @Valid @RequestBody EmployeeRequest req,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String updatedBy = jwt.getClaimAsString("preferred_username");
+        String updatedBy = jwt.getClaimAsString("preferred_username") != null
+            ? jwt.getClaimAsString("preferred_username") : jwt.getSubject();
         return ApiResponse.ok(employeeService.update(id, req, updatedBy));
     }
 
@@ -73,7 +75,8 @@ public class EmployeeController {
         @PathVariable UUID id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String updatedBy = jwt.getClaimAsString("preferred_username");
+        String updatedBy = jwt.getClaimAsString("preferred_username") != null
+            ? jwt.getClaimAsString("preferred_username") : jwt.getSubject();
         employeeService.terminate(id, updatedBy);
         return ApiResponse.ok(null);
     }

@@ -24,7 +24,8 @@ public class EmployeeService {
     private final DepartmentRepository departmentRepo;
 
     public Page<EmployeeResponse> search(String keyword, EmployeeStatus status, UUID departmentId, Pageable pageable) {
-        return employeeRepo.search(keyword, status, departmentId, pageable)
+        String kw = (keyword != null) ? keyword : "";
+        return employeeRepo.search(kw, status, departmentId, pageable)
             .map(EmployeeResponse::from);
     }
 
