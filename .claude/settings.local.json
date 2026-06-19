@@ -5,7 +5,10 @@
       "mcp__visualize__show_widget",
       "mcp__00a4cf02-3d25-420c-a5d2-5cf0bc9d1994__list_enabled_zapier_actions",
       "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\Programs\" -Recurse -Filter \"claude.exe\" -ErrorAction SilentlyContinue | Select-Object FullName)",
-      "PowerShell(gh auth status)"
+      "PowerShell(gh auth status)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

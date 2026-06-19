@@ -1,0 +1,149 @@
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: hrm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hrm
+      POSTGRES_USER: hrm
+      POSTGRES_PASSWORD: hrm_dev_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: hrm-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  # ── MinIO (Object Storage) ─────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: hrm-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: hrm_minio
+      MINIO_ROOT_PASSWORD: hrm_minio_dev
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      retries: 5
+
+  # ── OpenSearch ─────────────────────────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.14.0
+    container_name: hrm-opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 15s
+      retries: 10
+
+  # ── Keycloak (SSO — thay AD FS) ────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.4
+    container_name: hrm-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/hrm
+      KC_DB_USERNAME: hrm
+      KC_DB_PASSWORD: hrm_dev_pass
+      KC_DB_SCHEMA: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin_dev_pass
+      KC_HTTP_PORT: 8180
+    ports:
+      - "8180:8180"
+    volumes:
+      - ./infra/keycloak/realms:/opt/keycloak/data/import
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8180/health/ready || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+
+  # ── Spring Boot Backend ────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrm-backend
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/hrm
+      DB_USERNAME: hrm
+      DB_PASSWORD: hrm_dev_pass
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KEYCLOAK_ISSUER_URI: http://keycloak:8180/realms/hrm
+      MINIO_ENDPOINT: http://minio:9000
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  # ── Next.js Frontend ───────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hrm-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8080
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: dev_secret_change_in_prod
+      KEYCLOAK_CLIENT_ID: hrm-frontend
+      KEYCLOAK_CLIENT_SECRET: change_in_prod
+      KEYCLOAK_ISSUER: http://localhost:8180/realms/hrm
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  opensearch_data:

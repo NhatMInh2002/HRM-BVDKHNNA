@@ -1,26 +1,29 @@
 # HRM Implementation Plan — 44 Weeks
 
 **Last updated:** 2026-06-19  
-**Architecture:** Modular Monolith (Spring Boot) + Next.js + PostgreSQL (on-prem)
+**Architecture:** Modular Monolith (Spring Boot) + Next.js + PostgreSQL (on-prem)  
+**Dev environment:** Docker Compose (local) → K8s khi có server on-prem thật  
+**SSO:** Keycloak (self-hosted, SAML 2.0 / OIDC) — thay thế AD FS  
+**Team:** Solo dev
 
 ---
 
 ## Phase 1 — Foundation & Security (Weeks 1–8)
-**Goal:** Skeleton có SSO, SSL, infra trước khi viết business logic.
+**Goal:** Skeleton chạy được với SSO, SSL, logging trước khi viết business logic.
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 1–2 | On-prem Kubernetes cluster, Docker registry, Jenkins CI/CD, Internal CA + SSL | ⬜ Todo |
-| 3–4 | AD FS + SAML 2.0 via Spring Security, JWT issuance, Redis session | ⬜ Todo |
-| 5–6 | API Gateway (Spring Cloud Gateway): routing, JWT verify, rate limiting, WAF | ⬜ Todo |
+| 1–2 | Docker Compose stack: PostgreSQL, Redis, MinIO, OpenSearch, Keycloak | ⬜ Todo |
+| 3–4 | Keycloak: realm HRM, SAML 2.0 / OIDC config, Spring Security integration, JWT | ⬜ Todo |
+| 5–6 | API Gateway (Spring Cloud Gateway): routing, JWT verify, rate limiting, Nginx + SSL | ⬜ Todo |
 | 7–8 | Next.js shell: SSO login flow, RBAC route guards, audit log middleware, ELK + Prometheus | ⬜ Todo |
 
-**Exit criteria:** User đăng nhập qua AD, JWT được cấp, toàn bộ traffic TLS, mọi request được audit-log.
+**Exit criteria:** User đăng nhập qua Keycloak, JWT được cấp, traffic TLS, mọi request được audit-log.
 
 ---
 
 ## Phase 2 — Core HR Modules (Weeks 9–20)
-**Goal:** Personnel và Attendance — hai module có giá trị cao nhất.
+**Goal:** Personnel trước (nền tảng), rồi Attendance.
 
 | Week | Deliverable | Status |
 |---|---|---|
@@ -67,4 +70,4 @@
 | 41 | Penetration testing (OWASP Top 10), khắc phục lỗ hổng | ⬜ Todo |
 | 42 | Load testing (500–1,000 concurrent users), tối ưu query DB, tuning cache | ⬜ Todo |
 | 43 | UAT với phòng Nhân sự, sprint fix bug | ⬜ Todo |
-| 44 | Go-live: cutover production, cấu hình alert monitoring, hoàn thiện runbook | ⬜ Todo |
+| 44 | Go-live: cutover production (Docker Compose → K8s on-prem), monitoring, runbook | ⬜ Todo |
