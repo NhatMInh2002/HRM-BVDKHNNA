@@ -1,0 +1,15 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# Licensed to the Apache Software Foundation (ASF)
+# Maven Wrapper Script
+# ----------------------------------------------------------------------------
+
+if [ -z "$MAVEN_WRAPPER_JAR" ]; then
+  MAVEN_WRAPPER_JAR="$( cd "$(dirname "$0")" && pwd )/.mvn/wrapper/maven-wrapper.jar"
+fi
+
+if [ -r "$MAVEN_WRAPPER_JAR" ]; then
+  exec "$JAVA_HOME/bin/java" -jar "$MAVEN_WRAPPER_JAR" "$@"
+else
+  exec mvn "$@"
+fi
