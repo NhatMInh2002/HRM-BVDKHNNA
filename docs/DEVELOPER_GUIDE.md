@@ -225,25 +225,26 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/personnel/emplo
 
 ### Cách A — Maven Wrapper (khuyến nghị, không cần cài Maven)
 
-```powershell
+Chạy **2 lệnh theo thứ tự** từ thư mục `backend`:
+
+```cmd
 cd D:\Workspace\HRM\backend
-.\mvnw -pl app -am spring-boot:run
+
+REM Bước 1: build + install tất cả modules (chỉ cần làm lần đầu hoặc sau khi pull code mới)
+mvnw install -DskipTests
+
+REM Bước 2: chạy app
+mvnw -pl app spring-boot:run
 ```
 
-> **Lưu ý:** phải có flag `-am` (also make). Nếu thiếu, Maven báo lỗi `Could not find artifact vn.hrm:shared-kernel` vì các module nội bộ chưa được build.
-
-Hoặc build toàn bộ trước rồi chạy (lần đầu hoặc sau khi pull code mới):
-
-```powershell
-.\mvnw install -DskipTests
-.\mvnw -pl app spring-boot:run
-```
+> **Tại sao cần 2 bước?** Project là Modular Monolith — `app` phụ thuộc vào `shared-kernel`, `module-personnel`… Nếu bỏ qua bước install, Maven báo lỗi `Could not find artifact` hoặc `Unable to find a suitable main class`.
 
 ### Cách B — Dùng `mvn` toàn cục (nếu đã cài Maven 3.9+)
 
-```powershell
+```cmd
 cd D:\Workspace\HRM\backend
-mvn -pl app -am spring-boot:run
+mvn install -DskipTests
+mvn -pl app spring-boot:run
 ```
 
 > Nếu thấy `'mvn' is not recognized` → dùng Cách A, hoặc cài Maven:
