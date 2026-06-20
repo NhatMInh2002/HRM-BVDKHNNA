@@ -26,4 +26,5 @@ FROM (VALUES
     ('NV009', 'Ngô Văn Inh',        'nv.inh@bvhanna.vn',     '0912000009', 'MALE',   '1994-08-14', '2021-02-20', 'PROBATION',  'FULL_TIME',  'P-CNTT','Junior Developer'),
     ('NV010', 'Lý Thị Kim',         'lt.kim@bvhanna.vn',     '0912000010', 'FEMALE', '1986-05-03', '2015-07-10', 'ACTIVE',     'FULL_TIME',  'P-KTNS','Kiểm toán viên')
 ) AS e(code, full_name, email, phone, gender, dob, join_date, status, contract_type, dept_code, position)
-WHERE EXISTS (SELECT 1 FROM personnel.departments WHERE code = e.dept_code);
+WHERE EXISTS (SELECT 1 FROM personnel.departments WHERE code = e.dept_code)
+ON CONFLICT (employee_code) DO NOTHING;
