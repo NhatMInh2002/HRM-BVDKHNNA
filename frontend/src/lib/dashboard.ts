@@ -9,5 +9,5 @@ export interface DashboardStats {
 }
 
 export function getDashboardStats() {
-  return apiFetch<{ data: DashboardStats }>('/dashboard/stats').then(r => r.data)
+  return apiFetch<DashboardStats>('/dashboard/stats')
 }

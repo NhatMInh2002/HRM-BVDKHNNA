@@ -2,6 +2,19 @@ import { apiFetch } from './api'
 
 export type EmployeeStatus = 'ACTIVE' | 'TERMINATED' | 'PROBATION'
 export type ContractType = 'INDEFINITE' | 'FIXED_TERM_1Y' | 'FIXED_TERM_2Y' | 'PART_TIME' | 'PROBATION'
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
+
+export interface DepartmentSummary {
+  id: string
+  code: string
+  name: string
+}
+
+export interface ManagerSummary {
+  id: string
+  employeeCode: string
+  fullName: string
+}
 
 export interface Employee {
   id: string
@@ -9,14 +22,16 @@ export interface Employee {
   fullName: string
   email: string
   phone?: string
+  gender?: Gender
+  dateOfBirth?: string
+  joinDate: string
   position?: string
-  departmentId?: string
-  departmentName?: string
+  department?: DepartmentSummary
+  manager?: ManagerSummary
   contractType: ContractType
-  startDate: string
-  endDate?: string
   status: EmployeeStatus
   createdAt: string
+  updatedAt: string
 }
 
 export interface EmployeePage {
@@ -27,16 +42,18 @@ export interface EmployeePage {
   size: number
 }
 
-export interface CreateEmployeeDto {
+export interface EmployeeFormDto {
   employeeCode: string
   fullName: string
   email: string
   phone?: string
-  position?: string
-  departmentId?: string
+  gender?: Gender
+  dateOfBirth?: string
+  joinDate: string
   contractType: ContractType
-  startDate: string
-  endDate?: string
+  departmentId?: string
+  managerId?: string
+  position?: string
 }
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
@@ -51,6 +68,12 @@ export const STATUS_LABELS: Record<EmployeeStatus, string> = {
   ACTIVE: 'Đang làm việc',
   TERMINATED: 'Đã nghỉ việc',
   PROBATION: 'Thử việc',
+}
+
+export const GENDER_LABELS: Record<Gender, string> = {
+  MALE: 'Nam',
+  FEMALE: 'Nữ',
+  OTHER: 'Khác',
 }
 
 export function searchEmployees(params: {
@@ -73,14 +96,14 @@ export function getEmployee(id: string) {
   return apiFetch<Employee>(`/personnel/employees/${id}`)
 }
 
-export function createEmployee(data: CreateEmployeeDto) {
+export function createEmployee(data: EmployeeFormDto) {
   return apiFetch<Employee>('/personnel/employees', {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
-export function updateEmployee(id: string, data: Partial<CreateEmployeeDto>) {
+export function updateEmployee(id: string, data: EmployeeFormDto) {
   return apiFetch<Employee>(`/personnel/employees/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),

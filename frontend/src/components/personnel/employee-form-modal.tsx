@@ -9,7 +9,8 @@ import {
   updateEmployee,
   getEmployee,
   CONTRACT_TYPE_LABELS,
-  type CreateEmployeeDto,
+  GENDER_LABELS,
+  type EmployeeFormDto,
 } from '@/lib/personnel'
 import { getDepartments } from '@/lib/departments'
 
@@ -18,11 +19,12 @@ const schema = z.object({
   fullName: z.string().min(2, 'Bắt buộc').max(100),
   email: z.string().email('Email không hợp lệ'),
   phone: z.string().optional(),
-  position: z.string().optional(),
-  departmentId: z.string().optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
+  dateOfBirth: z.string().optional(),
+  joinDate: z.string().min(1, 'Bắt buộc'),
   contractType: z.enum(['INDEFINITE', 'FIXED_TERM_1Y', 'FIXED_TERM_2Y', 'PART_TIME', 'PROBATION']),
-  startDate: z.string().min(1, 'Bắt buộc'),
-  endDate: z.string().optional(),
+  departmentId: z.string().optional(),
+  position: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -60,23 +62,25 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
         fullName: existing.fullName,
         email: existing.email,
         phone: existing.phone ?? '',
-        position: existing.position ?? '',
-        departmentId: existing.departmentId ?? '',
+        gender: existing.gender,
+        dateOfBirth: existing.dateOfBirth ?? '',
+        joinDate: existing.joinDate,
         contractType: existing.contractType,
-        startDate: existing.startDate,
-        endDate: existing.endDate ?? '',
+        departmentId: existing.department?.id ?? '',
+        position: existing.position ?? '',
       })
     }
   }, [existing, reset])
 
   const save = useMutation({
     mutationFn: (data: FormValues) => {
-      const payload: CreateEmployeeDto = {
+      const payload: EmployeeFormDto = {
         ...data,
         phone: data.phone || undefined,
+        gender: data.gender || undefined,
+        dateOfBirth: data.dateOfBirth || undefined,
         position: data.position || undefined,
         departmentId: data.departmentId || undefined,
-        endDate: data.endDate || undefined,
       }
       return isEdit ? updateEmployee(editId!, payload) : createEmployee(payload)
     },
@@ -85,7 +89,7 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800">
             {isEdit ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới'}
@@ -93,7 +97,7 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
-        <form onSubmit={handleSubmit(d => save.mutate(d))} className="px-6 py-5 space-y-4">
+        <form onSubmit={handleSubmit(d => save.mutate(d))} className="px-6 py-5 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Mã nhân viên *" error={errors.employeeCode?.message}>
               <input {...register('employeeCode')} disabled={isEdit}
@@ -114,6 +118,20 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <Field label="Giới tính" error={errors.gender?.message}>
+              <select {...register('gender')} className="input">
+                <option value="">— Chọn —</option>
+                {Object.entries(GENDER_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Ngày sinh" error={errors.dateOfBirth?.message}>
+              <input {...register('dateOfBirth')} type="date" className="input" />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <Field label="Chức vụ" error={errors.position?.message}>
               <input {...register('position')} className="input" placeholder="Điều dưỡng, Bác sĩ..." />
             </Field>
@@ -127,20 +145,16 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
             </Field>
           </div>
 
-          <Field label="Loại hợp đồng *" error={errors.contractType?.message}>
-            <select {...register('contractType')} className="input">
-              {Object.entries(CONTRACT_TYPE_LABELS).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
-          </Field>
-
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Ngày bắt đầu *" error={errors.startDate?.message}>
-              <input {...register('startDate')} type="date" className="input" />
+            <Field label="Loại hợp đồng *" error={errors.contractType?.message}>
+              <select {...register('contractType')} className="input">
+                {Object.entries(CONTRACT_TYPE_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
             </Field>
-            <Field label="Ngày kết thúc" error={errors.endDate?.message}>
-              <input {...register('endDate')} type="date" className="input" />
+            <Field label="Ngày vào làm *" error={errors.joinDate?.message}>
+              <input {...register('joinDate')} type="date" className="input" />
             </Field>
           </div>
 

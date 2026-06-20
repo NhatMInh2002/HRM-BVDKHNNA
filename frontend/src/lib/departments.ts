@@ -10,11 +10,9 @@ export interface Department {
 }
 
 export function getDepartments() {
-  return apiFetch<{ data: Department[] }>('/personnel/departments')
-    .then(res => res.data)
+  return apiFetch<Department[]>('/personnel/departments')
 }
 
 export function getDepartmentTree() {
-  return apiFetch<{ data: Department[] }>('/personnel/departments/tree')
-    .then(res => res.data)
+  return apiFetch<Department[]>('/personnel/departments/tree')
 }

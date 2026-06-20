@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { EmployeeFormModal } from '@/components/personnel/employee-form-modal'
 import { useSession } from 'next-auth/react'
+import { format } from 'date-fns'
 
 const STATUS_VARIANT = {
   ACTIVE: 'green',
@@ -94,8 +95,9 @@ export default function PersonnelPage() {
             <tr>
               <th className="px-4 py-3 text-left">Mã NV</th>
               <th className="px-4 py-3 text-left">Họ tên</th>
-              <th className="px-4 py-3 text-left">Email</th>
+              <th className="px-4 py-3 text-left">Phòng ban</th>
               <th className="px-4 py-3 text-left">Chức vụ</th>
+              <th className="px-4 py-3 text-left">Vào làm</th>
               <th className="px-4 py-3 text-left">Hợp đồng</th>
               <th className="px-4 py-3 text-left">Trạng thái</th>
               {canWrite && <th className="px-4 py-3 text-right">Thao tác</th>}
@@ -104,25 +106,31 @@ export default function PersonnelPage() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
                   Đang tải...
                 </td>
               </tr>
             )}
             {!isLoading && data?.content?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
                   Không tìm thấy nhân viên nào
                 </td>
               </tr>
             )}
             {data?.content?.map(emp => (
               <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-mono text-gray-500">{emp.employeeCode}</td>
-                <td className="px-4 py-3 font-medium text-gray-800">{emp.fullName}</td>
-                <td className="px-4 py-3 text-gray-600">{emp.email}</td>
+                <td className="px-4 py-3 font-mono text-gray-500 text-xs">{emp.employeeCode}</td>
+                <td className="px-4 py-3">
+                  <div className="font-medium text-gray-800">{emp.fullName}</div>
+                  <div className="text-xs text-gray-400">{emp.email}</div>
+                </td>
+                <td className="px-4 py-3 text-gray-600 text-xs">{emp.department?.name ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{emp.position ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-600">
+                <td className="px-4 py-3 text-gray-500 text-xs">
+                  {emp.joinDate ? format(new Date(emp.joinDate), 'dd/MM/yyyy') : '—'}
+                </td>
+                <td className="px-4 py-3 text-gray-600 text-xs">
                   {CONTRACT_TYPE_LABELS[emp.contractType]}
                 </td>
                 <td className="px-4 py-3">
@@ -158,7 +166,7 @@ export default function PersonnelPage() {
         {data && data.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
             <span>
-              Trang {data.number + 1} / {data.totalPages}
+              Trang {data.number + 1} / {data.totalPages} — {data.totalElements} nhân viên
             </span>
             <div className="flex gap-2">
               <button
