@@ -227,6 +227,15 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/personnel/emplo
 
 ```powershell
 cd D:\Workspace\HRM\backend
+.\mvnw -pl app -am spring-boot:run
+```
+
+> **Lưu ý:** phải có flag `-am` (also make). Nếu thiếu, Maven báo lỗi `Could not find artifact vn.hrm:shared-kernel` vì các module nội bộ chưa được build.
+
+Hoặc build toàn bộ trước rồi chạy (lần đầu hoặc sau khi pull code mới):
+
+```powershell
+.\mvnw install -DskipTests
 .\mvnw -pl app spring-boot:run
 ```
 
@@ -234,7 +243,7 @@ cd D:\Workspace\HRM\backend
 
 ```powershell
 cd D:\Workspace\HRM\backend
-mvn -pl app spring-boot:run
+mvn -pl app -am spring-boot:run
 ```
 
 > Nếu thấy `'mvn' is not recognized` → dùng Cách A, hoặc cài Maven:
