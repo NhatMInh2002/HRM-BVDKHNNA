@@ -1,0 +1,15 @@
+vn\hrm\payroll\repository\SalaryConfigRepository.class
+vn\hrm\payroll\repository\PayrollRecordRepository.class
+vn\hrm\payroll\domain\PayrollRecord.class
+vn\hrm\payroll\dto\SalaryConfigRequest.class
+vn\hrm\payroll\controller\PayrollController.class
+vn\hrm\payroll\dto\GeneratePayrollRequest.class
+vn\hrm\payroll\service\PayslipPdfService.class
+vn\hrm\payroll\domain\PayrollRecord$PayrollRecordBuilder.class
+vn\hrm\payroll\controller\SalaryConfigController.class
+vn\hrm\payroll\domain\enums\PayrollStatus.class
+vn\hrm\payroll\dto\PayrollRecordResponse.class
+vn\hrm\payroll\dto\SalaryConfigResponse.class
+vn\hrm\payroll\service\PayrollService.class
+vn\hrm\payroll\domain\SalaryConfig.class
+vn\hrm\payroll\domain\SalaryConfig$SalaryConfigBuilder.class

@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/payroll")
+@RequestMapping("/payroll")
 @RequiredArgsConstructor
 public class PayrollController {
 

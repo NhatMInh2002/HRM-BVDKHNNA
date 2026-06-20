@@ -1,0 +1,13 @@
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\controller\PayrollController.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\controller\SalaryConfigController.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\domain\enums\PayrollStatus.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\domain\PayrollRecord.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\domain\SalaryConfig.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\dto\GeneratePayrollRequest.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\dto\PayrollRecordResponse.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\dto\SalaryConfigRequest.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\dto\SalaryConfigResponse.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\repository\PayrollRecordRepository.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\repository\SalaryConfigRepository.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\service\PayrollService.java
+D:\Workspace\HRM\backend\module-payroll\src\main\java\vn\hrm\payroll\service\PayslipPdfService.java

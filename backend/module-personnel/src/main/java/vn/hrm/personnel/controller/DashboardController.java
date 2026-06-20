@@ -13,7 +13,7 @@ import vn.hrm.personnel.repository.EmployeeRepository;
 import vn.hrm.shared.dto.ApiResponse;
 
 @RestController
-@RequestMapping("/api/dashboard")
+@RequestMapping("/dashboard")
 @RequiredArgsConstructor
 public class DashboardController {
 
