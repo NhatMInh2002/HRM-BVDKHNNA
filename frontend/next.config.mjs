@@ -2,13 +2,19 @@
 const nextConfig = {
   output: 'standalone',
   async rewrites() {
-    return [
-      {
-        // Chỉ proxy các route KHÔNG phải NextAuth (/api/auth/*)
-        source: '/api/((?!auth/).*)',
-        destination: `${process.env.BACKEND_URL ?? 'http://localhost:8080'}/api/$1`,
-      },
-    ]
+    return {
+      beforeFiles: [],
+      // afterFiles: Next.js kiểm tra app routes trước.
+      // /api/auth/* → NextAuth route.ts xử lý (không bị proxy)
+      // /api/payroll/* v.v. → không có app route → proxy về backend
+      afterFiles: [
+        {
+          source: '/api/:path*',
+          destination: `${process.env.BACKEND_URL ?? 'http://localhost:8080'}/api/:path*`,
+        },
+      ],
+      fallback: [],
+    }
   },
 }
 
