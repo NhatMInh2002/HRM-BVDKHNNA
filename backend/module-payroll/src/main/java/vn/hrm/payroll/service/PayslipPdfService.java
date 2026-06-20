@@ -23,7 +23,7 @@ public class PayslipPdfService {
     private final PayrollRecordRepository payrollRecordRepo;
     private final JdbcTemplate jdbc;
 
-    public byte[] generatePayslip(UUID recordId) throws DocumentException {
+    public byte[] generatePayslip(UUID recordId) throws DocumentException, java.io.IOException {
         PayrollRecord rec = payrollRecordRepo.findById(recordId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phiếu lương"));
 
