@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import {
   listPayroll, generatePayroll, approvePayroll, markPaid,
+  downloadPayslipPdf, exportPayrollExcel,
   PayrollRecord, PAYROLL_STATUS_LABELS, PAYROLL_STATUS_COLORS,
 } from '@/lib/payroll'
 
@@ -72,14 +73,23 @@ export default function PayrollPage() {
           <h1 className="text-2xl font-bold text-gray-800">Bảng lương</h1>
           <p className="text-sm text-gray-500 mt-0.5">Quản lý lương tháng nhân viên</p>
         </div>
-        <button
-          onClick={() => generateMut.mutate()}
-          disabled={generateMut.isPending}
-          className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg
-                     hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          {generateMut.isPending ? 'Đang tạo…' : `Tính lương ${month}/${year}`}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => exportPayrollExcel(year, month).catch(e => alert(e.message))}
+            className="bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg
+                       hover:bg-green-700 transition-colors"
+          >
+            Xuất Excel
+          </button>
+          <button
+            onClick={() => generateMut.mutate()}
+            disabled={generateMut.isPending}
+            className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg
+                       hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {generateMut.isPending ? 'Đang tạo…' : `Tính lương ${month}/${year}`}
+          </button>
+        </div>
       </div>
 
       {/* Period picker */}
@@ -173,6 +183,12 @@ export default function PayrollPage() {
                         Đã trả
                       </button>
                     )}
+                    <button
+                      onClick={() => downloadPayslipPdf(rec.id).catch(e => alert(e.message))}
+                      className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+                    >
+                      PDF
+                    </button>
                   </div>
                 </td>
               </tr>

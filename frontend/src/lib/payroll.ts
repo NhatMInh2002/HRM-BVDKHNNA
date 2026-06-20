@@ -115,3 +115,37 @@ export function myPayroll(employeeId: string) {
   return apiFetch<{ data: PayrollRecord[] }>(`/payroll/my?employeeId=${employeeId}`)
     .then(r => r.data)
 }
+
+export async function downloadPayslipPdf(id: string) {
+  const { getSession } = await import('next-auth/react')
+  const session = await getSession()
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
+  const res = await fetch(`${base}/payroll/${id}/payslip.pdf`, {
+    headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
+  })
+  if (!res.ok) throw new Error('Không thể tải phiếu lương')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `phieu-luong-${id.slice(0, 8)}.pdf`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function exportPayrollExcel(year: number, month: number) {
+  const { getSession } = await import('next-auth/react')
+  const session = await getSession()
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
+  const res = await fetch(`${base}/payroll/export.xlsx?year=${year}&month=${month}`, {
+    headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
+  })
+  if (!res.ok) throw new Error('Không thể xuất Excel')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `bang-luong-${month}-${year}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}
