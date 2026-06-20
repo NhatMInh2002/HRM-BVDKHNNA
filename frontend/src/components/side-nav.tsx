@@ -7,6 +7,7 @@ const NAV = [
   { href: '/dashboard/personnel', label: 'Nhân sự', roles: ['ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER'] },
   { href: '/dashboard/org-chart', label: 'Sơ đồ tổ chức', roles: ['ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER'] },
   { href: '/dashboard/attendance', label: 'Chấm công', roles: ['ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER'] },
+  { href: '/dashboard/attendance/leave', label: 'Nghỉ phép', roles: [] },
   { href: '/dashboard/payroll', label: 'Lương', roles: ['ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/recruitment', label: 'Tuyển dụng', roles: ['ADMIN', 'HR_MANAGER'] },
 ]
