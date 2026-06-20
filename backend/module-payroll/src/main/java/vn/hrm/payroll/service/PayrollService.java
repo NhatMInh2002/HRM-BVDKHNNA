@@ -76,10 +76,9 @@ public class PayrollService {
         List<Map<String, Object>> employees = jdbc.queryForList(
                 "SELECT id FROM personnel.employees WHERE status IN ('ACTIVE','PROBATION')");
 
-        int count = 0;
+        int[] count = {0};
         for (Map<String, Object> row : employees) {
             UUID empId = (UUID) row.get("id");
-            // Bỏ qua nếu đã có bản ghi tháng này
             if (payrollRecordRepo.findByEmployeeIdAndPeriodYearAndPeriodMonth(
                     empId, (short) year, (short) month).isPresent()) continue;
 
@@ -87,10 +86,10 @@ public class PayrollService {
                     empId, LocalDate.of(year, month, 1)).ifPresent(cfg -> {
                 PayrollRecord rec = calculate(empId, year, month, cfg, actor);
                 payrollRecordRepo.save(rec);
-                count++;
+                count[0]++;
             });
         }
-        return count;
+        return count[0];
     }
 
     private PayrollRecord calculate(UUID empId, int year, int month,

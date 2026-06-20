@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import vn.hrm.payroll.domain.PayrollRecord;
 import vn.hrm.payroll.repository.PayrollRecordRepository;
 
-import java.awt.*;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -153,11 +153,6 @@ public class PayslipPdfService {
             var headerFont = wb.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
-            headerStyle.setFillForegroundColor(
-                    org.apache.poi.xssf.usermodel.XSSFColor.toXSSFColor(
-                            new org.apache.poi.ss.usermodel.IndexedColors(0x1e)
-                                    .getIndex() > 0 ? new Color(30, 64, 175) : new Color(30, 64, 175)));
-            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
 
             String[] headers = {
                 "STT", "Ma NV", "Ho ten", "Ky", "Luong CB", "Phu cap", "OT",
@@ -216,7 +211,7 @@ public class PayslipPdfService {
     private void addInfoCell(PdfPTable t, String text, Font font, boolean shade) {
         PdfPCell cell = new PdfPCell(new Phrase(text, font));
         cell.setPadding(4);
-        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
         if (shade) cell.setBackgroundColor(Color.decode("#f8fafc"));
         t.addCell(cell);
     }
