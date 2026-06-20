@@ -4,8 +4,9 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: `${process.env.BACKEND_URL ?? 'http://localhost:8080'}/api/:path*`,
+        // Chỉ proxy các route KHÔNG phải NextAuth (/api/auth/*)
+        source: '/api/((?!auth/).*)',
+        destination: `${process.env.BACKEND_URL ?? 'http://localhost:8080'}/api/$1`,
       },
     ]
   },
