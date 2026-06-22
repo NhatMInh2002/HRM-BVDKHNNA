@@ -73,53 +73,47 @@ export const PAYROLL_STATUS_COLORS: Record<PayrollStatus, string> = {
 }
 
 export function saveSalaryConfig(dto: SaveSalaryConfigDto) {
-  return apiFetch<{ data: SalaryConfig }>('/payroll/salary-config', {
+  return apiFetch<SalaryConfig>('/payroll/salary-config', {
     method: 'POST',
     body: JSON.stringify(dto),
-  }).then(r => r.data)
+  })
 }
 
 export function getSalaryHistory(employeeId: string) {
-  return apiFetch<{ data: SalaryConfig[] }>(`/payroll/salary-config/${employeeId}`)
-    .then(r => r.data)
+  return apiFetch<SalaryConfig[]>(`/payroll/salary-config/${employeeId}`)
 }
 
 export function getCurrentSalary(employeeId: string) {
-  return apiFetch<{ data: SalaryConfig }>(`/payroll/salary-config/${employeeId}/current`)
-    .then(r => r.data)
+  return apiFetch<SalaryConfig>(`/payroll/salary-config/${employeeId}/current`)
 }
 
 export function generatePayroll(year: number, month: number) {
-  return apiFetch<{ data: { generated: number } }>('/payroll/generate', {
+  return apiFetch<{ generated: number }>('/payroll/generate', {
     method: 'POST',
     body: JSON.stringify({ year, month }),
-  }).then(r => r.data)
+  })
 }
 
 export function listPayroll(year: number, month: number, page = 0) {
-  return apiFetch<{ data: PayrollPage }>(`/payroll?year=${year}&month=${month}&page=${page}&size=20`)
-    .then(r => r.data)
+  return apiFetch<PayrollPage>(`/payroll?year=${year}&month=${month}&page=${page}&size=20`)
 }
 
 export function approvePayroll(id: string) {
-  return apiFetch<{ data: PayrollRecord }>(`/payroll/${id}/approve`, { method: 'PUT' })
-    .then(r => r.data)
+  return apiFetch<PayrollRecord>(`/payroll/${id}/approve`, { method: 'PUT' })
 }
 
 export function markPaid(id: string) {
-  return apiFetch<{ data: PayrollRecord }>(`/payroll/${id}/paid`, { method: 'PUT' })
-    .then(r => r.data)
+  return apiFetch<PayrollRecord>(`/payroll/${id}/paid`, { method: 'PUT' })
 }
 
 export function myPayroll(employeeId: string) {
-  return apiFetch<{ data: PayrollRecord[] }>(`/payroll/my?employeeId=${employeeId}`)
-    .then(r => r.data)
+  return apiFetch<PayrollRecord[]>(`/payroll/my?employeeId=${employeeId}`)
 }
 
 export async function downloadPayslipPdf(id: string) {
   const { getSession } = await import('next-auth/react')
   const session = await getSession()
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api'
   const res = await fetch(`${base}/payroll/${id}/payslip.pdf`, {
     headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
   })
@@ -136,7 +130,7 @@ export async function downloadPayslipPdf(id: string) {
 export async function exportPayrollExcel(year: number, month: number) {
   const { getSession } = await import('next-auth/react')
   const session = await getSession()
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api'
   const res = await fetch(`${base}/payroll/export.xlsx?year=${year}&month=${month}`, {
     headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
   })

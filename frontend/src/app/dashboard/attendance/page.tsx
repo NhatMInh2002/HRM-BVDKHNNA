@@ -10,6 +10,7 @@ import {
   ATTENDANCE_STATUS_LABELS,
   type AttendanceStatus,
 } from '@/lib/attendance'
+import { useCurrentEmployee } from '@/hooks/useCurrentEmployee'
 import { Badge } from '@/components/ui/badge'
 
 const STATUS_VARIANT: Record<AttendanceStatus, 'green' | 'red' | 'yellow' | 'blue' | 'gray'> = {
@@ -37,6 +38,7 @@ export default function AttendancePage() {
   const [date, setDate] = useState(today)
   const [page, setPage] = useState(0)
   const qc = useQueryClient()
+  const { data: me } = useCurrentEmployee()
 
   const { data, isLoading } = useQuery({
     queryKey: ['daily-attendance', date, page],
@@ -67,15 +69,15 @@ export default function AttendancePage() {
         {!canManage && (
           <div className="flex gap-2">
             <button
-              onClick={() => ciMutation.mutate({ employeeId: session?.user?.email ?? '' })}
-              disabled={ciMutation.isPending}
+              onClick={() => me && ciMutation.mutate({ employeeId: me.id })}
+              disabled={ciMutation.isPending || !me}
               className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
             >
               Check-in
             </button>
             <button
-              onClick={() => coMutation.mutate({ employeeId: session?.user?.email ?? '' })}
-              disabled={coMutation.isPending}
+              onClick={() => me && coMutation.mutate({ employeeId: me.id })}
+              disabled={coMutation.isPending || !me}
               className="bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
             >
               Check-out
@@ -93,7 +95,7 @@ export default function AttendancePage() {
             value={date}
             max={today}
             onChange={e => { setDate(e.target.value); setPage(0) }}
-            className="input w-44"
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-44"
           />
           <button
             onClick={() => { setDate(today); setPage(0) }}

@@ -2,7 +2,10 @@ import { getSession } from 'next-auth/react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from './auth'
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api'
+// Browser: use Next.js proxy (/api → backend); Server: direct backend URL
+const BASE = typeof window === 'undefined'
+  ? (process.env.BACKEND_URL ?? 'http://localhost:8080') + '/api'
+  : '/api'
 
 async function getToken(): Promise<string | undefined> {
   if (typeof window === 'undefined') {

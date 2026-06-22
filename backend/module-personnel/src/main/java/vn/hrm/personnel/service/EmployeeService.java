@@ -35,6 +35,12 @@ public class EmployeeService {
             .orElseThrow(() -> HrmException.notFound("EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên: " + id));
     }
 
+    public EmployeeResponse getByEmail(String email) {
+        return employeeRepo.findByEmail(email)
+            .map(EmployeeResponse::from)
+            .orElseThrow(() -> HrmException.notFound("EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên với email: " + email));
+    }
+
     @Transactional
     public EmployeeResponse create(EmployeeRequest req, String createdBy) {
         if (employeeRepo.existsByEmployeeCode(req.employeeCode())) {

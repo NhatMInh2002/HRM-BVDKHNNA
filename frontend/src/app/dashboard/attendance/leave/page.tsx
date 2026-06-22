@@ -14,9 +14,9 @@ import {
   rejectLeave,
   LEAVE_TYPE_LABELS,
   LEAVE_STATUS_LABELS,
-  type LeaveType,
   type LeaveStatus,
 } from '@/lib/attendance'
+import { useCurrentEmployee } from '@/hooks/useCurrentEmployee'
 import { Badge } from '@/components/ui/badge'
 
 const STATUS_VARIANT: Record<LeaveStatus, 'yellow' | 'green' | 'red'> = {
@@ -24,7 +24,6 @@ const STATUS_VARIANT: Record<LeaveStatus, 'yellow' | 'green' | 'red'> = {
 }
 
 const schema = z.object({
-  employeeId: z.string().min(1, 'Bắt buộc'),
   leaveType: z.enum(['ANNUAL', 'SICK', 'MATERNITY', 'UNPAID', 'OTHER']),
   startDate: z.string().min(1, 'Bắt buộc'),
   endDate: z.string().min(1, 'Bắt buộc'),
@@ -41,10 +40,12 @@ export default function LeavePage() {
   const [showForm, setShowForm] = useState(false)
   const [tab, setTab] = useState<'my' | 'pending'>(canApprove ? 'pending' : 'my')
 
+  const { data: me } = useCurrentEmployee()
+
   const { data: myRequests = [], isLoading: loadingMy } = useQuery({
-    queryKey: ['my-leave'],
-    queryFn: getMyLeaveRequests,
-    enabled: tab === 'my',
+    queryKey: ['my-leave', me?.id],
+    queryFn: () => getMyLeaveRequests(me!.id),
+    enabled: tab === 'my' && !!me?.id,
   })
   const { data: pendingRequests = [], isLoading: loadingPending } = useQuery({
     queryKey: ['pending-leave'],
@@ -63,11 +64,11 @@ export default function LeavePage() {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { leaveType: 'ANNUAL', employeeId: session?.user?.email ?? '' },
+    defaultValues: { leaveType: 'ANNUAL' },
   })
 
   const createMut = useMutation({
-    mutationFn: createLeaveRequest,
+    mutationFn: (values: FormValues) => createLeaveRequest({ employeeId: me!.id, ...values }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-leave'] })
       setShowForm(false)
@@ -87,7 +88,8 @@ export default function LeavePage() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg"
+          disabled={!me}
+          className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
         >
           + Tạo đơn nghỉ
         </button>
@@ -187,14 +189,14 @@ export default function LeavePage() {
                 className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
             <form onSubmit={handleSubmit(d => createMut.mutate(d))} className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Mã nhân viên / ID *</label>
-                <input {...register('employeeId')} className="input" placeholder="UUID hoặc mã nhân viên" />
-                {errors.employeeId && <p className="text-xs text-red-500 mt-1">{errors.employeeId.message}</p>}
-              </div>
+              {me && (
+                <p className="text-sm text-gray-600 bg-blue-50 rounded-lg px-3 py-2">
+                  Tạo đơn cho: <span className="font-semibold">{me.fullName}</span> ({me.employeeCode})
+                </p>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Loại nghỉ *</label>
-                <select {...register('leaveType')} className="input">
+                <select {...register('leaveType')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                   {Object.entries(LEAVE_TYPE_LABELS).map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
@@ -203,18 +205,18 @@ export default function LeavePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Từ ngày *</label>
-                  <input {...register('startDate')} type="date" className="input" />
+                  <input {...register('startDate')} type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
                   {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate.message}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Đến ngày *</label>
-                  <input {...register('endDate')} type="date" className="input" />
+                  <input {...register('endDate')} type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
                   {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate.message}</p>}
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Lý do</label>
-                <textarea {...register('reason')} rows={2} className="input resize-none"
+                <textarea {...register('reason')} rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
                   placeholder="Lý do xin nghỉ..." />
               </div>
               {createMut.error && (
@@ -227,7 +229,7 @@ export default function LeavePage() {
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                   Hủy
                 </button>
-                <button type="submit" disabled={createMut.isPending}
+                <button type="submit" disabled={createMut.isPending || !me}
                   className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
                   {createMut.isPending ? 'Đang gửi...' : 'Gửi đơn'}
                 </button>
