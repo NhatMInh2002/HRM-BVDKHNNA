@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: hrm
       POSTGRES_USER: hrm
-      POSTGRES_PASSWORD: hrm_dev_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -41,7 +41,7 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: hrm_minio
-      MINIO_ROOT_PASSWORD: hrm_minio_dev
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -53,22 +53,10 @@ services:
       retries: 5
 
   # ── OpenSearch ─────────────────────────────────────────────
-  opensearch:
-    image: opensearchproject/opensearch:2.14.0
-    container_name: hrm-opensearch
-    restart: unless-stopped
-    environment:
-      - discovery.type=single-node
-      - DISABLE_SECURITY_PLUGIN=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-    volumes:
-      - opensearch_data:/usr/share/opensearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
-      interval: 15s
-      retries: 10
+  # Tắt cho đến khi implement full-text search (tốn 512MB RAM)
+  # opensearch:
+  #   image: opensearchproject/opensearch:2.14.0
+  #   ...
 
   # ── Spring Boot Backend ────────────────────────────────────
   backend:
@@ -80,12 +68,12 @@ services:
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/hrm
       DB_USERNAME: hrm
-      DB_PASSWORD: hrm_dev_pass
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: hrm-bvnghean-secret-key-2025-must-be-at-least-32-chars
+      JWT_SECRET: ${JWT_SECRET}
       MINIO_ENDPOINT: http://minio:9000
-      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
     ports:
       - "8080:8080"
     depends_on:
@@ -103,8 +91,8 @@ services:
     restart: unless-stopped
     environment:
       BACKEND_URL: http://backend:8080
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: dev_secret_change_in_prod
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     ports:
       - "3000:3000"
     depends_on:
