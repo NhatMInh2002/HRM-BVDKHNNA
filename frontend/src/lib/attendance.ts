@@ -73,8 +73,8 @@ export const getMonthlyReport = (employeeId: string, year: number, month: number
 export const createLeaveRequest = (data: CreateLeaveDto) =>
   apiFetch<LeaveRequest>('/attendance/leave', { method: 'POST', body: JSON.stringify(data) })
 
-export const getMyLeaveRequests = () =>
-  apiFetch<LeaveRequest[]>('/attendance/leave/my')
+export const getMyLeaveRequests = (employeeId: string) =>
+  apiFetch<LeaveRequest[]>(`/attendance/leave/my?employeeId=${employeeId}`)
 
 export const getPendingLeaveRequests = () =>
   apiFetch<LeaveRequest[]>('/attendance/leave/pending')

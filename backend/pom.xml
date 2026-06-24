@@ -34,6 +34,8 @@
     <spring-cloud.version>2023.0.1</spring-cloud.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <flyway.version>10.12.0</flyway.version>
+    <openpdf.version>1.3.30</openpdf.version>
+    <poi.version>5.2.5</poi.version>
   </properties>
 
   <dependencyManagement>
@@ -50,6 +52,18 @@
         <groupId>vn.hrm</groupId>
         <artifactId>shared-kernel</artifactId>
         <version>${project.version}</version>
+      </dependency>
+      <!-- PDF -->
+      <dependency>
+        <groupId>com.github.librepdf</groupId>
+        <artifactId>openpdf</artifactId>
+        <version>${openpdf.version}</version>
+      </dependency>
+      <!-- Excel -->
+      <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml</artifactId>
+        <version>${poi.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

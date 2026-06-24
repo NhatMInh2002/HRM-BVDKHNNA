@@ -221,16 +221,57 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/personnel/emplo
 
 ## 6. Chạy backend local (hot-reload)
 
-```bash
-cd backend
+> **Yêu cầu:** Java 21 phải được cài. Maven thì **không cần cài riêng** — dùng Maven Wrapper có sẵn trong repo.
+
+### Cách A — Maven Wrapper (khuyến nghị, không cần cài Maven)
+
+Chạy **2 lệnh theo thứ tự** từ thư mục `backend`:
+
+```cmd
+cd D:\Workspace\HRM\backend
+
+REM Bước 1: build + install tất cả modules (chỉ cần làm lần đầu hoặc sau khi pull code mới)
+mvnw install -DskipTests
+
+REM Bước 2: chạy app
+mvnw -pl app spring-boot:run
+```
+
+> **Tại sao cần 2 bước?** Project là Modular Monolith — `app` phụ thuộc vào `shared-kernel`, `module-personnel`… Nếu bỏ qua bước install, Maven báo lỗi `Could not find artifact` hoặc `Unable to find a suitable main class`.
+
+### Cách B — Dùng `mvn` toàn cục (nếu đã cài Maven 3.9+)
+
+```cmd
+cd D:\Workspace\HRM\backend
+mvn install -DskipTests
 mvn -pl app spring-boot:run
 ```
+
+> Nếu thấy `'mvn' is not recognized` → dùng Cách A, hoặc cài Maven:
+> 1. Tải [apache-maven-3.9.x-bin.zip](https://maven.apache.org/download.cgi), giải nén vào `C:\tools\maven`
+> 2. Thêm vào PATH (chạy PowerShell với quyền Admin):
+>    ```powershell
+>    [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\tools\maven\bin", "Machine")
+>    ```
+> 3. Mở terminal mới, kiểm tra: `mvn -version`
+
+### Cách C — Docker (không cần Java/Maven trên máy)
+
+Nếu không muốn cài bất cứ thứ gì, chạy backend bên trong Docker:
+
+```powershell
+cd D:\Workspace\HRM
+docker compose up --build backend -d
+docker compose logs -f backend
+```
+
+---
 
 Chờ log `Started HrmApplication` → backend đang chạy tại `http://localhost:8080`.
 
 Kiểm tra health:
 
-```bash
+```powershell
 curl http://localhost:8080/actuator/health
 # → {"status":"UP"}
 ```

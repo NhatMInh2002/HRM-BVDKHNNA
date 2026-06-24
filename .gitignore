@@ -1,5 +1,5 @@
 # Java / Maven
-backend/target/
+**/target/
 *.class
 *.jar
 *.war
@@ -7,6 +7,9 @@ backend/target/
 *.nar
 .mvn/wrapper/maven-wrapper.jar
 !.mvn/wrapper/maven-wrapper.properties
+
+# Frontend build info
+frontend/tsconfig.tsbuildinfo
 
 # Node / Next.js
 frontend/node_modules/

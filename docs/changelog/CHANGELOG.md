@@ -36,6 +36,171 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 ---
 
+---
+
+## [2026-06-20] — FEAT: Scaffold đầy đủ + SSO hoạt động + Personnel module cơ bản
+
+**Người thực hiện:** NhatMInh2002  
+**Phiên làm việc:** 2026-06-20 (full day)
+
+### 1. Backend — Spring Boot Modular Monolith
+
+**Modules đã scaffold:**
+- `shared-kernel`: `ApiResponse<T>`, `HrmException`, `GlobalExceptionHandler`
+- `module-personnel`: `Employee`, `Department` entities + CRUD API + Audit log schema
+- `module-attendance`: `AttendanceRecord`, `LeaveRequest` entities + check-in/out API
+- `module-payroll`: `PayrollRecord`, `SalaryConfig` entities + tính lương + PDF service
+- `app`: main Spring Boot application, `SecurityConfig` (JWT/OAuth2 Resource Server + CORS)
+
+**Flyway migrations:**
+- `V1__create_personnel_schema.sql` — bảng employees, departments, audit log
+- `V2__seed_departments.sql` — 64 phòng ban BVĐK Hà Nội NA
+- `V3__create_attendance_schema.sql` — bảng attendance_records, leave_requests
+- `V4__create_payroll_schema.sql` — bảng payroll_records, salary_configs
+- `V5__seed_employees.sql` — 10 nhân viên test (ON CONFLICT DO NOTHING)
+- `V6__fix_contract_type.sql` — fix data cũ: `FULL_TIME` → `INDEFINITE`
+
+**Cấu hình quan trọng:**
+- `server.servlet.context-path=/api` trong `application.yml`
+- Tất cả `@RequestMapping` controller KHÔNG có tiền tố `/api` (đã fix bug double-prefix)
+- CORS cho phép `http://localhost:3000`
+- JWT converter đọc roles từ claim `roles` (Keycloak mapper) hoặc fallback `realm_access.roles`
+
+### 2. Frontend — Next.js 15
+
+**Cấu trúc:**
+- App Router cho pages (`/dashboard/*`)
+- Pages Router cho NextAuth (`/pages/api/auth/[...nextauth].ts`) — bắt buộc với Next.js 15
+- `next.config.mjs`: proxy `/api/{module}/*` → backend, KHÔNG proxy `/api/auth/*`
+
+**Lib layer:**
+- `lib/api.ts`: `apiFetch` tự động unwrap `ApiResponse<T>.data`
+- `lib/personnel.ts`, `lib/attendance.ts`, `lib/payroll.ts`, `lib/dashboard.ts`, `lib/departments.ts`
+
+**Pages đã có:**
+- `/dashboard` — Tổng quan: stat cards + quick links
+- `/dashboard/personnel` — Danh sách nhân viên, tìm kiếm, phân trang, form thêm/sửa/cho thôi việc
+- `/dashboard/org-chart` — Sơ đồ tổ chức 64 phòng ban theo nhóm
+- `/dashboard/attendance` — Bảng chấm công theo ngày
+- `/dashboard/attendance/leave` — Đơn nghỉ phép
+- `/dashboard/payroll` — Bảng lương
+- `/dashboard/payroll/config` — Cấu hình lương
+
+### 3. SSO — Keycloak
+
+**Keycloak realm `hrm`:**
+- Client `hrm-frontend`: OIDC, PKCE disabled (set "Choose..."), secret configured
+- Client `hrm-backend`: bearer-only
+- Roles: `ADMIN`, `HR_MANAGER`, `DEPARTMENT_MANAGER`, `EMPLOYEE`
+- Client scopes: `openid`, `profile`, `email`, `roles` (realm mapper → claim `roles`)
+- Users: `admin.hrm` / `Admin@123`, `hr.manager` / `Hr@123456`
+
+**NextAuth config (`lib/auth.ts`):**
+- `checks: ['state']` — PKCE tắt hoàn toàn
+- `authorization: { params: { scope: 'openid' } }` — chỉ request openid để tránh `invalid_scope`
+- JWT callback: lưu `accessToken`, `roles` vào session
+
+### 4. Bugs đã fix trong session này
+
+| Bug | Nguyên nhân | Fix |
+|-----|------------|-----|
+| `/api/auth/error` HTTP 401 | `next.config.mjs` proxy ALL `/api/*` kể cả NextAuth | Chỉ proxy các module cụ thể |
+| `error=Callback` | PKCE mismatch NextAuth ↔ Keycloak | Tắt PKCE cả 2 phía |
+| `signIn()` trả về `undefined` | NextAuth v4 + Next.js 15 App Router incompatible | Dùng Pages Router |
+| `invalid_scope` | Keycloak realm thiếu `email`/`profile` scopes | Restrict scope chỉ còn `openid` |
+| `NoResourceFoundException` | Double `/api` prefix (context-path + controller) | Xóa `/api` khỏi tất cả 6 controller `@RequestMapping` |
+| Flyway V5 duplicate key | Chạy lại migration trên DB đã có data | Thêm `ON CONFLICT DO NOTHING` + repair flyway_schema_history |
+| `FULL_TIME` không có trong enum | Seed dùng `FULL_TIME` nhưng `ContractType` enum không có | V6 migration + fix V5 seed |
+| API response không unwrap | `apiFetch` trả raw JSON, backend wrap trong `ApiResponse<T>` | Auto-unwrap trong `apiFetch` |
+| Frontend dùng `startDate` | Backend trả `joinDate` | Đồng bộ type + form |
+
+### 5. Trạng thái cuối session
+
+- ✅ SSO login hoạt động với `testuser` (tạo thủ công) và `admin.hrm` / `hr.manager` (từ realm JSON)
+- ✅ Org-chart hiện 64 phòng ban
+- ✅ Backend recompile đúng với controller mappings mới
+- ⏳ Personnel page: đã fix type mismatches, chờ verify sau khi backend restart + V6 chạy
+- ⏳ Dashboard stats: chờ verify
+
+---
+
+## [2026-06-22] — FIX: Đồng bộ frontend/backend — employeeId, joinDate, contractType
+
+**Người thực hiện:** NhatMInh2002  
+**Phiên làm việc:** 2026-06-22
+
+### Bugs đã fix
+
+| Bug | Nguyên nhân | Fix |
+|-----|------------|-----|
+| Leave/Attendance không gửi đúng `employeeId` | Frontend dùng email thay vì UUID | Thêm endpoint `GET /personnel/employees/me` + hook `useCurrentEmployee` |
+| `joinDate` undefined | Backend trả `joinDate`, frontend đọc `startDate` | Đồng bộ type `Employee` |
+| `FULL_TIME` enum lỗi | `ContractType` enum không có `FULL_TIME` | V6 migration fix data cũ |
+| Frontend gọi trực tiếp `localhost:8080` (bypass proxy) | `NEXT_PUBLIC_API_BASE_URL` hardcode trong `.env.local` | Sửa `apiFetch` dùng window check: browser → `/api`, server → `BACKEND_URL` |
+| CORS thiếu port 3001 | Frontend đôi khi chạy trên 3001 | Thêm `localhost:3001` vào `SecurityConfig` |
+
+### Thêm mới
+
+- `GET /personnel/employees/me` — lookup nhân viên theo email từ JWT claim
+- Hook `useCurrentEmployee` (React Query) — tự động lấy thông tin nhân viên hiện tại
+- Attendance page: check-in/out dùng `employeeId` thay email
+- Leave page: tự điền `employeeId` từ hook, không cần nhập tay
+
+---
+
+## [2026-06-23] — FIX: JWT validation + Keycloak logout + Seed data đầy đủ
+
+**Người thực hiện:** NhatMInh2002  
+**Phiên làm việc:** 2026-06-23
+
+### Root cause — Không có data hiển thị
+
+| Vấn đề | Nguyên nhân | Fix |
+|--------|------------|-----|
+| Tất cả API trả 401 | Backend Docker dùng `localhost:8180` để verify JWT — nhưng trong container `localhost` = container đó, không phải host | Restart với env `KEYCLOAK_JWK_SET_URI=http://hrm-keycloak:8180/realms/hrm/protocol/openid-connect/certs` |
+| API trả 403 | User đăng nhập với role `EMPLOYEE`, không có `ADMIN`/`HR_MANAGER` | Reset password `admin.hrm` → `Admin@123`; hướng dẫn dùng đúng tài khoản |
+| Sau signout, SSO không hiện form Keycloak | NextAuth chỉ xóa session cookie, không xóa Keycloak SSO session → auto-login lại user cũ | Cập nhật `TopBar.tsx`: logout redirect đến `{issuer}/protocol/openid-connect/logout?id_token_hint=...` |
+| `admin.hrm` báo sai password | Password không match | Reset qua Keycloak Admin API |
+
+### Backend — cấu hình quan trọng
+
+```
+KEYCLOAK_JWK_SET_URI=http://hrm-keycloak:8180/realms/hrm/protocol/openid-connect/certs
+SPRING_DATASOURCE_URL=jdbc:postgresql://hrm-postgres:5432/hrm
+SPRING_DATASOURCE_PASSWORD=hrm_dev_pass   ← (không phải hrm_dev_password)
+```
+
+Backend phải chạy trong Docker (không phải host JVM) vì JDK 21 trên Windows có bug `WEPollSelectorImpl` khiến `Selector.open()` fail với Docker Desktop / WSL2.
+
+### Keycloak — cấu hình bổ sung
+
+- Thêm `post.logout.redirect.uris` cho client `hrm-frontend`: `http://localhost:3000/login##http://localhost:3000/*`
+
+### Frontend — thay đổi
+
+- `lib/auth.ts`: lưu `id_token` vào JWT token + session (cần cho Keycloak logout)
+- `components/top-bar.tsx`: logout gọi Keycloak end-session endpoint với `id_token_hint`
+- `.env.local`: thêm `NEXT_PUBLIC_KEYCLOAK_ISSUER`
+
+### Seed data (V7 migration)
+
+| Bảng | Số lượng |
+|------|---------|
+| `personnel.employees` | 30 nhân viên (từ 10 → 30, trải đều các khoa/phòng) |
+| `attendance.attendance_records` | 143 bản ghi (tháng 6/2026, trừ T7/CN) |
+| `attendance.leave_requests` | 8 đơn (ANNUAL, SICK, PERSONAL, MATERNITY) |
+| `payroll.payroll_records` | 23 bản lương (tháng 5 PAID + tháng 6 DRAFT) |
+
+### Trạng thái cuối session
+
+- ✅ Backend chạy trong Docker với JWT validation đúng (Keycloak service name)
+- ✅ Đăng nhập `admin.hrm` / `Admin@123` hoạt động
+- ✅ Logout xóa cả NextAuth session + Keycloak SSO session
+- ✅ 30 nhân viên, 64 phòng ban, 143 chấm công, 8 đơn nghỉ, 23 bản lương trong DB
+- ⏳ Cần verify: data hiển thị đúng trên Personnel, Org-chart, Attendance, Payroll pages sau khi đăng nhập đúng tài khoản
+
+---
+
 <!-- Template cho entry tiếp theo:
 
 ## [YYYY-MM-DD] — [LOẠI]: [Tiêu đề]

@@ -37,6 +37,14 @@ public class EmployeeController {
         return ApiResponse.ok(employeeService.search(keyword, status, departmentId, pageable));
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<EmployeeResponse> getMe(@AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        if (email == null) email = jwt.getClaimAsString("preferred_username");
+        return ApiResponse.ok(employeeService.getByEmail(email));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE')")
     public ApiResponse<EmployeeResponse> getById(@PathVariable UUID id) {
