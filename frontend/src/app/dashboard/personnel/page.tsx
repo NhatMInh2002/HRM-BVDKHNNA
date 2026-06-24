@@ -11,8 +11,8 @@ import {
 } from '@/lib/personnel'
 import { Badge } from '@/components/ui/badge'
 import { EmployeeFormModal } from '@/components/personnel/employee-form-modal'
-import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
+import { useRoles } from '@/hooks/useRoles'
 
 const STATUS_VARIANT = {
   ACTIVE: 'green',
@@ -21,11 +21,7 @@ const STATUS_VARIANT = {
 } as const
 
 export default function PersonnelPage() {
-  const { data: session } = useSession()
-  const roles = session?.roles ?? []
-  // Phase 1: bất kỳ user đăng nhập đều có quyền thao tác nhân sự
-  // TODO Phase 2: roles.includes('ADMIN') || roles.includes('HR_MANAGER')
-  const canWrite = !!session
+  const { canWriteHR: canWrite } = useRoles()
 
   const qc = useQueryClient()
   const [keyword, setKeyword] = useState('')

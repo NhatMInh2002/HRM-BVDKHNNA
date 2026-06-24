@@ -1,7 +1,7 @@
 'use client'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
 import { signOut } from 'next-auth/react'
 
 const Icons = {
@@ -18,7 +18,13 @@ const Icons = {
   logout:    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd"/></svg>,
 }
 
-const NAV_GROUPS = [
+type AppRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'ACCOUNTANT'
+
+const NAV_GROUPS: {
+  key: string
+  label?: string
+  items: { href: string; label: string; icon: React.ReactNode; roles?: AppRole[] }[]
+}[] = [
   {
     key: 'overview',
     items: [{ href: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard }],
@@ -26,34 +32,37 @@ const NAV_GROUPS = [
   {
     key: 'hr', label: 'NHÂN SỰ',
     items: [
-      { href: '/dashboard/personnel',   label: 'Cán bộ nhân viên', icon: Icons.personnel },
+      { href: '/dashboard/personnel',   label: 'Cán bộ nhân viên', icon: Icons.personnel, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
       { href: '/dashboard/departments', label: 'Phòng ban / Khoa',  icon: Icons.department },
-      { href: '/dashboard/categories',  label: 'Danh mục',          icon: Icons.category },
+      { href: '/dashboard/categories',  label: 'Danh mục',          icon: Icons.category, roles: ['ADMIN','HR_MANAGER'] },
     ],
   },
   {
     key: 'time', label: 'CHẤM CÔNG',
     items: [
-      { href: '/dashboard/attendance',       label: 'Chấm công', icon: Icons.attendance },
+      { href: '/dashboard/attendance',       label: 'Chấm công', icon: Icons.attendance, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
       { href: '/dashboard/attendance/leave', label: 'Nghỉ phép', icon: Icons.leave },
     ],
   },
   {
     key: 'salary', label: 'LƯƠNG',
     items: [
-      { href: '/dashboard/payroll',        label: 'Bảng lương',     icon: Icons.payroll },
-      { href: '/dashboard/payroll/config', label: 'Cấu hình lương', icon: Icons.config },
+      { href: '/dashboard/payroll',        label: 'Bảng lương',     icon: Icons.payroll, roles: ['ADMIN','HR_MANAGER','ACCOUNTANT'] },
+      { href: '/dashboard/payroll/config', label: 'Cấu hình lương', icon: Icons.config,  roles: ['ADMIN','HR_MANAGER'] },
     ],
   },
   {
     key: 'recruit', label: 'TUYỂN DỤNG',
-    items: [{ href: '/dashboard/recruitment', label: 'Tuyển dụng', icon: Icons.recruit }],
+    items: [{ href: '/dashboard/recruitment', label: 'Tuyển dụng', icon: Icons.recruit, roles: ['ADMIN','HR_MANAGER'] }],
   },
 ]
 
 export function SideNav({ roles }: { roles: string[] }) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const [expanded, setExpanded] = useState(false)
+
+  const canSee = (required?: AppRole[]) =>
+    !required || required.length === 0 || required.some(r => roles.includes(r))
 
   return (
     <aside
@@ -96,7 +105,7 @@ export function SideNav({ roles }: { roles: string[] }) {
               <div className="mx-3 mt-2 mb-1 border-t border-[#243556]" />
             )}
 
-            {group.items.map(item => {
+            {group.items.filter(item => canSee(item.roles)).map(item => {
               const active = pathname === item.href
                 || (item.href !== '/dashboard' && pathname.startsWith(item.href))
               return (

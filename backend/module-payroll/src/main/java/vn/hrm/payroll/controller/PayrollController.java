@@ -46,7 +46,7 @@ public class PayrollController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','ACCOUNTANT')")
     public ResponseEntity<ApiResponse<Page<PayrollRecordResponse>>> list(
             @RequestParam int year,
             @RequestParam int month,
@@ -84,7 +84,7 @@ public class PayrollController {
 
     /** Export Excel bảng lương tháng */
     @GetMapping("/export.xlsx")
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','ACCOUNTANT')")
     public ResponseEntity<byte[]> exportExcel(
             @RequestParam int year, @RequestParam int month) throws Exception {
         byte[] xlsx = payslipPdfService.exportExcel(year, month);

@@ -5,6 +5,56 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 ---
 
+## [2026-06-24] — FEAT: UI overhaul + Nhân sự nâng cao + Danh mục + Sidebar + RBAC planning
+
+**Người thực hiện:** NhatMInh2002
+**Phiên làm việc:** 2026-06-24
+
+### UI / UX
+
+| Thành phần | Thay đổi |
+|---|---|
+| `side-nav.tsx` | Redesign hoàn toàn — hover-to-expand, SVG icons chuyên nghiệp, navy `#1a2b4a`, section labels, footer: Cài đặt + Đăng xuất |
+| `login/page.tsx` | Auto-redirect SSO khi vào `/login`, bỏ trang trung gian |
+| Responsive | `departments/page.tsx`, `categories/page.tsx` — responsive đầy đủ |
+
+### Module Nhân sự
+
+- Thêm cột **SĐT** vào bảng danh sách
+- Filter theo **Phòng ban** (không hiện GRP- group nodes)
+- Pagination số trang: `« ‹ 1 2 3 … 17 › »`
+- Nút **"Nghỉ việc"** (soft delete — set `status=TERMINATED`, data giữ trong DB)
+- Form nhân viên: 3 tab Cơ bản / Chi tiết / Địa chỉ, thêm trình độ, dân tộc, tôn giáo, quê quán
+- `V10__employee_extra_fields.sql`: thêm 5 cột `education_level`, `ethnicity`, `religion`, `hometown`, `address`
+
+### Module Danh mục (mới)
+
+- Trang `/dashboard/categories` — quản lý 7 danh mục qua localStorage
+- `lib/categories.ts`: 54 dân tộc, 21 quận/huyện Nghệ An, loại hợp đồng viên chức/công chức
+- CRUD inline: thêm, sửa, ẩn/hiện, xóa, đổi thứ tự, reset về mặc định
+
+### Module Phòng ban
+
+- Sơ đồ cây có nút thu gọn ▼/▶
+- Fix DB: `parent_id` cho DV-001 → GRP-TRUNGTAM, DV-002 → GRP-PHONG, DV-003 → GRP-KHOA
+
+### Import dữ liệu thực tế
+
+- `scripts/import_canbo.py`: import 331 cán bộ từ file `CanBo.xls` vào PostgreSQL
+- Tổng: **335 nhân viên** trong hệ thống
+
+### Chất lượng
+
+- Fix `.gitignore`: `**/target/` thay vì `backend/target/` — không còn track compiled artifacts
+- Tạo `docs/TEST_STRATEGY.md` — 50+ test cases phân loại P0/P1/P2
+
+### Quyết định kiến trúc
+
+- **RBAC Phase 1**: `canWrite = !!session` (mọi user đăng nhập đều có quyền) — chấp nhận tạm thời
+- **RBAC Phase 2** (kế hoạch): triển khai phân quyền thực theo roles — xem `docs/RBAC_PLAN.md`
+
+---
+
 ## [2026-06-19] — INIT: Khởi tạo dự án & thiết kế kiến trúc ban đầu
 
 **Người quyết định:** (chưa xác định)  

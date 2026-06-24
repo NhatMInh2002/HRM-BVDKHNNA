@@ -78,7 +78,7 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{id}/terminate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR_MANAGER')")
     public ApiResponse<Void> terminate(
         @PathVariable UUID id,
         @AuthenticationPrincipal Jwt jwt
