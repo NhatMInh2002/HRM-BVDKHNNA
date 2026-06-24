@@ -24,6 +24,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     boolean existsByEmail(String email);
 
+    @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.department ORDER BY e.fullName")
+    Page<Employee> findAllActive(Pageable pageable);
+
     @Query("SELECT e.id FROM Employee e WHERE e.department.id = :departmentId")
     List<UUID> findIdsByDepartmentId(@Param("departmentId") UUID departmentId);
 

@@ -50,6 +50,13 @@ management:
     health:
       show-details: when-authorized
 
+keycloak:
+  admin:
+    url: ${KEYCLOAK_URL:http://localhost:8180}
+    realm: hrm
+    username: ${KEYCLOAK_ADMIN:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin_dev_pass}
+
 logging:
   level:
     vn.hrm: INFO
