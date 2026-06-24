@@ -144,20 +144,22 @@ export function SideNav({ roles }: { roles: string[] }) {
 
       {/* Bottom */}
       <div className="border-t border-[#243556] py-2 px-2 flex-shrink-0">
-        <Link
-          href="/dashboard/settings"
-          title={!expanded ? 'Cài đặt hệ thống' : undefined}
-          className="flex items-center mx-0 px-2 py-2 rounded text-[13px] font-medium
-                     text-blue-200 hover:bg-[#243556] hover:text-white transition-colors"
-        >
-          <span className="flex-shrink-0 w-5 flex items-center justify-center text-blue-400">
-            {Icons.settings}
-          </span>
-          <span className={`ml-3 whitespace-nowrap transition-opacity duration-150
-            ${expanded ? 'opacity-100' : 'opacity-0'}`}>
-            Cài đặt hệ thống
-          </span>
-        </Link>
+        {roles.includes('ADMIN') && (
+          <Link
+            href="/dashboard/settings"
+            title={!expanded ? 'Cài đặt hệ thống' : undefined}
+            className="flex items-center mx-0 px-2 py-2 rounded text-[13px] font-medium
+                       text-blue-200 hover:bg-[#243556] hover:text-white transition-colors"
+          >
+            <span className="flex-shrink-0 w-5 flex items-center justify-center text-blue-400">
+              {Icons.settings}
+            </span>
+            <span className={`ml-3 whitespace-nowrap transition-opacity duration-150
+              ${expanded ? 'opacity-100' : 'opacity-0'}`}>
+              Cài đặt hệ thống
+            </span>
+          </Link>
+        )}
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           title={!expanded ? 'Đăng xuất' : undefined}
