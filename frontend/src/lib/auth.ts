@@ -1,5 +1,5 @@
 import { NextAuthOptions } from 'next-auth'
-import KeycloakProvider from 'next-auth/providers/keycloak'
+import CredentialsProvider from 'next-auth/providers/credentials'
 
 declare module 'next-auth' {
   interface Session {
@@ -7,82 +7,77 @@ declare module 'next-auth' {
     roles?: string[]
     error?: string
   }
-  interface Token {
-    accessToken?: string
-    idToken?: string
-    refreshToken?: string
-    expiresAt?: number
-    roles?: string[]
-    error?: string
+  interface User {
+    token: string
+    role: string
+    fullName: string
   }
 }
 
-async function refreshAccessToken(token: any) {
-  try {
-    const res = await fetch(
-      `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: process.env.KEYCLOAK_CLIENT_ID!,
-          client_secret: process.env.KEYCLOAK_CLIENT_SECRET!,
-          grant_type: 'refresh_token',
-          refresh_token: token.refreshToken,
-        }),
-      }
-    )
-    const data = await res.json()
-    if (!res.ok) throw data
-    return {
-      ...token,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token ?? token.refreshToken,
-      expiresAt: Math.floor(Date.now() / 1000) + data.expires_in,
-      error: undefined,
-    }
-  } catch {
-    return { ...token, error: 'RefreshTokenError' }
+declare module 'next-auth/jwt' {
+  interface JWT {
+    accessToken?: string
+    role?: string
+    roles?: string[]
+    fullName?: string
   }
 }
+
+const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:8080'
 
 export const authOptions: NextAuthOptions = {
-  debug: process.env.NODE_ENV === 'development',
   providers: [
-    KeycloakProvider({
-      clientId: process.env.KEYCLOAK_CLIENT_ID!,
-      clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
-      issuer: process.env.KEYCLOAK_ISSUER!,
-      checks: ['state'],
-      authorization: { params: { scope: 'openid' } },
+    CredentialsProvider({
+      name: 'HRM Login',
+      credentials: {
+        email:    { label: 'Email',      type: 'email' },
+        password: { label: 'Mật khẩu',  type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null
+
+        const res = await fetch(`${BACKEND}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email:    credentials.email,
+            password: credentials.password,
+          }),
+        })
+
+        const json = await res.json().catch(() => null)
+        if (!res.ok || !json?.data) return null
+
+        const { token, email, fullName, role } = json.data
+        return { id: email, email, name: fullName, fullName, token, role }
+      },
     }),
   ],
+
   callbacks: {
-    async jwt({ token, account, profile }) {
-      if (account) {
-        const p = profile as any
-        return {
-          ...token,
-          accessToken: account.access_token,
-          idToken: account.id_token,         // giữ server-side cho logout
-          refreshToken: account.refresh_token,
-          expiresAt: account.expires_at,
-          roles: p?.realm_access?.roles ?? p?.roles ?? [],
-        }
+    async jwt({ token, user }) {
+      if (user) {
+        token.accessToken = (user as any).token
+        token.role        = (user as any).role
+        token.roles       = [(user as any).role]
+        token.fullName    = (user as any).fullName
       }
-      if (Date.now() / 1000 < (token.expiresAt as number) - 30) return token
-      return refreshAccessToken(token)
+      return token
     },
     async session({ session, token }) {
-      // idToken KHÔNG expose ra client — chỉ giữ trong JWT (server-side)
-      session.accessToken = token.accessToken as string
-      session.roles       = token.roles as string[]
-      session.error       = token.error as string | undefined
+      session.accessToken = token.accessToken
+      session.roles       = token.roles ?? []
+      if (session.user) {
+        session.user.name = token.fullName ?? session.user.name
+      }
       return session
     },
   },
+
   pages: {
     signIn: '/login',
-    error: '/login',
+    error:  '/login',
   },
+
+  session: { strategy: 'jwt', maxAge: 24 * 60 * 60 },
 }

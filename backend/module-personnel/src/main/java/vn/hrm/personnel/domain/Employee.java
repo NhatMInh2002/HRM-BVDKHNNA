@@ -91,4 +91,7 @@ public class Employee {
 
     @Column(length = 50)
     private String hrmRole;
+
+    @Column(length = 255)
+    private String passwordHash;
 }

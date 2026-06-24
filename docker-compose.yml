@@ -13,7 +13,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./keycloak/init-keycloak-schema.sql:/docker-entrypoint-initdb.d/init-keycloak-schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hrm"]
       interval: 10s
@@ -71,34 +70,6 @@ services:
       interval: 15s
       retries: 10
 
-  # ── Keycloak (SSO — thay AD FS) ────────────────────────────
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.4
-    container_name: hrm-keycloak
-    restart: unless-stopped
-    command: start-dev --import-realm
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/hrm
-      KC_DB_USERNAME: hrm
-      KC_DB_PASSWORD: hrm_dev_pass
-      KC_DB_SCHEMA: keycloak
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin_dev_pass
-      KC_HTTP_PORT: 8180
-    ports:
-      - "8180:8180"
-    volumes:
-      - ./keycloak:/opt/keycloak/data/import
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8180/realms/master || exit 1"]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-
   # ── Spring Boot Backend ────────────────────────────────────
   backend:
     build:
@@ -112,7 +83,7 @@ services:
       DB_PASSWORD: hrm_dev_pass
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      KEYCLOAK_JWK_SET_URI: http://keycloak:8180/realms/hrm/protocol/openid-connect/certs
+      JWT_SECRET: hrm-bvnghean-secret-key-2025-must-be-at-least-32-chars
       MINIO_ENDPOINT: http://minio:9000
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
     ports:
@@ -121,8 +92,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      keycloak:
         condition: service_healthy
 
   # ── Next.js Frontend ───────────────────────────────────────
@@ -136,9 +105,6 @@ services:
       BACKEND_URL: http://backend:8080
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: dev_secret_change_in_prod
-      KEYCLOAK_CLIENT_ID: hrm-frontend
-      KEYCLOAK_CLIENT_SECRET: change_in_prod
-      KEYCLOAK_ISSUER: http://localhost:8180/realms/hrm
     ports:
       - "3000:3000"
     depends_on:
