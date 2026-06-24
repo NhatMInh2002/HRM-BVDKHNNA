@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSession } from 'next-auth/react'
+import { useRoles } from '@/hooks/useRoles'
 import {
   listPayroll, generatePayroll, approvePayroll, markPaid,
   downloadPayslipPdf, exportPayrollExcel,
@@ -20,10 +20,7 @@ function StatusBadge({ status }: { status: PayrollRecord['status'] }) {
 }
 
 export default function PayrollPage() {
-  const { data: session } = useSession()
-  const roles = session?.roles ?? []
-  const isAdmin = roles.includes('ADMIN')
-  const isHr = roles.includes('HR_MANAGER') || isAdmin
+  const { isAdmin, isHR: isHr, canViewPayroll } = useRoles()
   const qc = useQueryClient()
 
   const now = new Date()
@@ -34,7 +31,7 @@ export default function PayrollPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['payroll', year, month, page],
     queryFn: () => listPayroll(year, month, page),
-    enabled: isHr,
+    enabled: canViewPayroll,
   })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['payroll', year, month] })
@@ -57,7 +54,7 @@ export default function PayrollPage() {
     onSuccess: invalidate,
   })
 
-  if (!isHr) {
+  if (!canViewPayroll) {
     return (
       <div className="text-gray-500 text-sm p-8 text-center">
         Bạn không có quyền xem trang này.

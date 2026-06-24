@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSession } from 'next-auth/react'
+import { useRoles } from '@/hooks/useRoles'
 import { format } from 'date-fns'
 import {
   getDailyAttendance,
@@ -30,9 +30,7 @@ function formatDuration(mins?: number) {
 }
 
 export default function AttendancePage() {
-  const { data: session } = useSession()
-  const roles = session?.roles ?? []
-  const canManage = roles.includes('ADMIN') || roles.includes('HR_MANAGER') || roles.includes('DEPARTMENT_MANAGER')
+  const { canViewAttendance: canManage } = useRoles()
 
   const today = format(new Date(), 'yyyy-MM-dd')
   const [date, setDate] = useState(today)

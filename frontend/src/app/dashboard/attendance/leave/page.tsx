@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSession } from 'next-auth/react'
+import { useRoles } from '@/hooks/useRoles'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -33,12 +33,14 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function LeavePage() {
-  const { data: session } = useSession()
-  const roles = session?.roles ?? []
-  const canApprove = roles.includes('ADMIN') || roles.includes('HR_MANAGER') || roles.includes('DEPARTMENT_MANAGER')
+  const { canApproveLeave: canApprove } = useRoles()
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
-  const [tab, setTab] = useState<'my' | 'pending'>(canApprove ? 'pending' : 'my')
+  const [tab, setTab] = useState<'my' | 'pending'>('my')
+
+  useEffect(() => {
+    if (canApprove) setTab('pending')
+  }, [canApprove])
 
   const { data: me } = useCurrentEmployee()
 
