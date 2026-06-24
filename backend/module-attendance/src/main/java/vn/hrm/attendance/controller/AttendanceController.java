@@ -18,6 +18,7 @@ import vn.hrm.attendance.repository.AttendanceRepository;
 import vn.hrm.attendance.service.AttendanceService;
 import vn.hrm.shared.dto.ApiResponse;
 import vn.hrm.shared.exception.HrmException;
+import vn.hrm.shared.port.DepartmentScopePort;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -34,6 +35,7 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final AttendanceRepository attendanceRepository;
+    private final DepartmentScopePort departmentScopePort;
 
     @PostMapping("/check-in")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','EMPLOYEE')")
@@ -58,8 +60,27 @@ public class AttendanceController {
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
     public ApiResponse<Page<AttendanceRecordResponse>> getDailyAttendance(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-        @PageableDefault(size = 20) Pageable pageable
+        @PageableDefault(size = 20) Pageable pageable,
+        @AuthenticationPrincipal Jwt jwt
     ) {
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        boolean isDeptManager = roles != null
+            && roles.contains("DEPARTMENT_MANAGER")
+            && !roles.contains("ADMIN")
+            && !roles.contains("HR_MANAGER");
+
+        if (isDeptManager) {
+            String email = jwt.getClaimAsString("email");
+            if (email == null) email = jwt.getClaimAsString("preferred_username");
+            UUID deptId = departmentScopePort.getDepartmentIdByEmail(email);
+            if (deptId != null) {
+                List<UUID> empIds = departmentScopePort.getEmployeeIdsByDepartmentId(deptId);
+                var page = attendanceRepository.findByWorkDateBetweenAndEmployeeIdIn(date, date, empIds, pageable);
+                return ApiResponse.ok(page.map(AttendanceRecordResponse::from));
+            }
+            // Manager chưa được gán phòng ban → trả về empty
+            return ApiResponse.ok(Page.empty(pageable));
+        }
         return ApiResponse.ok(attendanceService.getDailyAttendance(date, pageable));
     }
 

@@ -15,8 +15,10 @@ import vn.hrm.personnel.dto.EmployeeRequest;
 import vn.hrm.personnel.dto.EmployeeResponse;
 import vn.hrm.personnel.service.EmployeeService;
 import vn.hrm.shared.dto.ApiResponse;
+import vn.hrm.shared.port.DepartmentScopePort;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final DepartmentScopePort departmentScopePort;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER')")
@@ -32,8 +35,21 @@ public class EmployeeController {
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) EmployeeStatus status,
         @RequestParam(required = false) UUID departmentId,
-        @PageableDefault(size = 20, sort = "fullName") Pageable pageable
+        @PageableDefault(size = 20, sort = "fullName") Pageable pageable,
+        @AuthenticationPrincipal Jwt jwt
     ) {
+        // DEPARTMENT_MANAGER chỉ thấy nhân viên trong khoa của mình
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        boolean isDeptManager = roles != null
+            && roles.contains("DEPARTMENT_MANAGER")
+            && !roles.contains("ADMIN")
+            && !roles.contains("HR_MANAGER");
+
+        if (isDeptManager) {
+            String email = jwt.getClaimAsString("email");
+            if (email == null) email = jwt.getClaimAsString("preferred_username");
+            departmentId = departmentScopePort.getDepartmentIdByEmail(email);
+        }
         return ApiResponse.ok(employeeService.search(keyword, status, departmentId, pageable));
     }
 

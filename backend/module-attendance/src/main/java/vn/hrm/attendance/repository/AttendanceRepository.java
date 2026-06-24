@@ -19,6 +19,8 @@ public interface AttendanceRepository extends JpaRepository<AttendanceRecord, UU
 
     Page<AttendanceRecord> findByWorkDateBetween(LocalDate from, LocalDate to, Pageable pageable);
 
+    Page<AttendanceRecord> findByWorkDateBetweenAndEmployeeIdIn(LocalDate from, LocalDate to, List<UUID> employeeIds, Pageable pageable);
+
     List<AttendanceRecord> findByEmployeeIdAndWorkDateBetween(UUID employeeId, LocalDate from, LocalDate to);
 
     long countByWorkDateBetweenAndStatus(LocalDate from, LocalDate to, AttendanceStatus status);

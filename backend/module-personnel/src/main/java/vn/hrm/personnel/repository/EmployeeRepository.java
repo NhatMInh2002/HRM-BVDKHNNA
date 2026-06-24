@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import vn.hrm.personnel.domain.Employee;
 import vn.hrm.personnel.domain.enums.EmployeeStatus;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     boolean existsByEmployeeCode(String employeeCode);
 
     boolean existsByEmail(String email);
+
+    @Query("SELECT e.id FROM Employee e WHERE e.department.id = :departmentId")
+    List<UUID> findIdsByDepartmentId(@Param("departmentId") UUID departmentId);
 
     // keyword luôn là non-null (service default "" khi null) để tránh lower(bytea) error
     @Query("""
