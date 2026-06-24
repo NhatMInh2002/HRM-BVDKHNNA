@@ -19,5 +19,10 @@ public record EmployeeRequest(
     @NotNull ContractType contractType,
     UUID departmentId,
     @Size(max = 100) String position,
-    UUID managerId
+    UUID managerId,
+    @Size(max = 100) String educationLevel,
+    @Size(max = 50)  String ethnicity,
+    @Size(max = 50)  String religion,
+    @Size(max = 200) String hometown,
+    @Size(max = 200) String address
 ) {}

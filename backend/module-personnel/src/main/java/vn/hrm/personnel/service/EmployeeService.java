@@ -62,6 +62,11 @@ public class EmployeeService {
             .status(EmployeeStatus.ACTIVE)
             .contractType(req.contractType())
             .position(req.position())
+            .educationLevel(req.educationLevel())
+            .ethnicity(req.ethnicity())
+            .religion(req.religion())
+            .hometown(req.hometown())
+            .address(req.address())
             .createdBy(createdBy)
             .build();
 
@@ -97,6 +102,11 @@ public class EmployeeService {
         employee.setJoinDate(req.joinDate());
         employee.setContractType(req.contractType());
         employee.setPosition(req.position());
+        employee.setEducationLevel(req.educationLevel());
+        employee.setEthnicity(req.ethnicity());
+        employee.setReligion(req.religion());
+        employee.setHometown(req.hometown());
+        employee.setAddress(req.address());
 
         if (req.departmentId() != null) {
             employee.setDepartment(departmentRepo.findById(req.departmentId())

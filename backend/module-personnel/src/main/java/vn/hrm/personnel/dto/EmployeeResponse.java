@@ -21,6 +21,11 @@ public record EmployeeResponse(
     EmployeeStatus status,
     ContractType contractType,
     String position,
+    String educationLevel,
+    String ethnicity,
+    String religion,
+    String hometown,
+    String address,
     DepartmentSummary department,
     ManagerSummary manager,
     LocalDateTime createdAt,
@@ -34,6 +39,8 @@ public record EmployeeResponse(
             e.getId(), e.getEmployeeCode(), e.getFullName(), e.getEmail(),
             e.getPhone(), e.getGender(), e.getDateOfBirth(), e.getJoinDate(),
             e.getStatus(), e.getContractType(), e.getPosition(),
+            e.getEducationLevel(), e.getEthnicity(), e.getReligion(),
+            e.getHometown(), e.getAddress(),
             e.getDepartment() == null ? null : new DepartmentSummary(
                 e.getDepartment().getId(), e.getDepartment().getCode(), e.getDepartment().getName()),
             e.getManager() == null ? null : new ManagerSummary(

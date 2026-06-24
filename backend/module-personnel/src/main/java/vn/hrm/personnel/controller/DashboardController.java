@@ -26,11 +26,12 @@ public class DashboardController {
         long total      = employeeRepository.count();
         long active     = employeeRepository.countByStatus(EmployeeStatus.ACTIVE);
         long probation  = employeeRepository.countByStatus(EmployeeStatus.PROBATION);
+        long onLeave    = employeeRepository.countByStatus(EmployeeStatus.ON_LEAVE);
         long terminated = employeeRepository.countByStatus(EmployeeStatus.TERMINATED);
         long depts      = departmentRepository.count();
 
         return ResponseEntity.ok(ApiResponse.ok(
-            new DashboardStatsResponse(total, active, probation, terminated, depts)
+            new DashboardStatsResponse(total, active, probation, onLeave, terminated, depts)
         ));
     }
 }

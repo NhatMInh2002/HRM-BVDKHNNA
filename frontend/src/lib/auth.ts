@@ -9,6 +9,7 @@ declare module 'next-auth' {
   }
   interface Token {
     accessToken?: string
+    idToken?: string
     refreshToken?: string
     expiresAt?: number
     roles?: string[]
@@ -46,7 +47,7 @@ async function refreshAccessToken(token: any) {
 }
 
 export const authOptions: NextAuthOptions = {
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
   providers: [
     KeycloakProvider({
       clientId: process.env.KEYCLOAK_CLIENT_ID!,
@@ -58,26 +59,25 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
-      // Lần đầu đăng nhập
       if (account) {
         const p = profile as any
         return {
           ...token,
           accessToken: account.access_token,
+          idToken: account.id_token,         // giữ server-side cho logout
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
-          roles: p?.roles ?? [],
+          roles: p?.realm_access?.roles ?? p?.roles ?? [],
         }
       }
-      // Token còn hạn
       if (Date.now() / 1000 < (token.expiresAt as number) - 30) return token
-      // Refresh
       return refreshAccessToken(token)
     },
     async session({ session, token }) {
+      // idToken KHÔNG expose ra client — chỉ giữ trong JWT (server-side)
       session.accessToken = token.accessToken as string
-      session.roles = token.roles as string[]
-      session.error = token.error as string | undefined
+      session.roles       = token.roles as string[]
+      session.error       = token.error as string | undefined
       return session
     },
   },

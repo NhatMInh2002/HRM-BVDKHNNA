@@ -1,6 +1,6 @@
 {
   "realm": "hrm",
-  "displayName": "HRM — BVĐK HN NA",
+  "displayName": "HRM — Bệnh viện Hữu nghị Đa khoa Nghệ An",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,
@@ -97,7 +97,7 @@
   "users": [
     {
       "username": "admin.hrm",
-      "email": "admin@bvdkhnna.vn",
+      "email": "admin@bvnghean.vn",
       "firstName": "Admin",
       "lastName": "HRM",
       "enabled": true,
@@ -113,7 +113,7 @@
     },
     {
       "username": "hr.manager",
-      "email": "hr@bvdkhnna.vn",
+      "email": "hr@bvnghean.vn",
       "firstName": "HR",
       "lastName": "Manager",
       "enabled": true,

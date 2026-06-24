@@ -6,8 +6,8 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin', 'vietnamese'] })
 
 export const metadata: Metadata = {
-  title: 'HRM — BVĐK Hà Nội NA',
-  description: 'Hệ thống quản lý nhân sự',
+  title: 'HRM — Bệnh viện Hữu nghị Đa khoa Nghệ An',
+  description: 'Hệ thống quản lý nhân sự — bvnghean.vn',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

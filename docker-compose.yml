@@ -112,8 +112,9 @@ services:
       DB_PASSWORD: hrm_dev_pass
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      KEYCLOAK_ISSUER_URI: http://keycloak:8180/realms/hrm
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8180/realms/hrm/protocol/openid-connect/certs
       MINIO_ENDPOINT: http://minio:9000
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
     ports:
       - "8080:8080"
     depends_on:

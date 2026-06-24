@@ -6,12 +6,19 @@ export interface SalaryConfig {
   id: string
   employeeId: string
   basicSalary: number
+  coefficient: number
+  effectiveSalary: number        // basicSalary × coefficient
   allowanceFood: number
   allowanceTransport: number
   allowancePhone: number
+  allowancePosition: number      // phụ cấp chức vụ
+  allowanceSeniority: number     // phụ cấp thâm niên
+  allowanceHouse: number         // phụ cấp nhà ở
+  allowanceToxic: number         // phụ cấp độc hại (miễn thuế)
   allowanceOther: number
-  coefficient: number
   totalAllowance: number
+  dependents: number             // số người phụ thuộc
+  bhxhExempt: boolean
   effectiveFrom: string
   effectiveTo: string | null
 }
@@ -52,11 +59,17 @@ export interface PayrollPage {
 export interface SaveSalaryConfigDto {
   employeeId: string
   basicSalary: number
+  coefficient?: number
   allowanceFood?: number
   allowanceTransport?: number
   allowancePhone?: number
+  allowancePosition?: number
+  allowanceSeniority?: number
+  allowanceHouse?: number
+  allowanceToxic?: number
   allowanceOther?: number
-  coefficient?: number
+  dependents?: number
+  bhxhExempt?: boolean
   effectiveFrom: string
 }
 

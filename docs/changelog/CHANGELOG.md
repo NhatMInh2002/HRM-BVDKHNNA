@@ -124,6 +124,83 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 ---
 
+## [2026-06-22] — FIX: Đồng bộ frontend/backend — employeeId, joinDate, contractType
+
+**Người thực hiện:** NhatMInh2002  
+**Phiên làm việc:** 2026-06-22
+
+### Bugs đã fix
+
+| Bug | Nguyên nhân | Fix |
+|-----|------------|-----|
+| Leave/Attendance không gửi đúng `employeeId` | Frontend dùng email thay vì UUID | Thêm endpoint `GET /personnel/employees/me` + hook `useCurrentEmployee` |
+| `joinDate` undefined | Backend trả `joinDate`, frontend đọc `startDate` | Đồng bộ type `Employee` |
+| `FULL_TIME` enum lỗi | `ContractType` enum không có `FULL_TIME` | V6 migration fix data cũ |
+| Frontend gọi trực tiếp `localhost:8080` (bypass proxy) | `NEXT_PUBLIC_API_BASE_URL` hardcode trong `.env.local` | Sửa `apiFetch` dùng window check: browser → `/api`, server → `BACKEND_URL` |
+| CORS thiếu port 3001 | Frontend đôi khi chạy trên 3001 | Thêm `localhost:3001` vào `SecurityConfig` |
+
+### Thêm mới
+
+- `GET /personnel/employees/me` — lookup nhân viên theo email từ JWT claim
+- Hook `useCurrentEmployee` (React Query) — tự động lấy thông tin nhân viên hiện tại
+- Attendance page: check-in/out dùng `employeeId` thay email
+- Leave page: tự điền `employeeId` từ hook, không cần nhập tay
+
+---
+
+## [2026-06-23] — FIX: JWT validation + Keycloak logout + Seed data đầy đủ
+
+**Người thực hiện:** NhatMInh2002  
+**Phiên làm việc:** 2026-06-23
+
+### Root cause — Không có data hiển thị
+
+| Vấn đề | Nguyên nhân | Fix |
+|--------|------------|-----|
+| Tất cả API trả 401 | Backend Docker dùng `localhost:8180` để verify JWT — nhưng trong container `localhost` = container đó, không phải host | Restart với env `KEYCLOAK_JWK_SET_URI=http://hrm-keycloak:8180/realms/hrm/protocol/openid-connect/certs` |
+| API trả 403 | User đăng nhập với role `EMPLOYEE`, không có `ADMIN`/`HR_MANAGER` | Reset password `admin.hrm` → `Admin@123`; hướng dẫn dùng đúng tài khoản |
+| Sau signout, SSO không hiện form Keycloak | NextAuth chỉ xóa session cookie, không xóa Keycloak SSO session → auto-login lại user cũ | Cập nhật `TopBar.tsx`: logout redirect đến `{issuer}/protocol/openid-connect/logout?id_token_hint=...` |
+| `admin.hrm` báo sai password | Password không match | Reset qua Keycloak Admin API |
+
+### Backend — cấu hình quan trọng
+
+```
+KEYCLOAK_JWK_SET_URI=http://hrm-keycloak:8180/realms/hrm/protocol/openid-connect/certs
+SPRING_DATASOURCE_URL=jdbc:postgresql://hrm-postgres:5432/hrm
+SPRING_DATASOURCE_PASSWORD=hrm_dev_pass   ← (không phải hrm_dev_password)
+```
+
+Backend phải chạy trong Docker (không phải host JVM) vì JDK 21 trên Windows có bug `WEPollSelectorImpl` khiến `Selector.open()` fail với Docker Desktop / WSL2.
+
+### Keycloak — cấu hình bổ sung
+
+- Thêm `post.logout.redirect.uris` cho client `hrm-frontend`: `http://localhost:3000/login##http://localhost:3000/*`
+
+### Frontend — thay đổi
+
+- `lib/auth.ts`: lưu `id_token` vào JWT token + session (cần cho Keycloak logout)
+- `components/top-bar.tsx`: logout gọi Keycloak end-session endpoint với `id_token_hint`
+- `.env.local`: thêm `NEXT_PUBLIC_KEYCLOAK_ISSUER`
+
+### Seed data (V7 migration)
+
+| Bảng | Số lượng |
+|------|---------|
+| `personnel.employees` | 30 nhân viên (từ 10 → 30, trải đều các khoa/phòng) |
+| `attendance.attendance_records` | 143 bản ghi (tháng 6/2026, trừ T7/CN) |
+| `attendance.leave_requests` | 8 đơn (ANNUAL, SICK, PERSONAL, MATERNITY) |
+| `payroll.payroll_records` | 23 bản lương (tháng 5 PAID + tháng 6 DRAFT) |
+
+### Trạng thái cuối session
+
+- ✅ Backend chạy trong Docker với JWT validation đúng (Keycloak service name)
+- ✅ Đăng nhập `admin.hrm` / `Admin@123` hoạt động
+- ✅ Logout xóa cả NextAuth session + Keycloak SSO session
+- ✅ 30 nhân viên, 64 phòng ban, 143 chấm công, 8 đơn nghỉ, 23 bản lương trong DB
+- ⏳ Cần verify: data hiển thị đúng trên Personnel, Org-chart, Attendance, Payroll pages sau khi đăng nhập đúng tài khoản
+
+---
+
 <!-- Template cho entry tiếp theo:
 
 ## [YYYY-MM-DD] — [LOẠI]: [Tiêu đề]

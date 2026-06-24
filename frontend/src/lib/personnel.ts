@@ -26,6 +26,11 @@ export interface Employee {
   dateOfBirth?: string
   joinDate: string
   position?: string
+  educationLevel?: string
+  ethnicity?: string
+  religion?: string
+  hometown?: string
+  address?: string
   department?: DepartmentSummary
   manager?: ManagerSummary
   contractType: ContractType
@@ -54,6 +59,11 @@ export interface EmployeeFormDto {
   departmentId?: string
   managerId?: string
   position?: string
+  educationLevel?: string
+  ethnicity?: string
+  religion?: string
+  hometown?: string
+  address?: string
 }
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
@@ -74,6 +84,22 @@ export const GENDER_LABELS: Record<Gender, string> = {
   MALE: 'Nam',
   FEMALE: 'Nữ',
   OTHER: 'Khác',
+}
+
+export interface Department {
+  id: string
+  code: string
+  name: string
+  parentId: string | null
+  children?: Department[]
+}
+
+export function getDepartments() {
+  return apiFetch<Department[]>('/personnel/departments')
+}
+
+export function getDepartmentsTree() {
+  return apiFetch<Department[]>('/personnel/departments/tree')
 }
 
 export function searchEmployees(params: {

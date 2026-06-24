@@ -58,6 +58,21 @@ public class Employee {
     @Column(length = 100)
     private String position;
 
+    @Column(length = 100)
+    private String educationLevel;
+
+    @Column(length = 50)
+    private String ethnicity;
+
+    @Column(length = 50)
+    private String religion;
+
+    @Column(length = 200)
+    private String hometown;
+
+    @Column(length = 200)
+    private String address;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
     private Employee manager;

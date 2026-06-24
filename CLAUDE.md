@@ -4,6 +4,7 @@
 
 ## Stack & Deployment
 Spring Boot (Modular Monolith) + Next.js + PostgreSQL + Redis + MinIO + OpenSearch  
+Bệnh viện: **BỆNH VIỆN HỮU NGHỊ ĐA KHOA NGHỆ AN** · bvnghean.vn  
 SSO: Azure AD / AD FS (SAML 2.0) · Deploy: On-premises · Repo: NhatMInh2002/HRM-BVDKHNNA
 
 ## Quy tắc không thay đổi

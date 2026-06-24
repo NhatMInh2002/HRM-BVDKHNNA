@@ -18,6 +18,11 @@ import vn.hrm.payroll.service.PayrollService;
 import vn.hrm.payroll.service.PayslipPdfService;
 import vn.hrm.shared.dto.ApiResponse;
 
+import vn.hrm.payroll.repository.PayrollRecordRepository;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +34,7 @@ public class PayrollController {
 
     private final PayrollService payrollService;
     private final PayslipPdfService payslipPdfService;
+    private final PayrollRecordRepository payrollRecordRepository;
 
     @PostMapping("/generate")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
@@ -96,6 +102,27 @@ public class PayrollController {
     public ResponseEntity<ApiResponse<List<PayrollRecordResponse>>> myPayroll(
             @RequestParam UUID employeeId) {
         return ResponseEntity.ok(ApiResponse.ok(payrollService.myPayroll(employeeId)));
+    }
+
+    @GetMapping("/stats/trend")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> payrollTrend() {
+        // 6 tháng gần nhất
+        LocalDate sixMonthsAgo = LocalDate.now().minusMonths(5).withDayOfMonth(1);
+        int fromPeriod = sixMonthsAgo.getYear() * 100 + sixMonthsAgo.getMonthValue();
+
+        List<Object[]> rows = payrollRecordRepository.monthlyTrend(fromPeriod);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] r : rows) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("year",       ((Number) r[0]).intValue());
+            entry.put("month",      ((Number) r[1]).intValue());
+            entry.put("totalNet",   r[2]);
+            entry.put("totalGross", r[3]);
+            entry.put("count",      ((Number) r[4]).longValue());
+            result.add(entry);
+        }
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     private String actor(Jwt jwt) {
