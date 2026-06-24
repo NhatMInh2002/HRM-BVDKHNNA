@@ -57,7 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: 'time', label: 'CHẤM CÔNG',
     items: [
-      { href: '/dashboard/attendance',       label: 'Chấm công', icon: Icons.attendance },
+      { href: '/dashboard/attendance',       label: 'Chấm công', icon: Icons.attendance, exact: true },
       { href: '/dashboard/attendance/leave', label: 'Nghỉ phép', icon: Icons.leave },
     ],
   },
