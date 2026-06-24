@@ -147,7 +147,7 @@ export default function DashboardPage() {
                         <Cell key={i} fill={entry.fill} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: number) => [`${v} người`, '']} />
+                    <Tooltip formatter={(v) => [`${v} người`, '']} />
                     <Legend iconType="circle" iconSize={8} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -183,7 +183,7 @@ export default function DashboardPage() {
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 10 }} unit="M" />
                     <Tooltip
-                      formatter={(v: number) => [`${v} triệu ₫`, 'Tổng NET']}
+                      formatter={(v) => [`${v} triệu ₫`, 'Tổng NET']}
                       labelFormatter={(l) => `Tháng ${l}`}
                     />
                     <Bar dataKey="net" name="NET (triệu)" fill="#10b981" radius={[4,4,0,0]} />

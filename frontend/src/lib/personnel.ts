@@ -50,7 +50,7 @@ export interface EmployeePage {
 export interface EmployeeFormDto {
   employeeCode: string
   fullName: string
-  email: string
+  email?: string
   phone?: string
   gender?: Gender
   dateOfBirth?: string
