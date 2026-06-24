@@ -1,0 +1,64 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js Frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "frontend",
+      "port": 3000,
+      "autoPort": false
+    },
+    {
+      "name": "Spring Boot Backend",
+      "runtimeExecutable": "mvn",
+      "runtimeArgs": ["-pl", "app", "spring-boot:run"],
+      "cwd": "backend",
+      "port": 8080,
+      "autoPort": false
+    },
+    {
+      "name": "Docker Compose (infrastructure)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "postgres", "redis", "keycloak", "minio", "opensearch"],
+      "cwd": ".",
+      "port": null
+    },
+    {
+      "name": "Docker Compose (full stack)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "--build"],
+      "cwd": ".",
+      "port": null
+    },
+    {
+      "name": "Keycloak (via Docker Compose)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "postgres", "keycloak"],
+      "cwd": ".",
+      "port": 8180
+    },
+    {
+      "name": "PostgreSQL (via Docker Compose)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "postgres"],
+      "cwd": ".",
+      "port": 5432
+    },
+    {
+      "name": "MinIO (via Docker Compose)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "minio"],
+      "cwd": ".",
+      "port": 9000,
+      "autoPort": false
+    },
+    {
+      "name": "OpenSearch (via Docker Compose)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "opensearch"],
+      "cwd": ".",
+      "port": 9200
+    }
+  ]
+}

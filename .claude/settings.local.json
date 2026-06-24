@@ -8,7 +8,9 @@
       "PowerShell(gh auth status)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   }
 }
