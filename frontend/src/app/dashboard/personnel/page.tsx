@@ -150,7 +150,7 @@ export default function PersonnelPage() {
               <th className="px-4 py-3 text-left">Vào làm</th>
               <th className="px-4 py-3 text-left">Hợp đồng</th>
               <th className="px-4 py-3 text-left">Trạng thái</th>
-              {canWrite && <th className="px-4 py-3 text-right">Thao tác</th>}
+              {canWrite && <th className="px-4 py-3 text-center w-24">Thao tác</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -191,22 +191,37 @@ export default function PersonnelPage() {
                   />
                 </td>
                 {canWrite && (
-                  <td className="px-4 py-3 text-right space-x-2">
-                    <button
-                      onClick={() => { setEditId(emp.id); setShowForm(true) }}
-                      className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                    >
-                      Sửa
-                    </button>
-                    {emp.status !== 'TERMINATED' && (
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1">
                       <button
-                        onClick={() => handleTerminate(emp.id, emp.fullName)}
-                        className="text-orange-500 hover:text-orange-700 text-xs font-medium"
-                        title="Chuyển sang trạng thái Đã nghỉ việc — dữ liệu vẫn lưu trong DB"
+                        onClick={() => { setEditId(emp.id); setShowForm(true) }}
+                        title="Sửa thông tin"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
+                          bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200
+                          transition-colors"
                       >
-                        Nghỉ việc
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Sửa
                       </button>
-                    )}
+                      {emp.status !== 'TERMINATED' && (
+                        <button
+                          onClick={() => handleTerminate(emp.id, emp.fullName)}
+                          title="Cho nghỉ việc — dữ liệu vẫn lưu trong DB"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
+                            bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200
+                            transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          Nghỉ
+                        </button>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>
