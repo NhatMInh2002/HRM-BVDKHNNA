@@ -10,6 +10,7 @@ import {
 } from '@/lib/personnel'
 import { getDepartments } from '@/lib/departments'
 import { getActiveLabels } from '@/lib/categories'
+import { generateEmail } from '@/lib/emailUtils'
 
 const schema = z.object({
   employeeCode:   z.string().min(1, 'Bắt buộc').max(20),
@@ -89,7 +90,7 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
     setContracts(getActiveLabels('loai_hop_dong'))
   }, [])
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { contractType: 'HĐ làm việc không xác định thời hạn (viên chức)' },
   })
@@ -115,6 +116,16 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
       })
     }
   }, [existing, reset])
+
+  // Auto-fill email khi nhập tên (chỉ khi thêm mới và email chưa được nhập thủ công)
+  const fullName = watch('fullName')
+  const emailValue = watch('email')
+  useEffect(() => {
+    if (isEdit) return
+    if (emailValue && emailValue !== generateEmail(fullName ?? '')) return // đã nhập tay
+    const generated = generateEmail(fullName ?? '')
+    if (generated) setValue('email', generated, { shouldValidate: false })
+  }, [fullName]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = useMutation({
     mutationFn: (data: FormValues) => {
