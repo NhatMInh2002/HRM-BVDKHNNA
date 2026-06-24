@@ -158,7 +158,7 @@ export default function OtpSettingsPage() {
             <span className="mt-0.5 flex-shrink-0">▶</span>
             <span>
               Hệ thống HRM được ứng dụng công nghệ{' '}
-              <strong>"Mã xác thực theo ngày để bảo mật"</strong>.
+              <strong>&ldquo;Mã xác thực theo ngày để bảo mật&rdquo;</strong>.
             </span>
           </li>
           <li className="flex gap-2">
