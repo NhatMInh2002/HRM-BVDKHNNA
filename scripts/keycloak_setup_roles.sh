@@ -8,7 +8,7 @@
 KEYCLOAK_URL="http://localhost:8180"
 REALM="hrm"
 ADMIN_USER="admin"
-ADMIN_PASS="admin"
+ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:-admin_dev_pass}"
 
 echo "=== Lấy access token admin ==="
 TOKEN=$(curl -s -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
