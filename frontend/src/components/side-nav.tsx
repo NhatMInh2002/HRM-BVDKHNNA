@@ -47,8 +47,9 @@ const NAV_GROUPS: {
   {
     key: 'salary', label: 'LƯƠNG',
     items: [
-      { href: '/dashboard/payroll',        label: 'Bảng lương',     icon: Icons.payroll, roles: ['ADMIN','HR_MANAGER','ACCOUNTANT'] },
-      { href: '/dashboard/payroll/config', label: 'Cấu hình lương', icon: Icons.config,  roles: ['ADMIN','HR_MANAGER'] },
+      { href: '/dashboard/payroll/my',     label: 'Lương cá nhân',  icon: Icons.payroll },
+      { href: '/dashboard/payroll',        label: 'Bảng lương',     icon: Icons.config,  roles: ['ADMIN','HR_MANAGER','ACCOUNTANT'] },
+      { href: '/dashboard/payroll/config', label: 'Cấu hình lương', icon: Icons.settings, roles: ['ADMIN','HR_MANAGER'] },
     ],
   },
   {
