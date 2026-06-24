@@ -126,6 +126,13 @@ public class EmployeeService {
     }
 
     @Transactional
+    public void updatePhone(String email, String phone) {
+        Employee employee = employeeRepo.findByEmail(email)
+            .orElseThrow(() -> HrmException.notFound("EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên: " + email));
+        employee.setPhone(phone);
+        employeeRepo.save(employee);
+    }
+
     public void terminate(UUID id, String updatedBy) {
         Employee employee = employeeRepo.findById(id)
             .orElseThrow(() -> HrmException.notFound("EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên: " + id));

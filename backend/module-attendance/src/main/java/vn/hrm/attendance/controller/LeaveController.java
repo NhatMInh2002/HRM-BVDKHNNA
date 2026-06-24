@@ -3,8 +3,7 @@ package vn.hrm.attendance.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.hrm.attendance.dto.LeaveRequestDto;
 import vn.hrm.attendance.dto.LeaveRequestResponse;
@@ -25,10 +24,9 @@ public class LeaveController {
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<LeaveRequestResponse> createLeaveRequest(
         @Valid @RequestBody LeaveRequestDto dto,
-        @AuthenticationPrincipal Jwt jwt
+        Authentication auth
     ) {
-        String createdBy = resolveUsername(jwt);
-        return ApiResponse.ok(leaveService.createLeaveRequest(dto, createdBy));
+        return ApiResponse.ok(leaveService.createLeaveRequest(dto, auth.getName()));
     }
 
     @GetMapping("/pending")
@@ -49,23 +47,17 @@ public class LeaveController {
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
     public ApiResponse<LeaveRequestResponse> approveLeave(
         @PathVariable UUID id,
-        @AuthenticationPrincipal Jwt jwt
+        Authentication auth
     ) {
-        return ApiResponse.ok(leaveService.approveLeave(id, resolveUsername(jwt)));
+        return ApiResponse.ok(leaveService.approveLeave(id, auth.getName()));
     }
 
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
     public ApiResponse<LeaveRequestResponse> rejectLeave(
         @PathVariable UUID id,
-        @AuthenticationPrincipal Jwt jwt
+        Authentication auth
     ) {
-        return ApiResponse.ok(leaveService.rejectLeave(id, resolveUsername(jwt)));
-    }
-
-    private String resolveUsername(Jwt jwt) {
-        return jwt.getClaimAsString("preferred_username") != null
-            ? jwt.getClaimAsString("preferred_username")
-            : jwt.getSubject();
+        return ApiResponse.ok(leaveService.rejectLeave(id, auth.getName()));
     }
 }

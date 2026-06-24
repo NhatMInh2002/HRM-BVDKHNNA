@@ -9,8 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.hrm.payroll.dto.GeneratePayrollRequest;
 import vn.hrm.payroll.dto.PayrollRecordResponse;
@@ -40,8 +39,8 @@ public class PayrollController {
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public ResponseEntity<ApiResponse<Map<String,Integer>>> generate(
             @Valid @RequestBody GeneratePayrollRequest req,
-            @AuthenticationPrincipal Jwt jwt) {
-        int count = payrollService.generatePeriod(req.year(), req.month(), actor(jwt));
+            Authentication auth) {
+        int count = payrollService.generatePeriod(req.year(), req.month(), auth.getName());
         return ResponseEntity.ok(ApiResponse.ok(Map.of("generated", count)));
     }
 
@@ -59,18 +58,17 @@ public class PayrollController {
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public ResponseEntity<ApiResponse<PayrollRecordResponse>> approve(
-            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(ApiResponse.ok(payrollService.approve(id, actor(jwt))));
+            @PathVariable UUID id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.ok(payrollService.approve(id, auth.getName())));
     }
 
     @PutMapping("/{id}/paid")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PayrollRecordResponse>> markPaid(
-            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(ApiResponse.ok(payrollService.markPaid(id, actor(jwt))));
+            @PathVariable UUID id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.ok(payrollService.markPaid(id, auth.getName())));
     }
 
-    /** Download phiếu lương PDF */
     @GetMapping("/{id}/payslip.pdf")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadPayslip(@PathVariable UUID id) throws Exception {
@@ -82,7 +80,6 @@ public class PayrollController {
                 .body(pdf);
     }
 
-    /** Export Excel bảng lương tháng */
     @GetMapping("/export.xlsx")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','ACCOUNTANT')")
     public ResponseEntity<byte[]> exportExcel(
@@ -107,7 +104,6 @@ public class PayrollController {
     @GetMapping("/stats/trend")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> payrollTrend() {
-        // 6 tháng gần nhất
         LocalDate sixMonthsAgo = LocalDate.now().minusMonths(5).withDayOfMonth(1);
         int fromPeriod = sixMonthsAgo.getYear() * 100 + sixMonthsAgo.getMonthValue();
 
@@ -123,10 +119,5 @@ public class PayrollController {
             result.add(entry);
         }
         return ResponseEntity.ok(ApiResponse.ok(result));
-    }
-
-    private String actor(Jwt jwt) {
-        String u = jwt.getClaimAsString("preferred_username");
-        return u != null ? u : jwt.getSubject();
     }
 }

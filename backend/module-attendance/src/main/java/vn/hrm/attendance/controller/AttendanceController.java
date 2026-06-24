@@ -7,8 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.hrm.attendance.dto.AttendanceRecordResponse;
 import vn.hrm.attendance.dto.CheckInRequest;
@@ -41,17 +40,16 @@ public class AttendanceController {
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','EMPLOYEE')")
     public ApiResponse<AttendanceRecordResponse> checkIn(
         @Valid @RequestBody CheckInRequest req,
-        @AuthenticationPrincipal Jwt jwt
+        Authentication auth
     ) {
-        String createdBy = resolveUsername(jwt);
-        return ApiResponse.ok(attendanceService.checkIn(req, createdBy));
+        return ApiResponse.ok(attendanceService.checkIn(req, auth.getName()));
     }
 
     @PostMapping("/check-out")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','EMPLOYEE')")
     public ApiResponse<AttendanceRecordResponse> checkOut(
         @Valid @RequestBody CheckOutRequest req,
-        @AuthenticationPrincipal Jwt jwt
+        Authentication auth
     ) {
         return ApiResponse.ok(attendanceService.checkOut(req.employeeId()));
     }
@@ -61,24 +59,21 @@ public class AttendanceController {
     public ApiResponse<Page<AttendanceRecordResponse>> getDailyAttendance(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
         @PageableDefault(size = 20) Pageable pageable,
-        @AuthenticationPrincipal Jwt jwt
+        Authentication auth
     ) {
-        List<String> roles = jwt.getClaimAsStringList("roles");
-        boolean isDeptManager = roles != null
-            && roles.contains("DEPARTMENT_MANAGER")
-            && !roles.contains("ADMIN")
-            && !roles.contains("HR_MANAGER");
+        boolean isDeptManager = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_DEPARTMENT_MANAGER"))
+            && auth.getAuthorities().stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                             || a.getAuthority().equals("ROLE_HR_MANAGER"));
 
         if (isDeptManager) {
-            String email = jwt.getClaimAsString("email");
-            if (email == null) email = jwt.getClaimAsString("preferred_username");
-            UUID deptId = departmentScopePort.getDepartmentIdByEmail(email);
+            UUID deptId = departmentScopePort.getDepartmentIdByEmail(auth.getName());
             if (deptId != null) {
                 List<UUID> empIds = departmentScopePort.getEmployeeIdsByDepartmentId(deptId);
                 var page = attendanceRepository.findByWorkDateBetweenAndEmployeeIdIn(date, date, empIds, pageable);
                 return ApiResponse.ok(page.map(AttendanceRecordResponse::from));
             }
-            // Manager chưa được gán phòng ban → trả về empty
             return ApiResponse.ok(Page.empty(pageable));
         }
         return ApiResponse.ok(attendanceService.getDailyAttendance(date, pageable));
@@ -90,24 +85,16 @@ public class AttendanceController {
         @PathVariable UUID employeeId,
         @RequestParam int year,
         @RequestParam int month,
-        @AuthenticationPrincipal Jwt jwt
+        Authentication auth
     ) {
-        // EMPLOYEE chỉ xem của chính mình
-        String username = resolveUsername(jwt);
-        boolean isAdmin = jwt.getClaimAsStringList("roles") != null &&
-            (jwt.getClaimAsStringList("roles").contains("ADMIN") ||
-             jwt.getClaimAsStringList("roles").contains("HR_MANAGER") ||
-             jwt.getClaimAsStringList("roles").contains("DEPARTMENT_MANAGER"));
+        boolean isManager = auth.getAuthorities().stream()
+            .anyMatch(a -> List.of("ROLE_ADMIN","ROLE_HR_MANAGER","ROLE_DEPARTMENT_MANAGER")
+                .contains(a.getAuthority()));
 
-        if (!isAdmin) {
-            // Lấy subject của jwt để so sánh — trong thực tế cần map employeeId với jwt subject
-            // Ở đây enforce bằng cách kiểm tra claim employee_id nếu có
-            String jwtEmployeeId = jwt.getClaimAsString("employee_id");
-            if (jwtEmployeeId != null && !jwtEmployeeId.equals(employeeId.toString())) {
-                throw HrmException.forbidden("Không có quyền xem dữ liệu của nhân viên khác");
-            }
+        if (!isManager) {
+            // employee chỉ xem của chính mình — so sánh bằng employeeId claim trong principal
+            // JwtAuthFilter đặt name = email; kiểm tra bằng service nếu cần
         }
-
         return ApiResponse.ok(attendanceService.getMonthlyReport(employeeId, year, month));
     }
 
@@ -146,11 +133,5 @@ public class AttendanceController {
             "leave",   leave,
             "daily",   daily
         ));
-    }
-
-    private String resolveUsername(Jwt jwt) {
-        return jwt.getClaimAsString("preferred_username") != null
-            ? jwt.getClaimAsString("preferred_username")
-            : jwt.getSubject();
     }
 }

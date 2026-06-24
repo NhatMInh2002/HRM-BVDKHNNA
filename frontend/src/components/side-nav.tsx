@@ -14,23 +14,36 @@ const Icons = {
   payroll:   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/></svg>,
   config:    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/></svg>,
   recruit:   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/></svg>,
-  settings:  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>,
-  logout:    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd"/></svg>,
+  settings:  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/></svg>,
   profile:   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/></svg>,
+  otp:       <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>,
+  shield:    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>,
+  logout:    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd"/></svg>,
+  chevron:   <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/></svg>,
 }
 
 type AppRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'ACCOUNTANT'
 
-const NAV_GROUPS: {
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ReactNode
+  roles?: AppRole[]
+  exact?: boolean
+}
+
+interface NavGroup {
   key: string
   label?: string
-  items: { href: string; label: string; icon: React.ReactNode; roles?: AppRole[] }[]
-}[] = [
+  items: NavItem[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
     key: 'overview',
     items: [
-      { href: '/dashboard',         label: 'Tổng quan',         icon: Icons.dashboard },
-      { href: '/dashboard/profile', label: 'Hồ sơ cá nhân',    icon: Icons.profile },
+      { href: '/dashboard',         label: 'Tổng quan',      icon: Icons.dashboard, exact: true },
+      { href: '/dashboard/profile', label: 'Hồ sơ cá nhân', icon: Icons.profile, exact: true },
     ],
   },
   {
@@ -51,8 +64,8 @@ const NAV_GROUPS: {
   {
     key: 'salary', label: 'LƯƠNG',
     items: [
-      { href: '/dashboard/payroll/my',     label: 'Lương cá nhân',  icon: Icons.payroll },
-      { href: '/dashboard/payroll',        label: 'Bảng lương',     icon: Icons.config,  roles: ['ADMIN','HR_MANAGER','ACCOUNTANT'] },
+      { href: '/dashboard/payroll/my',     label: 'Lương cá nhân',  icon: Icons.payroll, exact: true },
+      { href: '/dashboard/payroll',        label: 'Bảng lương',     icon: Icons.config,  roles: ['ADMIN','HR_MANAGER','ACCOUNTANT'], exact: true },
       { href: '/dashboard/payroll/config', label: 'Cấu hình lương', icon: Icons.settings, roles: ['ADMIN','HR_MANAGER'] },
     ],
   },
@@ -62,12 +75,29 @@ const NAV_GROUPS: {
   },
 ]
 
+// Menu con Cài đặt hệ thống
+const SETTINGS_CHILDREN: NavItem[] = [
+  { href: '/dashboard/settings',     label: 'Phân quyền',        icon: Icons.shield, roles: ['ADMIN'], exact: true },
+  { href: '/dashboard/settings/otp', label: 'Đăng ký mã xác thực', icon: Icons.otp },
+]
+
+function isActive(href: string, pathname: string, exact?: boolean): boolean {
+  if (exact) return pathname === href
+  return pathname === href || pathname.startsWith(href + '/')
+}
+
 export function SideNav({ roles }: { roles: string[] }) {
   const pathname = usePathname() ?? ''
   const [expanded, setExpanded] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(
+    pathname.startsWith('/dashboard/settings')
+  )
 
   const canSee = (required?: AppRole[]) =>
     !required || required.length === 0 || required.some(r => roles.includes(r))
+
+  const settingsActive = pathname.startsWith('/dashboard/settings')
+  const isAdmin = roles.includes('ADMIN')
 
   return (
     <aside
@@ -95,7 +125,6 @@ export function SideNav({ roles }: { roles: string[] }) {
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
         {NAV_GROUPS.map(group => (
           <div key={group.key} className={group.label ? 'mt-1' : ''}>
-            {/* Section label — chỉ hiện khi expanded */}
             <div className={`overflow-hidden transition-all duration-150
                              ${expanded ? 'max-h-8 opacity-100' : 'max-h-0 opacity-0'}`}>
               {group.label && (
@@ -105,14 +134,12 @@ export function SideNav({ roles }: { roles: string[] }) {
                 </p>
               )}
             </div>
-            {/* Divider khi collapsed */}
             {group.label && !expanded && (
               <div className="mx-3 mt-2 mb-1 border-t border-[#243556]" />
             )}
 
             {group.items.filter(item => canSee(item.roles)).map(item => {
-              const active = pathname === item.href
-                || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+              const active = isActive(item.href, pathname, item.exact)
               return (
                 <Link
                   key={item.href}
@@ -142,24 +169,67 @@ export function SideNav({ roles }: { roles: string[] }) {
         ))}
       </nav>
 
-      {/* Bottom */}
-      <div className="border-t border-[#243556] py-2 px-2 flex-shrink-0">
-        {roles.includes('ADMIN') && (
-          <Link
-            href="/dashboard/settings"
+      {/* Bottom — Cài đặt hệ thống (chỉ Admin) */}
+      {isAdmin && (
+        <div className="border-t border-[#243556] py-2 px-2 flex-shrink-0">
+          {/* Toggle button */}
+          <button
+            onClick={() => expanded && setSettingsOpen(o => !o)}
             title={!expanded ? 'Cài đặt hệ thống' : undefined}
-            className="flex items-center mx-0 px-2 py-2 rounded text-[13px] font-medium
-                       text-blue-200 hover:bg-[#243556] hover:text-white transition-colors"
+            className={`w-full flex items-center px-2 py-2 rounded text-[13px] font-medium
+              transition-colors duration-100
+              ${settingsActive
+                ? 'bg-blue-600/30 text-white'
+                : 'text-blue-200 hover:bg-[#243556] hover:text-white'}`}
           >
-            <span className="flex-shrink-0 w-5 flex items-center justify-center text-blue-400">
+            <span className={`flex-shrink-0 w-5 flex items-center justify-center
+              ${settingsActive ? 'text-blue-300' : 'text-blue-400'}`}>
               {Icons.settings}
             </span>
-            <span className={`ml-3 whitespace-nowrap transition-opacity duration-150
+            <span className={`ml-3 flex-1 text-left whitespace-nowrap transition-opacity duration-150
               ${expanded ? 'opacity-100' : 'opacity-0'}`}>
               Cài đặt hệ thống
             </span>
-          </Link>
-        )}
+            {expanded && (
+              <span className={`transition-transform duration-200 text-blue-400
+                ${settingsOpen ? 'rotate-180' : ''}`}>
+                {Icons.chevron}
+              </span>
+            )}
+          </button>
+
+          {/* Submenu */}
+          <div className={`overflow-hidden transition-all duration-200
+            ${expanded && settingsOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+            {SETTINGS_CHILDREN.filter(item => canSee(item.roles)).map(item => {
+              const active = isActive(item.href, pathname, item.exact)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`relative flex items-center ml-4 mr-1 px-2 py-1.5 rounded text-[12px]
+                    font-medium transition-colors duration-100 mt-0.5
+                    ${active
+                      ? 'bg-blue-600 text-white'
+                      : 'text-blue-300 hover:bg-[#243556] hover:text-white'}`}
+                >
+                  {active && (
+                    <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-blue-300" />
+                  )}
+                  <span className={`flex-shrink-0 w-4 flex items-center justify-center
+                    ${active ? 'text-white' : 'text-blue-400'}`}>
+                    {item.icon}
+                  </span>
+                  <span className="ml-2 whitespace-nowrap">{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Đăng xuất */}
+      <div className={`${isAdmin ? '' : 'border-t border-[#243556]'} pb-2 px-2 flex-shrink-0`}>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           title={!expanded ? 'Đăng xuất' : undefined}
