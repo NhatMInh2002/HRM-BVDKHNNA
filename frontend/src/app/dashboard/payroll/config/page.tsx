@@ -212,16 +212,17 @@ export default function SalaryConfigPage() {
     else { setCheckedIds(new Set(all.map(e => e.id))); setSelectedEmps(all) }
   }
 
-  // Live salary calculations
+  // Live salary calculations — dùng Number() để tránh string concatenation
   const w           = watch()
-  const baseFull    = (w.basicSalary || 0) * (w.coefficient || 1)
-  const food        = w.allowanceFood || 0
+  const n           = (v: unknown) => Number(v) || 0
+  const baseFull    = n(w.basicSalary) * (n(w.coefficient) || 1)
+  const food        = n(w.allowanceFood)
   const foodExempt  = Math.min(food, 730_000)
   const foodTax     = Math.max(food - 730_000, 0)
-  const taxExempt   = foodExempt + (w.allowanceToxic || 0)
-  const taxableAlw  = foodTax + (w.allowanceTransport || 0) + (w.allowancePhone || 0)
-                    + (w.allowancePosition || 0) + (w.allowanceSeniority || 0)
-                    + (w.allowanceHouse || 0) + (w.allowanceOther || 0)
+  const taxExempt   = foodExempt + n(w.allowanceToxic)
+  const taxableAlw  = foodTax + n(w.allowanceTransport) + n(w.allowancePhone)
+                    + n(w.allowancePosition) + n(w.allowanceSeniority)
+                    + n(w.allowanceHouse) + n(w.allowanceOther)
   const gross       = baseFull + taxableAlw + taxExempt
   const exempt      = w.bhxhExempt || false
   const bhxhBase    = exempt ? 0 : Math.min(baseFull, 46_800_000)
@@ -230,7 +231,7 @@ export default function SalaryConfigPage() {
   const bhyt        = Math.round(bhxhBase * 0.015)
   const bhtn        = Math.round(bhtnBase * 0.01)
   const persDed     = 11_000_000
-  const depDed      = (w.dependents || 0) * 4_400_000
+  const depDed      = n(w.dependents) * 4_400_000
   const taxable     = Math.max(gross - taxExempt - bhxh - bhyt - bhtn - persDed - depDed, 0)
   const pit         = calcPit(taxable)
   const net         = gross - bhxh - bhyt - bhtn - pit
@@ -239,7 +240,7 @@ export default function SalaryConfigPage() {
   const bhtnEmp    = Math.round(bhtnBase * 0.01)
   const bhtnldEmp  = Math.round(bhxhBase * 0.005)
   const totalEmp   = gross + bhxhEmp + bhytEmp + bhtnEmp + bhtnldEmp
-  const hasPreview  = (w.basicSalary || 0) > 0
+  const hasPreview  = n(w.basicSalary) > 0
 
   return (
     <div>
