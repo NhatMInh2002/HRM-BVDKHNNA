@@ -25,20 +25,19 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const COEFFICIENT_PRESETS = [
-  { label: '1.00 — Nhân viên mới / thử việc', value: 1.00 },
-  { label: '1.35 — Nhân viên bậc 1',          value: 1.35 },
-  { label: '1.68 — Nhân viên bậc 2',          value: 1.68 },
-  { label: '2.06 — Nhân viên bậc 3',          value: 2.06 },
-  { label: '2.49 — Nhân viên bậc 4',          value: 2.49 },
-  { label: '2.97 — Nhân viên bậc 5',          value: 2.97 },
-  { label: '3.50 — Chuyên viên / kỹ sư',      value: 3.50 },
-  { label: '4.00 — Chuyên viên chính',         value: 4.00 },
-  { label: '4.98 — Phó trưởng phòng',         value: 4.98 },
-  { label: '5.76 — Trưởng phòng',             value: 5.76 },
-  { label: '6.56 — Phó giám đốc',             value: 6.56 },
-  { label: '7.55 — Giám đốc bệnh viện',       value: 7.55 },
+  { label: '1.00 — Thử việc / nhân viên mới',  value: 1.00 },
+  { label: '1.35 — Nhân viên bậc 1',            value: 1.35 },
+  { label: '1.68 — Nhân viên bậc 2',            value: 1.68 },
+  { label: '2.06 — Nhân viên bậc 3',            value: 2.06 },
+  { label: '2.49 — Nhân viên bậc 4',            value: 2.49 },
+  { label: '2.97 — Nhân viên bậc 5',            value: 2.97 },
+  { label: '3.50 — Chuyên viên / kỹ sư',        value: 3.50 },
+  { label: '4.00 — Chuyên viên chính',           value: 4.00 },
+  { label: '4.98 — Phó trưởng phòng',           value: 4.98 },
+  { label: '5.76 — Trưởng phòng',               value: 5.76 },
+  { label: '6.56 — Phó giám đốc',               value: 6.56 },
+  { label: '7.55 — Giám đốc bệnh viện',         value: 7.55 },
 ]
 
 const fmt = (n: number) => new Intl.NumberFormat('vi-VN').format(Math.round(n))
@@ -57,14 +56,32 @@ function calcPit(taxable: number) {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+function SectionCard({ step, title, desc, children }: {
+  step: number; title: string; desc?: string; children: React.ReactNode
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-start gap-4 px-5 py-4 border-b border-gray-100 bg-gray-50/60">
+        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold
+                         flex items-center justify-center mt-0.5">{step}</span>
+        <div>
+          <p className="text-sm font-semibold text-gray-800">{title}</p>
+          {desc && <p className="text-xs text-gray-400 mt-0.5">{desc}</p>}
+        </div>
+      </div>
+      <div className="px-5 py-4">{children}</div>
+    </div>
+  )
+}
+
 function Field({ label, note, hint, error, children }: {
   label: string; note?: React.ReactNode; hint?: string; error?: string; children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-gray-700 block mb-1">
+      <label className="block text-xs font-semibold text-gray-700 mb-1">
         {label}
-        {note && <span className="ml-1.5 font-normal">{note}</span>}
+        {note && <span className="ml-1.5 font-normal text-gray-400">{note}</span>}
       </label>
       {children}
       {hint  && !error && <p className="text-xs text-gray-400 mt-0.5">{hint}</p>}
@@ -80,30 +97,31 @@ function NumInput({ register, name, placeholder, step = '1000', min = '0' }: {
   return (
     <input type="number" step={step} min={min} placeholder={placeholder}
       {...register(name as any)}
-      className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm
+      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
                  focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent
                  [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
   )
 }
 
-function Row({ label, value, bold, bigValue, color, note }: {
-  label: string; value: string | number; bold?: boolean; bigValue?: boolean
-  color?: string; note?: string
+function PreviewRow({ label, value, sub, color, bold, divider }: {
+  label: string; value: string; sub?: string; color?: string; bold?: boolean; divider?: boolean
 }) {
   return (
-    <div className="flex justify-between items-baseline gap-2">
-      <span className={`text-gray-600 ${bold ? 'font-semibold text-gray-800' : ''}`}>
-        {label}
-        {note && <span className="ml-1 text-xs text-gray-400">({note})</span>}
-      </span>
-      <span className={`tabular-nums ${bold ? 'font-bold' : 'font-medium'} ${bigValue ? 'text-base' : ''} ${color ?? 'text-gray-800'}`}>
-        {value}
-      </span>
-    </div>
+    <>
+      {divider && <div className="border-t border-gray-100 my-1" />}
+      <div className="flex items-baseline justify-between gap-2 py-0.5">
+        <span className={`text-xs ${bold ? 'font-semibold text-gray-700' : 'text-gray-500'}`}>
+          {label}
+          {sub && <span className="text-gray-400 text-[10px] ml-1">({sub})</span>}
+        </span>
+        <span className={`text-xs font-semibold tabular-nums ${color ?? (bold ? 'text-gray-800' : 'text-gray-600')}`}>
+          {value}
+        </span>
+      </div>
+    </>
   )
 }
 
-// ── Employee tag chip ─────────────────────────────────────────────────────────
 function EmpChip({ emp, onRemove }: { emp: Employee; onRemove: () => void }) {
   return (
     <span className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-800
@@ -111,37 +129,26 @@ function EmpChip({ emp, onRemove }: { emp: Employee; onRemove: () => void }) {
       {emp.fullName}
       <span className="text-blue-400 font-mono text-[10px]">{emp.employeeCode}</span>
       <button type="button" onClick={onRemove}
-        className="ml-0.5 text-blue-400 hover:text-red-500 transition-colors leading-none">✕</button>
+        className="ml-0.5 text-blue-300 hover:text-red-500 transition-colors leading-none">✕</button>
     </span>
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 type SelectMode = 'individual' | 'department'
 
 export default function SalaryConfigPage() {
   const qc = useQueryClient()
 
-  // ── Employee / group selection state ────────────────────────────────────
-  const [mode, setMode] = useState<SelectMode>('individual')
-
-  // individual mode
-  const [empSearch, setEmpSearch] = useState('')
-  const [showList, setShowList]   = useState(false)
-
-  // shared: selected employees (works for both modes)
+  const [mode, setMode]               = useState<SelectMode>('individual')
+  const [empSearch, setEmpSearch]     = useState('')
+  const [showList, setShowList]       = useState(false)
   const [selectedEmps, setSelectedEmps] = useState<Employee[]>([])
-
-  // department mode
   const [deptId, setDeptId]           = useState('')
   const [checkedIds, setCheckedIds]   = useState<Set<string>>(new Set())
 
-  const { data: departments } = useQuery({
-    queryKey: ['departments'],
-    queryFn: getDepartments,
-  })
+  const { data: departments } = useQuery({ queryKey: ['departments'], queryFn: getDepartments })
 
-  const { data: empSearch_results } = useQuery({
+  const { data: empResults } = useQuery({
     queryKey: ['employees-search', empSearch],
     queryFn: () => searchEmployees({ keyword: empSearch, page: 0, size: 20 }),
     enabled: mode === 'individual' && empSearch.length >= 2,
@@ -153,7 +160,6 @@ export default function SalaryConfigPage() {
     enabled: mode === 'department' && deptId !== '',
   })
 
-  // first selected emp for history display
   const firstEmpId = selectedEmps[0]?.id ?? null
   const { data: history } = useQuery({
     queryKey: ['salary-history', firstEmpId],
@@ -161,9 +167,7 @@ export default function SalaryConfigPage() {
     enabled: !!firstEmpId && selectedEmps.length === 1,
   })
 
-  // ── Form ────────────────────────────────────────────────────────────────
   const [coeffMode, setCoeffMode] = useState<'preset' | 'manual'>('preset')
-
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -174,500 +178,483 @@ export default function SalaryConfigPage() {
     },
   })
 
-  // ── Batch save mutation ──────────────────────────────────────────────────
   const [batchResult, setBatchResult] = useState<{ ok: number; fail: number } | null>(null)
   const [saving, setSaving] = useState(false)
 
   const onSubmit = async (data: FormData) => {
-    if (selectedEmps.length === 0) {
-      alert('Vui lòng chọn ít nhất 1 nhân viên')
-      return
-    }
-    setSaving(true)
-    setBatchResult(null)
+    if (selectedEmps.length === 0) return
+    setSaving(true); setBatchResult(null)
     let ok = 0, fail = 0
     await Promise.allSettled(
       selectedEmps.map(emp =>
-        saveSalaryConfig({ ...data, employeeId: emp.id })
-          .then(() => ok++)
-          .catch(() => fail++)
+        saveSalaryConfig({ ...data, employeeId: emp.id }).then(() => ok++).catch(() => fail++)
       )
     )
-    setSaving(false)
-    setBatchResult({ ok, fail })
+    setSaving(false); setBatchResult({ ok, fail })
     if (ok > 0) qc.invalidateQueries({ queryKey: ['salary-history'] })
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
   const addEmp = (emp: Employee) => {
-    if (!selectedEmps.find(e => e.id === emp.id))
-      setSelectedEmps(prev => [...prev, emp])
+    if (!selectedEmps.find(e => e.id === emp.id)) setSelectedEmps(p => [...p, emp])
   }
-  const removeEmp = (id: string) => setSelectedEmps(prev => prev.filter(e => e.id !== id))
+  const removeEmp = (id: string) => setSelectedEmps(p => p.filter(e => e.id !== id))
 
   const toggleDeptEmp = (emp: Employee) => {
     const next = new Set(checkedIds)
-    if (next.has(emp.id)) next.delete(emp.id)
-    else next.add(emp.id)
+    next.has(emp.id) ? next.delete(emp.id) : next.add(emp.id)
     setCheckedIds(next)
-    // sync selectedEmps from dept list
-    const deptList = deptEmployees?.content ?? []
-    setSelectedEmps(deptList.filter(e => next.has(e.id)))
+    setSelectedEmps((deptEmployees?.content ?? []).filter(e => next.has(e.id)))
   }
 
   const toggleAllDept = () => {
     const all = deptEmployees?.content ?? []
-    if (checkedIds.size === all.length) {
-      setCheckedIds(new Set())
-      setSelectedEmps([])
-    } else {
-      const ids = new Set(all.map(e => e.id))
-      setCheckedIds(ids)
-      setSelectedEmps(all)
-    }
+    if (checkedIds.size === all.length) { setCheckedIds(new Set()); setSelectedEmps([]) }
+    else { setCheckedIds(new Set(all.map(e => e.id))); setSelectedEmps(all) }
   }
 
-  // ── Live salary preview ──────────────────────────────────────────────────
-  const w = watch()
-  const baseFull   = (w.basicSalary || 0) * (w.coefficient || 1)
-  const food       = w.allowanceFood || 0
-  const foodExempt = Math.min(food, 730_000)
-  const foodTax    = Math.max(food - 730_000, 0)
-  const taxExempt  = foodExempt + (w.allowanceToxic || 0)
-  const taxableAlw = foodTax + (w.allowanceTransport || 0) + (w.allowancePhone || 0)
-                   + (w.allowancePosition || 0) + (w.allowanceSeniority || 0)
-                   + (w.allowanceHouse || 0) + (w.allowanceOther || 0)
-  const gross      = baseFull + taxableAlw + taxExempt
-  const exempt     = w.bhxhExempt || false
-  const bhxhBase   = exempt ? 0 : Math.min(baseFull, 46_800_000)
-  const bhtnBase   = exempt ? 0 : Math.min(baseFull, 72_800_000)
-  const bhxh       = Math.round(bhxhBase * 0.08)
-  const bhyt       = Math.round(bhxhBase * 0.015)
-  const bhtn       = Math.round(bhtnBase * 0.01)
-  const persDed    = 11_000_000
-  const depDed     = (w.dependents || 0) * 4_400_000
-  const taxable    = Math.max(gross - taxExempt - bhxh - bhyt - bhtn - persDed - depDed, 0)
-  const pit        = calcPit(taxable)
-  const net        = gross - bhxh - bhyt - bhtn - pit
+  // Live salary calculations
+  const w           = watch()
+  const baseFull    = (w.basicSalary || 0) * (w.coefficient || 1)
+  const food        = w.allowanceFood || 0
+  const foodExempt  = Math.min(food, 730_000)
+  const foodTax     = Math.max(food - 730_000, 0)
+  const taxExempt   = foodExempt + (w.allowanceToxic || 0)
+  const taxableAlw  = foodTax + (w.allowanceTransport || 0) + (w.allowancePhone || 0)
+                    + (w.allowancePosition || 0) + (w.allowanceSeniority || 0)
+                    + (w.allowanceHouse || 0) + (w.allowanceOther || 0)
+  const gross       = baseFull + taxableAlw + taxExempt
+  const exempt      = w.bhxhExempt || false
+  const bhxhBase    = exempt ? 0 : Math.min(baseFull, 46_800_000)
+  const bhtnBase    = exempt ? 0 : Math.min(baseFull, 72_800_000)
+  const bhxh        = Math.round(bhxhBase * 0.08)
+  const bhyt        = Math.round(bhxhBase * 0.015)
+  const bhtn        = Math.round(bhtnBase * 0.01)
+  const persDed     = 11_000_000
+  const depDed      = (w.dependents || 0) * 4_400_000
+  const taxable     = Math.max(gross - taxExempt - bhxh - bhyt - bhtn - persDed - depDed, 0)
+  const pit         = calcPit(taxable)
+  const net         = gross - bhxh - bhyt - bhtn - pit
   const bhxhEmp    = Math.round(bhxhBase * 0.175)
   const bhytEmp    = Math.round(bhxhBase * 0.03)
   const bhtnEmp    = Math.round(bhtnBase * 0.01)
   const bhtnldEmp  = Math.round(bhxhBase * 0.005)
   const totalEmp   = gross + bhxhEmp + bhytEmp + bhtnEmp + bhtnldEmp
+  const hasPreview  = (w.basicSalary || 0) > 0
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div>
+    <div>
+      {/* Header */}
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Cấu hình lương</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Thiết lập lương, phụ cấp và hệ số — áp dụng cho cá nhân hoặc cả phòng ban</p>
+        <p className="text-sm text-gray-500 mt-0.5">Thiết lập lương cơ bản, hệ số và phụ cấp — áp dụng cho cá nhân hoặc cả phòng ban</p>
       </div>
 
       {batchResult && (
-        <div className={`rounded-lg px-4 py-3 text-sm border flex items-center gap-2
-          ${batchResult.fail === 0
-            ? 'bg-green-50 border-green-300 text-green-700'
-            : 'bg-yellow-50 border-yellow-300 text-yellow-800'}`}>
+        <div className={`mb-5 rounded-xl px-4 py-3 text-sm border flex items-center gap-2 ${
+          batchResult.fail === 0
+            ? 'bg-green-50 border-green-200 text-green-700'
+            : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+        }`}>
           {batchResult.fail === 0
             ? `✓ Đã lưu thành công cho ${batchResult.ok} nhân viên`
             : `Lưu ${batchResult.ok} thành công, ${batchResult.fail} thất bại`}
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white border border-gray-200 rounded-xl p-6 space-y-7">
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {/* 2-column layout */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
 
-        {/* ── Chọn đối tượng áp dụng ── */}
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-800">Đối tượng áp dụng</p>
-            <p className="text-xs text-gray-400 mt-0.5">Chọn 1 nhân viên hoặc cả phòng ban để áp dụng cùng 1 cấu hình lương</p>
-          </div>
+          {/* ── LEFT COLUMN — Form sections ── */}
+          <div className="space-y-4">
 
-          {/* Mode toggle */}
-          <div className="flex gap-2">
-            {(['individual', 'department'] as SelectMode[]).map(m => (
-              <button key={m} type="button" onClick={() => {
-                setMode(m)
-                setSelectedEmps([])
-                setCheckedIds(new Set())
-                setEmpSearch('')
-                setDeptId('')
-              }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  mode === m
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                }`}>
-                {m === 'individual' ? '👤 Cá nhân' : '🏢 Theo phòng ban'}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Individual mode ── */}
-          {mode === 'individual' && (
-            <div className="space-y-2">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Gõ tên hoặc mã nhân viên để tìm (ít nhất 2 ký tự)…"
-                  value={empSearch}
-                  onChange={e => { setEmpSearch(e.target.value); setShowList(true) }}
-                  onFocus={() => setShowList(true)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                {showList && empSearch_results?.content?.length ? (
-                  <div className="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg shadow-lg bg-white
-                                  max-h-48 overflow-y-auto">
-                    {empSearch_results.content.map(emp => (
-                      <div key={emp.id}
-                        onClick={() => {
-                          addEmp(emp)
-                          setEmpSearch('')
-                          setShowList(false)
-                        }}
-                        className="px-3 py-2.5 text-sm hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0
-                                   flex items-center justify-between">
-                        <span>
-                          <span className="font-medium text-gray-800">{emp.fullName}</span>
-                          <span className="text-blue-600 ml-2 text-xs font-mono">{emp.employeeCode}</span>
-                          {emp.position && <span className="text-gray-400 ml-2 text-xs">— {emp.position}</span>}
-                        </span>
-                        {selectedEmps.find(e => e.id === emp.id) && (
-                          <span className="text-green-500 text-xs">✓ đã chọn</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <p className="text-xs text-gray-400">Có thể thêm nhiều nhân viên — cấu hình sẽ áp dụng cho tất cả</p>
-            </div>
-          )}
-
-          {/* ── Department mode ── */}
-          {mode === 'department' && (
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">Chọn phòng ban</label>
-                <select value={deptId} onChange={e => {
-                  setDeptId(e.target.value)
-                  setCheckedIds(new Set())
-                  setSelectedEmps([])
-                }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white
-                             focus:outline-none focus:ring-2 focus:ring-blue-400">
-                  <option value="">-- Chọn phòng ban --</option>
-                  {departments?.filter(d => !d.code.startsWith('GRP-')).map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
+            {/* Step 1 — Chọn đối tượng */}
+            <SectionCard step={1} title="Đối tượng áp dụng"
+              desc="Chọn nhân viên cụ thể hoặc áp dụng cùng cấu hình cho cả phòng ban">
+              <div className="space-y-3">
+                {/* Mode tabs */}
+                <div className="inline-flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                  {(['individual', 'department'] as SelectMode[]).map(m => (
+                    <button key={m} type="button"
+                      onClick={() => { setMode(m); setSelectedEmps([]); setCheckedIds(new Set()); setEmpSearch(''); setDeptId('') }}
+                      className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                        mode === m
+                          ? 'bg-white text-blue-700 shadow-sm border border-gray-200'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}>
+                      {m === 'individual' ? '👤 Cá nhân' : '🏢 Theo phòng ban'}
+                    </button>
                   ))}
-                </select>
-              </div>
+                </div>
 
-              {deptEmployees?.content && deptEmployees.content.length > 0 && (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  {/* Header + toggle all */}
-                  <div className="bg-gray-50 px-3 py-2 flex items-center justify-between border-b border-gray-200">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox"
-                        checked={checkedIds.size === deptEmployees.content.length}
-                        onChange={toggleAllDept}
-                        className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                      <span className="text-xs font-semibold text-gray-700">
-                        Chọn tất cả ({deptEmployees.content.length} nhân viên)
-                      </span>
-                    </label>
-                    {checkedIds.size > 0 && (
-                      <span className="text-xs text-blue-600 font-medium">
-                        Đã chọn {checkedIds.size}
-                      </span>
+                {/* Individual search */}
+                {mode === 'individual' && (
+                  <div className="relative">
+                    <div className="relative">
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
+                      </svg>
+                      <input type="text"
+                        placeholder="Tìm theo tên hoặc mã nhân viên (ít nhất 2 ký tự)…"
+                        value={empSearch}
+                        onChange={e => { setEmpSearch(e.target.value); setShowList(true) }}
+                        onFocus={() => setShowList(true)}
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg
+                                   focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    </div>
+                    {showList && empResults?.content?.length ? (
+                      <div className="absolute z-20 w-full mt-1 border border-gray-200 rounded-xl shadow-xl bg-white
+                                      max-h-52 overflow-y-auto">
+                        {empResults.content.map(emp => (
+                          <div key={emp.id}
+                            onClick={() => { addEmp(emp); setEmpSearch(''); setShowList(false) }}
+                            className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50
+                                       last:border-0 flex items-center justify-between group">
+                            <div>
+                              <span className="text-sm font-medium text-gray-800 group-hover:text-blue-700">{emp.fullName}</span>
+                              <span className="text-blue-500 ml-2 text-xs font-mono">{emp.employeeCode}</span>
+                              {emp.position && <span className="text-gray-400 ml-2 text-xs">· {emp.position}</span>}
+                            </div>
+                            {selectedEmps.find(e => e.id === emp.id) && (
+                              <span className="text-green-500 text-xs font-medium">✓</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Department picker */}
+                {mode === 'department' && (
+                  <div className="space-y-3">
+                    <select value={deptId} onChange={e => { setDeptId(e.target.value); setCheckedIds(new Set()); setSelectedEmps([]) }}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                                 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                      <option value="">-- Chọn phòng ban --</option>
+                      {departments?.filter(d => !d.code.startsWith('GRP-')).map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+
+                    {deptEmployees?.content && deptEmployees.content.length > 0 && (
+                      <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-200">
+                          <label className="flex items-center gap-2.5 cursor-pointer">
+                            <input type="checkbox"
+                              checked={checkedIds.size === deptEmployees.content.length}
+                              onChange={toggleAllDept}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                            <span className="text-xs font-semibold text-gray-700">
+                              Chọn tất cả ({deptEmployees.content.length} nhân viên)
+                            </span>
+                          </label>
+                          {checkedIds.size > 0 && (
+                            <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">
+                              Đã chọn {checkedIds.size}
+                            </span>
+                          )}
+                        </div>
+                        <div className="max-h-52 overflow-y-auto divide-y divide-gray-50">
+                          {deptEmployees.content.map(emp => (
+                            <label key={emp.id}
+                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer">
+                              <input type="checkbox"
+                                checked={checkedIds.has(emp.id)}
+                                onChange={() => toggleDeptEmp(emp)}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0" />
+                              <span className="flex-1 min-w-0">
+                                <span className="text-sm font-medium text-gray-800">{emp.fullName}</span>
+                                <span className="text-blue-500 ml-2 text-xs font-mono">{emp.employeeCode}</span>
+                              </span>
+                              {emp.position && <span className="text-xs text-gray-400">{emp.position}</span>}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {deptId && deptEmployees?.content?.length === 0 && (
+                      <p className="text-sm text-gray-400 text-center py-4">Phòng ban này chưa có nhân viên</p>
                     )}
                   </div>
-                  {/* Employee list */}
-                  <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
-                    {deptEmployees.content.map(emp => (
-                      <label key={emp.id}
-                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-blue-50 cursor-pointer">
-                        <input type="checkbox"
-                          checked={checkedIds.has(emp.id)}
-                          onChange={() => toggleDeptEmp(emp)}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0" />
-                        <span className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-gray-800">{emp.fullName}</span>
-                          <span className="text-blue-600 ml-2 text-xs font-mono">{emp.employeeCode}</span>
-                        </span>
-                        {emp.position && (
-                          <span className="text-xs text-gray-400 flex-shrink-0">{emp.position}</span>
-                        )}
-                      </label>
+                )}
+
+                {/* Selected chips */}
+                {selectedEmps.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <p className="text-xs font-semibold text-blue-700 w-full">
+                      {selectedEmps.length} nhân viên được áp dụng:
+                    </p>
+                    {selectedEmps.map(emp => (
+                      <EmpChip key={emp.id} emp={emp} onRemove={() => {
+                        removeEmp(emp.id)
+                        if (mode === 'department') {
+                          const next = new Set(checkedIds); next.delete(emp.id); setCheckedIds(next)
+                        }
+                      }} />
                     ))}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+
+            {/* Step 2 — Lương & Hệ số */}
+            <SectionCard step={2} title="Lương cơ bản & Hệ số"
+              desc="Lương thực tế = Lương cơ bản × Hệ số. Đây là cơ sở tính BHXH/BHYT (trần 46.8 triệu)">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Lương cơ bản (VND)"
+                  hint="Không bao gồm phụ cấp"
+                  error={errors.basicSalary?.message}>
+                  <NumInput register={register} name="basicSalary" placeholder="3,000,000" step="100000" min="1000000" />
+                </Field>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Hệ số lương</label>
+                    <div className="inline-flex bg-gray-100 rounded-md p-0.5">
+                      {(['preset', 'manual'] as const).map(m => (
+                        <button key={m} type="button" onClick={() => setCoeffMode(m)}
+                          className={`text-xs px-2.5 py-1 rounded transition-all ${
+                            coeffMode === m ? 'bg-white shadow-sm text-blue-700 font-medium' : 'text-gray-500'
+                          }`}>
+                          {m === 'preset' ? 'Chọn bậc' : 'Nhập tay'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {coeffMode === 'preset' ? (
+                    <select onChange={e => setValue('coefficient', parseFloat(e.target.value), { shouldValidate: true })}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                                 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                      <option value="">-- Chọn bậc hệ số --</option>
+                      {COEFFICIENT_PRESETS.map(p => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input type="number" step="0.01" min="1" max="10" placeholder="VD: 2.34"
+                      {...register('coefficient')}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm
+                                 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  )}
+                  {errors.coefficient && <p className="text-xs text-red-500 mt-0.5">⚠ {errors.coefficient.message}</p>}
+                  {baseFull > 0 && (
+                    <p className="text-xs text-blue-600 mt-1 font-semibold">→ {fmt(baseFull)} ₫/tháng</p>
+                  )}
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Step 3 — Phụ cấp chịu thuế */}
+            <SectionCard step={3} title="Phụ cấp chịu thuế"
+              desc="Tính vào thu nhập chịu thuế TNCN. Để 0 nếu không áp dụng">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Field label="Chức vụ" hint="Phó phòng ~500K–2M" error={errors.allowancePosition?.message}>
+                  <NumInput register={register} name="allowancePosition" placeholder="0" />
+                </Field>
+                <Field label="Thâm niên" hint="~5–10% lương CB/năm" error={errors.allowanceSeniority?.message}>
+                  <NumInput register={register} name="allowanceSeniority" placeholder="0" />
+                </Field>
+                <Field label="Nhà ở" hint="Tối đa 15% lương CB" error={errors.allowanceHouse?.message}>
+                  <NumInput register={register} name="allowanceHouse" placeholder="0" />
+                </Field>
+                <Field label="Phụ cấp khác" error={errors.allowanceOther?.message}>
+                  <NumInput register={register} name="allowanceOther" placeholder="0" />
+                </Field>
+              </div>
+            </SectionCard>
+
+            {/* Step 4 — Phụ cấp đặc biệt */}
+            <SectionCard step={4} title="Phụ cấp đặc biệt"
+              desc="Miễn hoặc giảm thuế theo quy định pháp luật">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Field label="Ăn ca"
+                  note={<span className="text-green-600 text-[10px] font-semibold bg-green-50 px-1.5 py-0.5 rounded-full">miễn ≤730K</span>}
+                  hint="Vượt 730K → chịu thuế"
+                  error={errors.allowanceFood?.message}>
+                  <NumInput register={register} name="allowanceFood" placeholder="730,000" />
+                </Field>
+                <Field label="Đi lại / xăng xe" error={errors.allowanceTransport?.message}>
+                  <NumInput register={register} name="allowanceTransport" placeholder="0" />
+                </Field>
+                <Field label="Điện thoại" error={errors.allowancePhone?.message}>
+                  <NumInput register={register} name="allowancePhone" placeholder="0" />
+                </Field>
+                <Field label="Độc hại / nguy hiểm"
+                  note={<span className="text-green-600 text-[10px] font-semibold bg-green-50 px-1.5 py-0.5 rounded-full">miễn thuế & BHXH</span>}
+                  hint="TT 111/2013"
+                  error={errors.allowanceToxic?.message}>
+                  <NumInput register={register} name="allowanceToxic" placeholder="0" />
+                </Field>
+              </div>
+            </SectionCard>
+
+            {/* Step 5 — Thuế & BHXH */}
+            <SectionCard step={5} title="Giảm trừ thuế TNCN & Bảo hiểm">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Số người phụ thuộc"
+                  note="(giảm 4.4 triệu/người/tháng)"
+                  error={errors.dependents?.message}>
+                  <select {...register('dependents')}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    {[0,1,2,3,4,5].map(n => (
+                      <option key={n} value={n}>
+                        {n} người{n > 0 ? ` — giảm ${fmt(n * 4_400_000)} ₫` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <div className="flex items-center">
+                  <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border border-gray-200
+                                    hover:bg-gray-50 transition-colors w-full">
+                    <input type="checkbox" {...register('bhxhExempt')}
+                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Không đóng BHXH bắt buộc</p>
+                      <p className="text-xs text-gray-400 mt-0.5">HĐ &lt;1 tháng hoặc khoán việc</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Step 6 — Ngày áp dụng + Submit */}
+            <SectionCard step={6} title="Ngày áp dụng & Xác nhận">
+              <div className="flex items-end gap-4 flex-wrap">
+                <Field label="Ngày bắt đầu áp dụng"
+                  hint="Hệ thống dùng bản mới nhất khi tính lương hàng tháng"
+                  error={errors.effectiveFrom?.message}>
+                  <input type="date" {...register('effectiveFrom')}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </Field>
+                <div className="flex items-center gap-3 pb-[2px]">
+                  <button type="submit"
+                    disabled={saving || selectedEmps.length === 0}
+                    className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold
+                               px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors shadow-sm">
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293z"/>
+                    </svg>
+                    {saving
+                      ? `Đang lưu…`
+                      : selectedEmps.length > 1
+                        ? `Lưu cho ${selectedEmps.length} nhân viên`
+                        : 'Lưu cấu hình'}
+                  </button>
+                  {selectedEmps.length === 0 && (
+                    <p className="text-xs text-gray-400">Chọn nhân viên để kích hoạt</p>
+                  )}
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* ── RIGHT COLUMN — Preview sticky ── */}
+          <div className="xl:sticky xl:top-6 space-y-3">
+            {/* Salary preview card */}
+            <div className={`rounded-xl border overflow-hidden transition-all ${
+              hasPreview ? 'border-blue-200 shadow-md shadow-blue-50' : 'border-gray-200'
+            }`}>
+              <div className={`px-4 py-3 border-b ${hasPreview ? 'bg-blue-600 border-blue-600' : 'bg-gray-50 border-gray-200'}`}>
+                <p className={`text-sm font-semibold ${hasPreview ? 'text-white' : 'text-gray-500'}`}>
+                  Dự kiến bảng lương
+                </p>
+                {hasPreview && selectedEmps.length > 1 && (
+                  <p className="text-blue-200 text-xs mt-0.5">Áp dụng cho {selectedEmps.length} nhân viên</p>
+                )}
+              </div>
+
+              {!hasPreview ? (
+                <div className="px-4 py-8 text-center bg-white">
+                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
+                  <p className="text-xs text-gray-400">Nhập lương cơ bản để xem dự tính</p>
+                </div>
+              ) : (
+                <div className="bg-white px-4 py-4 space-y-3">
+                  {/* Thu nhập */}
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Thu nhập</p>
+                    <div className="space-y-0.5">
+                      <PreviewRow label="Lương CB × hệ số" value={`${fmt(baseFull)} ₫`} />
+                      {taxableAlw > 0 && <PreviewRow label="Phụ cấp chịu thuế" value={`+ ${fmt(taxableAlw)} ₫`} />}
+                      {taxExempt > 0 && <PreviewRow label="Phụ cấp miễn thuế" value={`+ ${fmt(taxExempt)} ₫`} color="text-green-600" />}
+                      <PreviewRow label="GROSS" value={`${fmt(gross)} ₫`} bold divider />
+                    </div>
+                  </div>
+
+                  {/* Khấu trừ NLĐ */}
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Khấu trừ (người lao động)</p>
+                    <div className="space-y-0.5">
+                      <PreviewRow label="BHXH 8%" value={`- ${fmt(bhxh)} ₫`} color="text-red-500" sub={`trên ${fmt(Math.min(baseFull, 46_800_000))}`} />
+                      <PreviewRow label="BHYT 1.5%" value={`- ${fmt(bhyt)} ₫`} color="text-red-500" />
+                      <PreviewRow label="BHTN 1%" value={`- ${fmt(bhtn)} ₫`} color="text-red-500" />
+                      <PreviewRow label="Giảm trừ bản thân" value={`- ${fmt(persDed)} ₫`} color="text-green-600" divider />
+                      {(w.dependents || 0) > 0 && (
+                        <PreviewRow label={`Giảm trừ ${w.dependents} người phụ thuộc`} value={`- ${fmt(depDed)} ₫`} color="text-green-600" />
+                      )}
+                      <PreviewRow label="TNCT" value={`${fmt(taxable)} ₫`} />
+                      <PreviewRow label="Thuế TNCN (lũy tiến)" value={`- ${fmt(pit)} ₫`} color="text-red-500" />
+                    </div>
+                  </div>
+
+                  {/* NET */}
+                  <div className="rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 px-4 py-3 text-white">
+                    <p className="text-xs text-blue-200 font-medium">Lương NET thực nhận</p>
+                    <p className="text-xl font-bold mt-0.5">{fmt(net)} ₫</p>
+                  </div>
+
+                  {/* Chi phí bệnh viện */}
+                  <div className="rounded-xl bg-orange-50 border border-orange-100 px-4 py-3">
+                    <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-2">Chi phí bệnh viện</p>
+                    <div className="space-y-0.5">
+                      <PreviewRow label="BHXH 17.5%" value={`${fmt(bhxhEmp)} ₫`} />
+                      <PreviewRow label="BHYT 3%" value={`${fmt(bhytEmp)} ₫`} />
+                      <PreviewRow label="BHTN 1%" value={`${fmt(bhtnEmp)} ₫`} />
+                      <PreviewRow label="BHTNLĐ-BNN 0.5%" value={`${fmt(bhtnldEmp)} ₫`} />
+                      <PreviewRow label="Tổng chi phí nhân sự" value={`${fmt(totalEmp)} ₫`} bold color="text-orange-800" divider />
+                    </div>
                   </div>
                 </div>
               )}
-
-              {deptId && deptEmployees?.content?.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">Phòng ban này chưa có nhân viên đang làm việc</p>
-              )}
             </div>
-          )}
 
-          {/* Selected chips */}
-          {selectedEmps.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <span className="text-xs font-semibold text-blue-700 w-full mb-1">
-                {selectedEmps.length} nhân viên được áp dụng:
-              </span>
-              {selectedEmps.map(emp => (
-                <EmpChip key={emp.id} emp={emp} onRemove={() => {
-                  removeEmp(emp.id)
-                  if (mode === 'department') {
-                    const next = new Set(checkedIds)
-                    next.delete(emp.id)
-                    setCheckedIds(next)
-                  }
-                }} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Lương cơ bản & hệ số ── */}
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-800">Lương cơ bản & Hệ số</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Lương thực tế = Lương cơ bản × Hệ số. Mức đóng BHXH/BHYT tính trên giá trị này (trần 46.8 triệu).
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Lương cơ bản (VND)"
-              hint="Tối thiểu 1,000,000 ₫ — không bao gồm phụ cấp"
-              error={errors.basicSalary?.message}>
-              <NumInput register={register} name="basicSalary" placeholder="3000000" step="100000" min="1000000" />
-            </Field>
-            <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Hệ số lương <span className="font-normal text-gray-400">(theo thang bảng lương)</span>
-              </label>
-              <div className="flex gap-2 mb-1.5">
-                {(['preset', 'manual'] as const).map(m => (
-                  <button key={m} type="button" onClick={() => setCoeffMode(m)}
-                    className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
-                      coeffMode === m ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'
-                    }`}>
-                    {m === 'preset' ? 'Chọn bậc' : 'Nhập tay'}
-                  </button>
-                ))}
-              </div>
-              {coeffMode === 'preset' ? (
-                <select onChange={e => setValue('coefficient', parseFloat(e.target.value), { shouldValidate: true })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white
-                             focus:outline-none focus:ring-2 focus:ring-blue-400">
-                  <option value="">-- Chọn bậc hệ số --</option>
-                  {COEFFICIENT_PRESETS.map(p => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
+            {/* History card */}
+            {history && history.length > 0 && selectedEmps.length === 1 && (
+              <div className="rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                  <p className="text-xs font-semibold text-gray-600">Lịch sử — {selectedEmps[0].fullName}</p>
+                </div>
+                <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                  {history.map((c: SalaryConfig) => (
+                    <div key={c.id} className="px-4 py-3 hover:bg-gray-50">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-gray-700">{c.effectiveFrom}</span>
+                        <span className="text-xs font-bold text-blue-700 tabular-nums">
+                          {fmt(c.effectiveSalary + c.totalAllowance)} ₫
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-400 flex gap-3">
+                        <span>CB: {fmt(c.basicSalary)} ₫</span>
+                        <span>× {c.coefficient}</span>
+                        <span>PC: {fmt(c.totalAllowance)} ₫</span>
+                      </div>
+                    </div>
                   ))}
-                </select>
-              ) : (
-                <input type="number" step="0.01" min="1" max="10" placeholder="VD: 2.34"
-                  {...register('coefficient')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-400" />
-              )}
-              {errors.coefficient && <p className="text-xs text-red-500 mt-0.5">⚠ {errors.coefficient.message}</p>}
-              {baseFull > 0 && (
-                <p className="text-xs text-blue-600 mt-1 font-medium">→ {fmt(baseFull)} ₫/tháng</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Phụ cấp chịu thuế ── */}
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-800">Phụ cấp chịu thuế (VND/tháng)</p>
-            <p className="text-xs text-gray-400 mt-0.5">Tính vào thu nhập chịu thuế TNCN. Để 0 nếu không áp dụng.</p>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Field label="Chức vụ" hint="Phó phòng ~500K–2M" error={errors.allowancePosition?.message}>
-              <NumInput register={register} name="allowancePosition" placeholder="0" />
-            </Field>
-            <Field label="Thâm niên" hint="~5–10% lương CB/năm" error={errors.allowanceSeniority?.message}>
-              <NumInput register={register} name="allowanceSeniority" placeholder="0" />
-            </Field>
-            <Field label="Nhà ở" hint="Tối đa 15% lương CB" error={errors.allowanceHouse?.message}>
-              <NumInput register={register} name="allowanceHouse" placeholder="0" />
-            </Field>
-            <Field label="Phụ cấp khác" error={errors.allowanceOther?.message}>
-              <NumInput register={register} name="allowanceOther" placeholder="0" />
-            </Field>
-          </div>
-        </div>
-
-        {/* ── Phụ cấp đặc biệt ── */}
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-800">Phụ cấp đặc biệt (VND/tháng)</p>
-            <p className="text-xs text-gray-400 mt-0.5">Được miễn hoặc giảm thuế theo quy định pháp luật.</p>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            <Field label="Ăn ca" note={<span className="text-green-600 font-normal">miễn thuế ≤730K</span>}
-              hint="Phần vượt 730K tính vào TNCT" error={errors.allowanceFood?.message}>
-              <NumInput register={register} name="allowanceFood" placeholder="730000" />
-            </Field>
-            <Field label="Đi lại / xăng xe" error={errors.allowanceTransport?.message}>
-              <NumInput register={register} name="allowanceTransport" placeholder="0" />
-            </Field>
-            <Field label="Điện thoại" error={errors.allowancePhone?.message}>
-              <NumInput register={register} name="allowancePhone" placeholder="0" />
-            </Field>
-          </div>
-          <div className="max-w-xs">
-            <Field label="Độc hại / nguy hiểm"
-              note={<span className="text-green-600 font-normal">miễn thuế TNCN & BHXH — TT 111/2013</span>}
-              hint="Tiếp xúc hóa chất, phóng xạ, môi trường độc hại"
-              error={errors.allowanceToxic?.message}>
-              <NumInput register={register} name="allowanceToxic" placeholder="0" />
-            </Field>
-          </div>
-        </div>
-
-        {/* ── Thuế & BHXH ── */}
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-gray-800">Thuế TNCN & Bảo hiểm</p>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Số người phụ thuộc"
-              note={<span className="text-gray-400 font-normal">(giảm 4.4 triệu/người/tháng)</span>}
-              error={errors.dependents?.message}>
-              <select {...register('dependents')}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-400">
-                {[0,1,2,3,4,5].map(n => (
-                  <option key={n} value={n}>
-                    {n} người{n > 0 ? ` — giảm ${fmt(n * 4_400_000)} ₫/tháng` : ''}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <div className="flex items-end pb-1">
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input type="checkbox" {...register('bhxhExempt')}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Không đóng BHXH bắt buộc</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Hợp đồng &lt;1 tháng hoặc khoán việc</p>
                 </div>
-              </label>
-            </div>
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* ── Preview ── */}
-        {(w.basicSalary || 0) > 0 && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
-            <p className="text-sm font-semibold text-gray-800">
-              Dự kiến bảng lương
-              {selectedEmps.length > 1 && (
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  (áp dụng cho {selectedEmps.length} nhân viên với cùng hệ số)
-                </span>
-              )}
-            </p>
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Thu nhập</p>
-              <div className="space-y-1.5 text-sm">
-                <Row label="Lương cơ bản × hệ số" value={fmt(baseFull)} />
-                {taxableAlw > 0 && <Row label="Phụ cấp chịu thuế" value={fmt(taxableAlw)} />}
-                {taxExempt > 0  && <Row label="Phụ cấp miễn thuế" value={fmt(taxExempt)} color="text-green-600" note="không tính thuế & BHXH" />}
-                <Row label="Gross" value={fmt(gross)} bold />
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Khấu trừ</p>
-              <div className="space-y-1.5 text-sm">
-                <Row label={`BHXH 8% (trên ${fmt(Math.min(baseFull, 46_800_000))})`} value={`- ${fmt(bhxh)}`} color="text-red-500" />
-                <Row label="BHYT 1.5%" value={`- ${fmt(bhyt)}`} color="text-red-500" />
-                <Row label="BHTN 1%" value={`- ${fmt(bhtn)}`} color="text-red-500" />
-                <div className="border-t border-dashed border-gray-300 pt-1.5 mt-1 space-y-1.5">
-                  <Row label="Giảm trừ bản thân 11 triệu" value={`- ${fmt(persDed)}`} color="text-green-600" />
-                  {(w.dependents || 0) > 0 && <Row label={`Giảm trừ ${w.dependents} người phụ thuộc`} value={`- ${fmt(depDed)}`} color="text-green-600" />}
-                  <Row label="Thu nhập chịu thuế" value={fmt(taxable)} />
-                  <Row label="Thuế TNCN (lũy tiến)" value={`- ${fmt(pit)}`} color="text-red-500" />
-                </div>
-                <Row label="Lương NET thực nhận" value={`${fmt(net)} ₫`} bold bigValue color="text-green-700" />
-              </div>
-            </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-2">Chi phí bệnh viện (chủ sử dụng)</p>
-              <div className="space-y-1 text-sm">
-                <Row label="BHXH 17.5%" value={fmt(bhxhEmp)} />
-                <Row label="BHYT 3%" value={fmt(bhytEmp)} />
-                <Row label="BHTN 1%" value={fmt(bhtnEmp)} />
-                <Row label="BHTNLĐ-BNN 0.5%" value={fmt(bhtnldEmp)} />
-                <Row label="Tổng chi phí nhân sự / tháng" value={`${fmt(totalEmp)} ₫`} bold color="text-orange-800" />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Ngày áp dụng & Submit ── */}
-        <Field label="Ngày áp dụng"
-          hint="Hệ thống dùng bản mới nhất khi tính lương hàng tháng"
-          error={errors.effectiveFrom?.message}>
-          <input type="date" {...register('effectiveFrom')}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        </Field>
-
-        <div className="flex items-center gap-4">
-          <button type="submit" disabled={saving || selectedEmps.length === 0}
-            className="bg-blue-600 text-white text-sm font-semibold px-8 py-2.5 rounded-lg
-                       hover:bg-blue-700 disabled:opacity-40 transition-colors shadow-sm">
-            {saving
-              ? `Đang lưu ${selectedEmps.length} nhân viên…`
-              : `Lưu cấu hình${selectedEmps.length > 1 ? ` cho ${selectedEmps.length} nhân viên` : ''}`}
-          </button>
-          {selectedEmps.length === 0 && (
-            <p className="text-xs text-gray-400">Chọn nhân viên để kích hoạt nút lưu</p>
-          )}
         </div>
       </form>
-
-      {/* ── Lịch sử ── */}
-      {history && history.length > 0 && selectedEmps.length === 1 && (
-        <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Lịch sử cấu hình — {selectedEmps[0].fullName}
-          </h2>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">Áp dụng từ</th>
-                  <th className="px-4 py-3 text-right">Lương CB</th>
-                  <th className="px-4 py-3 text-right">Hệ số</th>
-                  <th className="px-4 py-3 text-right">Phụ cấp</th>
-                  <th className="px-4 py-3 text-right">N. phụ thuộc</th>
-                  <th className="px-4 py-3 text-right">Gross dự kiến</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {history.map((c: SalaryConfig) => (
-                  <tr key={c.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{c.effectiveFrom}</td>
-                    <td className="px-4 py-3 text-right">{fmt(c.basicSalary)}</td>
-                    <td className="px-4 py-3 text-right">{c.coefficient}</td>
-                    <td className="px-4 py-3 text-right">{fmt(c.totalAllowance)}</td>
-                    <td className="px-4 py-3 text-right">{c.dependents} người</td>
-                    <td className="px-4 py-3 text-right font-semibold text-blue-700">
-                      {fmt(c.effectiveSalary + c.totalAllowance)} ₫
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
