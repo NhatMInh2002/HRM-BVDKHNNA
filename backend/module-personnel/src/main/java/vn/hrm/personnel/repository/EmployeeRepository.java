@@ -30,14 +30,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     @Query("SELECT e.id FROM Employee e WHERE e.department.id = :departmentId")
     List<UUID> findIdsByDepartmentId(@Param("departmentId") UUID departmentId);
 
-    // FUNCTION('unaccent', ...) gọi PostgreSQL unaccent qua JPQL — không phân biệt dấu tiếng Việt
     @Query("""
         SELECT e FROM Employee e
         LEFT JOIN FETCH e.department d
-        WHERE (
-            FUNCTION('unaccent', LOWER(e.fullName))    LIKE FUNCTION('unaccent', LOWER(CONCAT('%', :keyword, '%')))
-            OR LOWER(e.employeeCode)                   LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(e.email)                          LIKE LOWER(CONCAT('%', :keyword, '%'))
+        WHERE (:keyword = '' OR
+            LOWER(e.fullName)     LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(e.email)        LIKE LOWER(CONCAT('%', :keyword, '%'))
         )
         AND (:status IS NULL OR e.status = :status)
         AND (:departmentId IS NULL OR d.id = :departmentId)
