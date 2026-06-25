@@ -20,7 +20,6 @@ import java.util.UUID;
 public class AdminController {
 
     private final RoleManagementPort roleManagementPort;
-    private final KeycloakAdminService keycloakAdminService;
 
     @GetMapping("/role-assignments")
     public ResponseEntity<ApiResponse<Map<String, Object>>> listRoleAssignments(
@@ -52,21 +51,7 @@ public class AdminController {
             @PathVariable UUID id,
             @RequestBody UpdateRoleRequest req
     ) {
-        // 1. Lưu vào DB
         roleManagementPort.updateRole(id, req.role(), req.keycloakUsername());
-
-        // 2. Sync lên Keycloak nếu có keycloakUsername
-        String syncResult = "DB updated";
-        if (req.keycloakUsername() != null && !req.keycloakUsername().isBlank()) {
-            String userId = keycloakAdminService.findUserId(req.keycloakUsername());
-            if (userId != null) {
-                boolean ok = keycloakAdminService.assignRole(userId, req.role());
-                syncResult = ok ? "DB + Keycloak synced" : "DB updated, Keycloak sync failed";
-            } else {
-                syncResult = "DB updated, Keycloak user not found";
-            }
-        }
-
-        return ResponseEntity.ok(ApiResponse.ok(syncResult));
+        return ResponseEntity.ok(ApiResponse.ok("Role updated"));
     }
 }
