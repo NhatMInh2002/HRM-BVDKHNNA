@@ -30,33 +30,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     @Query("SELECT e.id FROM Employee e WHERE e.department.id = :departmentId")
     List<UUID> findIdsByDepartmentId(@Param("departmentId") UUID departmentId);
 
-    // unaccent() để tìm kiếm không phân biệt dấu tiếng Việt (VD: "Nhat Minh" = "Nhật Minh")
-    @Query(value = """
-        SELECT e.* FROM personnel.employees e
-        LEFT JOIN personnel.departments d ON e.department_id = d.id
+    // FUNCTION('unaccent', ...) gọi PostgreSQL unaccent qua JPQL — không phân biệt dấu tiếng Việt
+    @Query("""
+        SELECT e FROM Employee e
+        LEFT JOIN FETCH e.department d
         WHERE (
-            unaccent(lower(e.full_name))   LIKE unaccent(lower(concat('%', :keyword, '%')))
-            OR lower(e.employee_code)      LIKE lower(concat('%', :keyword, '%'))
-            OR lower(e.email)              LIKE lower(concat('%', :keyword, '%'))
+            FUNCTION('unaccent', LOWER(e.fullName))    LIKE FUNCTION('unaccent', LOWER(CONCAT('%', :keyword, '%')))
+            OR LOWER(e.employeeCode)                   LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(e.email)                          LIKE LOWER(CONCAT('%', :keyword, '%'))
         )
         AND (:status IS NULL OR e.status = :status)
-        AND (:departmentId IS NULL OR e.department_id = CAST(:departmentId AS UUID))
-        ORDER BY e.full_name
-    """,
-    countQuery = """
-        SELECT COUNT(*) FROM personnel.employees e
-        WHERE (
-            unaccent(lower(e.full_name))   LIKE unaccent(lower(concat('%', :keyword, '%')))
-            OR lower(e.employee_code)      LIKE lower(concat('%', :keyword, '%'))
-            OR lower(e.email)              LIKE lower(concat('%', :keyword, '%'))
-        )
-        AND (:status IS NULL OR e.status = :status)
-        AND (:departmentId IS NULL OR e.department_id = CAST(:departmentId AS UUID))
-    """,
-    nativeQuery = true)
+        AND (:departmentId IS NULL OR d.id = :departmentId)
+        ORDER BY e.fullName
+    """)
     Page<Employee> search(
         @Param("keyword") String keyword,
-        @Param("status") String status,
+        @Param("status") EmployeeStatus status,
         @Param("departmentId") UUID departmentId,
         Pageable pageable
     );
