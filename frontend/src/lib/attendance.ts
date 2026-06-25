@@ -1,8 +1,130 @@
 import { apiFetch } from './api'
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'LEAVE'
-export type LeaveType = 'ANNUAL' | 'SICK' | 'MATERNITY' | 'UNPAID' | 'OTHER'
+export type LeaveType =
+  | 'ANNUAL'
+  | 'PERSONAL_MARRIAGE'
+  | 'PERSONAL_CHILD_MARRIAGE'
+  | 'BEREAVEMENT_LEVEL1'
+  | 'BEREAVEMENT_LEVEL2'
+  | 'SICK'
+  | 'MATERNITY'
+  | 'PATERNITY'
+  | 'COMPENSATORY'
+  | 'UNPAID'
+  | 'OTHER'
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface LeaveTypeMeta {
+  label: string
+  group: string
+  maxDays?: number        // số ngày tối đa theo quy định (undefined = không giới hạn cứng)
+  paid: boolean
+  requiresDoc?: string    // loại giấy tờ cần nộp
+}
+
+export const LEAVE_TYPE_META: Record<LeaveType, LeaveTypeMeta> = {
+  ANNUAL: {
+    label: 'Nghỉ phép năm',
+    group: 'Phép năm',
+    paid: true,
+  },
+  PERSONAL_MARRIAGE: {
+    label: 'Bản thân kết hôn',
+    group: 'Việc riêng có lương',
+    maxDays: 3,
+    paid: true,
+    requiresDoc: 'Giấy đăng ký kết hôn',
+  },
+  PERSONAL_CHILD_MARRIAGE: {
+    label: 'Con kết hôn',
+    group: 'Việc riêng có lương',
+    maxDays: 1,
+    paid: true,
+    requiresDoc: 'Giấy đăng ký kết hôn của con',
+  },
+  BEREAVEMENT_LEVEL1: {
+    label: 'Tang chế — bố/mẹ/vợ/chồng/con',
+    group: 'Việc riêng có lương',
+    maxDays: 3,
+    paid: true,
+    requiresDoc: 'Giấy báo tử / giấy chứng tử',
+  },
+  BEREAVEMENT_LEVEL2: {
+    label: 'Tang chế — ông/bà/anh/chị/em',
+    group: 'Việc riêng có lương',
+    maxDays: 1,
+    paid: true,
+    requiresDoc: 'Giấy báo tử / giấy chứng tử',
+  },
+  SICK: {
+    label: 'Nghỉ ốm (BHXH)',
+    group: 'Nghỉ ốm',
+    paid: true,
+    requiresDoc: 'Giấy chứng nhận nghỉ việc hưởng BHXH (mẫu C65-HD)',
+  },
+  MATERNITY: {
+    label: 'Nghỉ thai sản (lao động nữ)',
+    group: 'Thai sản',
+    maxDays: 180,
+    paid: true,
+    requiresDoc: 'Giấy chứng sinh / giấy siêu âm',
+  },
+  PATERNITY: {
+    label: 'Nghỉ khi vợ sinh (lao động nam)',
+    group: 'Thai sản',
+    maxDays: 14,
+    paid: true,
+    requiresDoc: 'Giấy chứng sinh',
+  },
+  COMPENSATORY: {
+    label: 'Nghỉ bù',
+    group: 'Nghỉ bù',
+    paid: true,
+  },
+  UNPAID: {
+    label: 'Nghỉ không lương',
+    group: 'Không lương',
+    paid: false,
+  },
+  OTHER: {
+    label: 'Khác',
+    group: 'Khác',
+    paid: false,
+  },
+}
+
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = Object.fromEntries(
+  Object.entries(LEAVE_TYPE_META).map(([k, v]) => [k, v.label])
+) as Record<LeaveType, string>
+
+// Nhóm các loại nghỉ theo group để hiển thị trong dropdown
+export const LEAVE_TYPE_GROUPS: { group: string; types: LeaveType[] }[] = [
+  {
+    group: 'Phép năm',
+    types: ['ANNUAL'],
+  },
+  {
+    group: 'Việc riêng có lương (Điều 115 BLLĐ 2019)',
+    types: ['PERSONAL_MARRIAGE', 'PERSONAL_CHILD_MARRIAGE', 'BEREAVEMENT_LEVEL1', 'BEREAVEMENT_LEVEL2'],
+  },
+  {
+    group: 'Nghỉ ốm',
+    types: ['SICK'],
+  },
+  {
+    group: 'Thai sản',
+    types: ['MATERNITY', 'PATERNITY'],
+  },
+  {
+    group: 'Khác',
+    types: ['COMPENSATORY', 'UNPAID', 'OTHER'],
+  },
+]
+
+export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối',
+}
 
 export interface AttendanceRecord {
   id: string
@@ -46,16 +168,6 @@ export interface CreateLeaveDto {
   startDate: string
   endDate: string
   reason?: string
-}
-
-export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
-  PRESENT: 'Có mặt', ABSENT: 'Vắng', LATE: 'Đi muộn', HALF_DAY: 'Nửa ngày', LEAVE: 'Nghỉ phép',
-}
-export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
-  ANNUAL: 'Nghỉ phép năm', SICK: 'Nghỉ ốm', MATERNITY: 'Thai sản', UNPAID: 'Không lương', OTHER: 'Khác',
-}
-export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
-  PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối',
 }
 
 export const checkIn = (data: CheckInDto) =>
