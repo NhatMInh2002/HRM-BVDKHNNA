@@ -35,22 +35,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         SELECT e.* FROM personnel.employees e
         LEFT JOIN personnel.departments d ON e.department_id = d.id
         WHERE (
-            unaccent(lower(e.full_name))    LIKE unaccent(lower(concat('%', :keyword, '%')))
-            OR lower(e.employee_code)       LIKE lower(concat('%', :keyword, '%'))
-            OR lower(e.email)               LIKE lower(concat('%', :keyword, '%'))
+            unaccent(lower(e.full_name))   LIKE unaccent(lower(concat('%', :keyword, '%')))
+            OR lower(e.employee_code)      LIKE lower(concat('%', :keyword, '%'))
+            OR lower(e.email)              LIKE lower(concat('%', :keyword, '%'))
         )
-        AND (:status IS NULL OR e.status = CAST(:status AS VARCHAR))
+        AND (:status IS NULL OR e.status = :status)
         AND (:departmentId IS NULL OR e.department_id = CAST(:departmentId AS UUID))
         ORDER BY e.full_name
     """,
     countQuery = """
         SELECT COUNT(*) FROM personnel.employees e
         WHERE (
-            unaccent(lower(e.full_name))    LIKE unaccent(lower(concat('%', :keyword, '%')))
-            OR lower(e.employee_code)       LIKE lower(concat('%', :keyword, '%'))
-            OR lower(e.email)               LIKE lower(concat('%', :keyword, '%'))
+            unaccent(lower(e.full_name))   LIKE unaccent(lower(concat('%', :keyword, '%')))
+            OR lower(e.employee_code)      LIKE lower(concat('%', :keyword, '%'))
+            OR lower(e.email)              LIKE lower(concat('%', :keyword, '%'))
         )
-        AND (:status IS NULL OR e.status = CAST(:status AS VARCHAR))
+        AND (:status IS NULL OR e.status = :status)
         AND (:departmentId IS NULL OR e.department_id = CAST(:departmentId AS UUID))
     """,
     nativeQuery = true)
