@@ -1,6 +1,7 @@
 package vn.hrm.attendance.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import vn.hrm.attendance.domain.enums.AttendanceStatus;
 import vn.hrm.attendance.dto.AttendanceRecordResponse;
 import vn.hrm.attendance.dto.CheckInRequest;
 import vn.hrm.attendance.repository.AttendanceRepository;
+import vn.hrm.shared.event.CheckedInEvent;
 import vn.hrm.shared.exception.HrmException;
 
 import java.time.LocalDate;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public AttendanceRecordResponse checkIn(CheckInRequest req, String createdBy) {
@@ -42,7 +45,9 @@ public class AttendanceService {
             .createdBy(createdBy)
             .build();
 
-        return AttendanceRecordResponse.from(attendanceRepository.save(record));
+        AttendanceRecord saved = attendanceRepository.save(record);
+        eventPublisher.publishEvent(new CheckedInEvent(saved.getEmployeeId(), saved.getCheckIn()));
+        return AttendanceRecordResponse.from(saved);
     }
 
     @Transactional

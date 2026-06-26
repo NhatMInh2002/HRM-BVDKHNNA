@@ -7,6 +7,9 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# BACKEND_URL dùng tên service Docker, baked vào next.config.mjs lúc build
+ARG BACKEND_URL=http://backend:8080
+ENV BACKEND_URL=$BACKEND_URL
 RUN npm run build
 
 FROM node:20-alpine AS runner

@@ -24,6 +24,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     boolean existsByEmail(String email);
 
+    List<Employee> findByHrmRoleIn(List<String> roles);
+
     @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.department ORDER BY e.fullName")
     Page<Employee> findAllActive(Pageable pageable);
 

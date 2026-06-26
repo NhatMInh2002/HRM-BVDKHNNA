@@ -1,6 +1,7 @@
 package vn.hrm.attendance.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.hrm.attendance.domain.LeaveRequest;
@@ -8,6 +9,8 @@ import vn.hrm.attendance.domain.enums.LeaveStatus;
 import vn.hrm.attendance.dto.LeaveRequestDto;
 import vn.hrm.attendance.dto.LeaveRequestResponse;
 import vn.hrm.attendance.repository.LeaveRequestRepository;
+import vn.hrm.shared.event.LeaveStatusChangedEvent;
+import vn.hrm.shared.event.LeaveSubmittedEvent;
 import vn.hrm.shared.exception.HrmException;
 
 import java.math.BigDecimal;
@@ -23,6 +26,7 @@ import java.util.UUID;
 public class LeaveService {
 
     private final LeaveRequestRepository leaveRequestRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public LeaveRequestResponse createLeaveRequest(LeaveRequestDto dto, String createdBy) {
@@ -44,7 +48,12 @@ public class LeaveService {
             .createdBy(createdBy)
             .build();
 
-        return LeaveRequestResponse.from(leaveRequestRepository.save(request));
+        LeaveRequest saved = leaveRequestRepository.save(request);
+        eventPublisher.publishEvent(new LeaveSubmittedEvent(
+            saved.getId(), saved.getEmployeeId(), saved.getLeaveType().name(),
+            saved.getStartDate(), saved.getEndDate(), saved.getTotalDays().intValue()
+        ));
+        return LeaveRequestResponse.from(saved);
     }
 
     @Transactional
@@ -57,7 +66,11 @@ public class LeaveService {
         request.setStatus(LeaveStatus.APPROVED);
         request.setApprovedBy(approvedBy);
         request.setApprovedAt(OffsetDateTime.now());
-        return LeaveRequestResponse.from(leaveRequestRepository.save(request));
+        LeaveRequest saved = leaveRequestRepository.save(request);
+        eventPublisher.publishEvent(new LeaveStatusChangedEvent(
+            saved.getId(), saved.getEmployeeId(), saved.getLeaveType().name(), "APPROVED", approvedBy
+        ));
+        return LeaveRequestResponse.from(saved);
     }
 
     @Transactional
@@ -70,7 +83,11 @@ public class LeaveService {
         request.setStatus(LeaveStatus.REJECTED);
         request.setApprovedBy(approvedBy);
         request.setApprovedAt(OffsetDateTime.now());
-        return LeaveRequestResponse.from(leaveRequestRepository.save(request));
+        LeaveRequest saved = leaveRequestRepository.save(request);
+        eventPublisher.publishEvent(new LeaveStatusChangedEvent(
+            saved.getId(), saved.getEmployeeId(), saved.getLeaveType().name(), "REJECTED", approvedBy
+        ));
+        return LeaveRequestResponse.from(saved);
     }
 
     public List<LeaveRequestResponse> getPendingRequests() {

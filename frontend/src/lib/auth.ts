@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 declare module 'next-auth' {
   interface Session {
     accessToken?: string
+    role?: string
     roles?: string[]
     error?: string
   }
@@ -66,6 +67,7 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken
+      session.role        = token.role
       session.roles       = token.roles ?? []
       if (session.user) {
         session.user.name = token.fullName ?? session.user.name
