@@ -251,6 +251,64 @@ Backend phải chạy trong Docker (không phải host JVM) vì JDK 21 trên Win
 
 ---
 
+## [2026-06-26] — FEAT: Notification system + Attendance UX redesign + Docker dev mode
+
+**Người thực hiện:** NhatMInh2002  
+**Branch:** feat/phase2-personnel-profile (tiếp theo từ main)
+
+### Backend — Notification System
+
+| File | Nội dung |
+|---|---|
+| `notification/Notification.java` | JPA entity → `personnel.notifications` |
+| `notification/NotificationEventListener.java` | @Async @EventListener cho 3 event: LEAVE_SUBMITTED, LEAVE_STATUS_CHANGED, CHECKIN |
+| `notification/AttendanceReminderScheduler.java` | @Scheduled: 7:45 nhắc check-in, 15:45 nhắc check-out (T2-T6, Asia/Ho_Chi_Minh) |
+| `shared-kernel/event/` | 3 event records dùng String (không enum) tránh circular dependency |
+| `V15__create_notifications.sql` | Bảng notifications + index recipient_unread |
+
+### Backend — Auth
+
+- `AuthController`: `POST /auth/change-password` — inject `Authentication auth` lấy email từ principal
+- `AuthService.changePassword()`: BCrypt verify + encode mật khẩu mới
+
+### Frontend — TopBar
+
+- Avatar initials + dropdown: Hồ sơ / Đổi mật khẩu / Nghỉ phép / Lương cá nhân / Đăng xuất
+- `ChangePasswordModal`: strength bar 4 mức, eye toggle, rule checklist
+- `NotificationBell`: polling 30s, badge unread, click-to-read, đọc tất cả
+- `lib/notifications.ts`: client functions cho 4 endpoints
+
+### Frontend — Dashboard
+
+- `auth.ts`: fix bug `session.role` chưa được set → admin luôn thấy employee view
+- `dashboard/page.tsx`: role-based render (ADMIN/HR_MANAGER → AdminDashboard, EMPLOYEE → EmployeeDashboard)
+- Fix công chuẩn: 22 ngày (T2-T6 only, bỏ T7)
+
+### Frontend — Attendance
+
+- Employee view: today card (giờ vào/ra/thời gian), stats (đủ 8h/thiếu giờ/thiếu dấu/tổng giờ), calendar màu theo giờ thực tế (≥8h xanh, <8h vàng, thiếu đỏ, phép tím), bảng lịch sử
+- Admin/HR view: giữ nguyên bảng danh sách theo ngày
+- Màu calendar dựa giờ làm thực tế, không theo status backend
+
+### Docker / Infra
+
+- `Dockerfile.dev`: dev mode mount source, HMR
+- `docker-compose.yml`: `WATCHPACK_POLLING=true` fix inotify không hoạt động Windows→WSL2
+- `Dockerfile` production: `ARG BACKEND_URL=http://backend:8080` baked at build
+- pgAdmin thêm vào compose (port 5050): `http://localhost:5050`
+- `next.config.mjs`: thêm `/api/auth-backend/*` proxy + notifications module
+
+### Trạng thái cuối session
+
+- ✅ Check-in/check-out hoạt động, hiển thị đúng giờ làm
+- ✅ Thông báo bell hoạt động (test bằng curl)
+- ✅ Admin thấy AdminDashboard, nhân viên thấy EmployeeDashboard
+- ✅ Docker HMR hoạt động — sửa file tsx tự reload ~1s
+- ✅ pgAdmin accessible tại localhost:5050
+- ⏳ Tiếp theo: Hồ sơ cá nhân nhân viên (branch feat/phase2-personnel-profile)
+
+---
+
 <!-- Template cho entry tiếp theo:
 
 ## [YYYY-MM-DD] — [LOẠI]: [Tiêu đề]
