@@ -41,7 +41,10 @@ function calendarColor(r: AttendanceRecord): string {
 
 function fmtTime(iso?: string) {
   if (!iso) return '—'
-  return format(parseISO(iso), 'HH:mm')
+  return new Date(iso).toLocaleTimeString('vi-VN', {
+    hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
 }
 function fmtDur(r: AttendanceRecord) {
   if (r.durationMinutes) {

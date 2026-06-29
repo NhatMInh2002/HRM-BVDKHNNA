@@ -11,5 +11,7 @@ public record LeaveRequestDto(
     @NotNull LeaveType leaveType,
     @NotNull LocalDate startDate,
     @NotNull LocalDate endDate,
-    String reason
+    String reason,
+    String attachmentUrl,
+    String attachmentName
 ) {}

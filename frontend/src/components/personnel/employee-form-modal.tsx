@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { ResizableModal } from '@/components/resizable-modal'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -159,10 +160,10 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 overflow-hidden max-h-[92vh] flex flex-col">
+    <ResizableModal onClose={onClose} defaultWidth={720} defaultHeight={620}>
+      <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800">
             {isEdit ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới'}
           </h2>
@@ -323,7 +324,7 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </ResizableModal>
   )
 }
 

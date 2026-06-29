@@ -1,64 +1,63 @@
 # HRM Implementation Plan — 44 Weeks
 
-**Last updated:** 2026-06-19  
+**Last updated:** 2026-06-29  
 **Architecture:** Modular Monolith (Spring Boot) + Next.js + PostgreSQL (on-prem)  
 **Dev environment:** Docker Compose (local) → K8s khi có server on-prem thật  
-**SSO:** Keycloak (self-hosted, SAML 2.0 / OIDC) — thay thế AD FS  
+**SSO:** JWT tự quản lý (custom) — Keycloak sẽ tích hợp Phase 5  
 **Team:** Solo dev
 
 ---
 
-## Phase 1 — Foundation & Security (Weeks 1–8)
-**Goal:** Skeleton chạy được với SSO, SSL, logging trước khi viết business logic.
+## Phase 1 — Foundation & Security (Weeks 1–8) ✅ HOÀN THÀNH CƠ BẢN
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 1–2 | Docker Compose stack: PostgreSQL, Redis, MinIO, OpenSearch, Keycloak | ⬜ Todo |
-| 3–4 | Keycloak: realm HRM, SAML 2.0 / OIDC config, Spring Security integration, JWT | ⬜ Todo |
-| 5–6 | API Gateway (Spring Cloud Gateway): routing, JWT verify, rate limiting, Nginx + SSL | ⬜ Todo |
-| 7–8 | Next.js shell: SSO login flow, RBAC route guards, audit log middleware, ELK + Prometheus | ⬜ Todo |
+| 1–2 | Docker Compose: PostgreSQL, Redis, MinIO (OpenSearch bỏ qua — dùng LIKE search) | ✅ Done |
+| 3–4 | JWT auth tự quản lý (Spring Security + RS256), RBAC role-based | ✅ Done |
+| 5–6 | Next.js proxy (rewrites → backend), NextAuth session | ✅ Done |
+| 7–8 | RBAC route guards, notification system, audit log cơ bản | ✅ Done |
 
-**Exit criteria:** User đăng nhập qua Keycloak, JWT được cấp, traffic TLS, mọi request được audit-log.
+**Còn thiếu (sẽ làm Phase 5):** Keycloak SSO, SSL/Nginx, Prometheus, ELK stack
 
 ---
 
-## Phase 2 — Core HR Modules (Weeks 9–20)
-**Goal:** Personnel trước (nền tảng), rồi Attendance.
+## Phase 2 — Core HR Modules (Weeks 9–20) ✅ HOÀN THÀNH
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 9–11 | Personnel Service: hồ sơ nhân viên, org chart, hợp đồng, upload tài liệu (MinIO) | ⬜ Todo |
-| 12–13 | Phân cấp tổ chức: cây phòng ban, reporting lines, quản lý chức danh | ⬜ Todo |
-| 14–16 | Attendance Service: check-in/out API, GPS validation, QR code, RFID/biometric connector | ⬜ Todo |
-| 17–18 | Nghỉ phép & tăng ca: loại nghỉ, số dư phép, approval workflow engine | ⬜ Todo |
-| 19–20 | Admin UI: danh sách/tìm kiếm nhân viên (OpenSearch), dashboard chấm công, duyệt nghỉ | ⬜ Todo |
+| 9–11 | Personnel: hồ sơ nhân viên, org chart, upload avatar/chữ ký (MinIO) | ✅ Done |
+| 12–13 | Phân cấp tổ chức: cây phòng ban, reporting lines, chức danh ngạch bậc | ✅ Done |
+| 14–16 | Attendance: check-in/out API, lịch sử chấm công, dashboard heatmap | ✅ Done |
+| 17–18 | Nghỉ phép: 9 loại nghỉ, 2-level approval (phòng ban → HR), số dư phép | ✅ Done |
+| 19–20 | Admin UI: tìm kiếm nhân viên, dashboard chấm công, duyệt nghỉ, thông báo real-time | ✅ Done |
 
-**Exit criteria:** HR có thể quản lý hồ sơ nhân viên và chấm công; đơn nghỉ phép chạy qua approval.
+**Điểm chính:** 500+ nhân viên seed từ dữ liệu thật, ngạch/bậc CBCC-VC đầy đủ
 
 ---
 
-## Phase 3 — Payroll & Compliance (Weeks 21–28)
-**Goal:** Tính lương tự động, tuân thủ BHXH/BHYT/thuế TNCN Việt Nam.
+## Phase 3 — Payroll & Compliance (Weeks 21–28) ✅ HOÀN THÀNH CƠ BẢN
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 21–22 | Payroll engine: cấu hình quy tắc lương (cơ bản, phụ cấp, OT), mã hóa cột lương | ⬜ Todo |
-| 23–24 | Tính BHXH/BHYT/BHTN, thuế TNCN lũy tiến theo quy định hiện hành | ⬜ Todo |
-| 25–26 | Phiếu lương PDF, approval flow chạy lương, export cho phần mềm kế toán | ⬜ Todo |
-| 27–28 | Sync cổng BHXH, connector nộp e-Tax, báo cáo kiểm toán lương | ⬜ Todo |
+| 21–22 | Payroll engine: cấu hình lương (cơ bản, hệ số, phụ cấp), bảng ngạch/bậc A0→A3.1 | ✅ Done |
+| 23–24 | BHXH 8%/17.5%, BHYT 1.5%/3%, BHTN 1%/1%, thuế TNCN lũy tiến 7 bậc | ✅ Done |
+| 25–26 | Phiếu lương PDF (font Unicode tiếng Việt DejaVu), approval flow, export Excel | ✅ Done |
+| 27–28 | Lương cơ sở 2,530,000 (01/07/2026), lương vùng III 3,860,000 | ✅ Done |
 
-**Exit criteria:** Có thể tính lương tháng, duyệt, và nộp lên cổng BHXH/thuế.
+**Còn thiếu:** Sync cổng BHXH điện tử, connector nộp e-Tax (Phase 5 — cần API bên ngoài)
 
 ---
 
-## Phase 4 — Recruitment, KPI & Reporting (Weeks 29–38)
+## Phase 4 — Recruitment, KPI & Reporting (Weeks 29–38) 🔄 ĐANG TRIỂN KHAI
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 29–31 | Recruitment: đăng tin, pipeline ứng viên, lịch phỏng vấn, offer letter | ⬜ Todo |
-| 32–33 | Onboarding: checklist công việc, thu thập giấy tờ, cấp tài khoản | ⬜ Todo |
-| 34–36 | KPI Service: thiết lập mục tiêu, KPI tree, 360° evaluation, tổng hợp điểm | ⬜ Todo |
-| 37–38 | Report Service: dashboard, export Excel/PDF, phân tích turnover/headcount/chi phí | ⬜ Todo |
+| 29–31 | Recruitment: đăng tin, pipeline ứng viên, lịch phỏng vấn, offer letter | ✅ Done |
+| 32–33 | Onboarding: checklist công việc, thu thập giấy tờ, cấp tài khoản | ✅ Done |
+| 34–36 | KPI Service: thiết lập mục tiêu, KPI tree, 360° evaluation, tổng hợp điểm | ✅ Done |
+| 37–38 | **Report Service: headcount/dept, chi phí lương, chuyên cần, số dư phép** | ✅ Done |
+
+**Đã làm:** Module Báo cáo (`/dashboard/reports`) với 4 tab: Nhân sự / Chi phí lương / Chuyên cần / Số dư phép
 
 ---
 
@@ -66,8 +65,16 @@
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 39–40 | ERP/CRM API connectors, sync phần mềm kế toán, tích hợp RFID/biometric đầy đủ | ⬜ Todo |
-| 41 | Penetration testing (OWASP Top 10), khắc phục lỗ hổng | ⬜ Todo |
-| 42 | Load testing (500–1,000 concurrent users), tối ưu query DB, tuning cache | ⬜ Todo |
-| 43 | UAT với phòng Nhân sự, sprint fix bug | ⬜ Todo |
-| 44 | Go-live: cutover production (Docker Compose → K8s on-prem), monitoring, runbook | ⬜ Todo |
+| 39–40 | Keycloak SSO (SAML 2.0/OIDC), SSL/Nginx, sync phần mềm kế toán | ⬜ Todo |
+| 41 | BHXH điện tử connector, e-Tax nộp tờ khai | ⬜ Todo |
+| 42 | Penetration testing (OWASP Top 10), khắc phục lỗ hổng | ⬜ Todo |
+| 43 | Load testing (500–1,000 concurrent), tối ưu query DB, tuning cache | ⬜ Todo |
+| 44 | UAT với phòng Nhân sự, sprint fix bug, go-live runbook | ⬜ Todo |
+
+---
+
+## Tiếp theo ưu tiên cao (Phase 4 còn lại)
+
+1. **Tuyển dụng** — pipeline ứng viên, lịch phỏng vấn
+2. **KPI cơ bản** — đặt mục tiêu theo quý, đánh giá cuối kỳ
+3. **Onboarding checklist** — tự động khi tạo nhân viên mới

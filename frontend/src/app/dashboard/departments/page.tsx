@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getDepartments, getDepartmentsTree, searchEmployees, type Department } from '@/lib/personnel'
+import { useRoles } from '@/hooks/useRoles'
 
 
 function DeptNode({
@@ -50,6 +51,7 @@ function DeptNode({
 }
 
 export default function DepartmentsPage() {
+  const { isHR } = useRoles()
   const { data: departments = [], isLoading: deptLoading } = useQuery({
     queryKey: ['departments'],
     queryFn: getDepartments,
@@ -78,6 +80,60 @@ export default function DepartmentsPage() {
 
   const realDepts = departments.filter(d => !d.code.startsWith('GRP-'))
 
+  // ── Nhân viên: chỉ thấy sơ đồ tổ chức gọn ──────────────────
+  if (!isHR) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Sơ đồ tổ chức</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {realDepts.length} phòng ban / khoa / tổ
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+            <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">Khối phòng ban</p>
+            <p className="text-3xl font-bold text-blue-700 mt-1">
+              {realDepts.filter(d => d.code.startsWith('P-')).length}
+            </p>
+            <p className="text-xs text-blue-400 mt-0.5">Phòng hành chính</p>
+          </div>
+          <div className="bg-green-50 border border-green-100 rounded-xl p-4">
+            <p className="text-xs font-semibold text-green-500 uppercase tracking-wide">Khoa lâm sàng</p>
+            <p className="text-3xl font-bold text-green-700 mt-1">
+              {realDepts.filter(d => d.code.startsWith('K-')).length}
+            </p>
+            <p className="text-xs text-green-400 mt-0.5">Khoa điều trị</p>
+          </div>
+          <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
+            <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Trung tâm & Tổ</p>
+            <p className="text-3xl font-bold text-purple-700 mt-1">
+              {realDepts.filter(d => d.code.startsWith('TT-') || d.code.startsWith('T-')).length}
+            </p>
+            <p className="text-xs text-purple-400 mt-0.5">Trung tâm chuyên sâu</p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+            <span className="text-sm font-semibold text-gray-700">Cơ cấu tổ chức</span>
+          </div>
+          {isLoading ? (
+            <div className="py-12 text-center text-sm text-gray-400">Đang tải...</div>
+          ) : (
+            <div className="py-2">
+              {tree.map(node => (
+                <DeptNode key={node.id} node={node} empCountMap={empCountMap} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── HR / Admin: trang quản lý đầy đủ ────────────────────────
   return (
     <div className="space-y-6">
       <div>
@@ -112,9 +168,8 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex flex-wrap items-center justify-between gap-2">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <span className="text-sm font-semibold text-gray-700">Sơ đồ tổ chức</span>
-          <span className="text-xs text-gray-400">Màu xám nghiêng = nhóm ảo, không phải đơn vị thực</span>
         </div>
         {isLoading ? (
           <div className="py-12 text-center text-sm text-gray-400">Đang tải...</div>
@@ -127,7 +182,6 @@ export default function DepartmentsPage() {
         )}
       </div>
 
-      {/* Danh sách phẳng */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <span className="text-sm font-semibold text-gray-700">Danh sách phòng ban thực tế</span>

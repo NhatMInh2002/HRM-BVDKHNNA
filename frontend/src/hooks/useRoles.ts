@@ -1,19 +1,23 @@
 'use client'
 import { useSession } from 'next-auth/react'
 
-export type AppRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'ACCOUNTANT'
+export type AppRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'DEPT_HEAD' | 'EMPLOYEE' | 'ACCOUNTANT'
 
 export function useRoles() {
   const { data: session } = useSession()
   const roles = (session?.roles ?? []) as AppRole[]
+  // Cũng xét role đơn lẻ từ session.role (backend trả về single role)
+  const singleRole = (session as any)?.role as string | undefined
+  const allRoles = [...new Set([...roles, singleRole].filter(Boolean))] as AppRole[]
 
-  const has = (...r: AppRole[]) => r.some(x => roles.includes(x))
+  const has = (...r: AppRole[]) => r.some(x => allRoles.includes(x))
 
   return {
-    roles,
+    roles: allRoles,
     isAdmin:       has('ADMIN'),
     isHR:          has('ADMIN', 'HR_MANAGER'),
-    isDeptManager: has('DEPARTMENT_MANAGER'),
+    isDeptHead:    has('ADMIN', 'DEPT_HEAD'),
+    isDeptManager: has('DEPARTMENT_MANAGER', 'DEPT_HEAD'),
     isEmployee:    has('EMPLOYEE'),
     isAccountant:  has('ACCOUNTANT'),
     // quyền ghi dữ liệu nhân sự

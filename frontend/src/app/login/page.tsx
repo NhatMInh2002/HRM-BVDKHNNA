@@ -40,11 +40,13 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Logo / tiêu đề */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 mb-4">
-            <span className="text-3xl font-bold text-white">H</span>
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white shadow-xl mb-4 overflow-hidden">
+            <img src="/logo-nentrang.png" alt="Logo Bệnh viện Hữu Nghị Đa Khoa Nghệ An" className="w-22 h-22 object-contain p-1" />
           </div>
-          <h1 className="text-xl font-bold text-white">HRM BVHN Đa khoa Nghệ An</h1>
-          <p className="text-blue-300 text-sm mt-1">Hệ thống quản lý nhân sự</p>
+          <h1 className="text-lg font-bold text-white leading-snug">
+            Bệnh viện Hữu Nghị Đa Khoa Nghệ An
+          </h1>
+          <p className="text-green-300 text-sm mt-1 font-medium">Hệ thống quản lý nhân sự</p>
         </div>
 
         {/* Form */}
@@ -120,7 +122,7 @@ function LoginForm() {
         </div>
 
         <p className="text-center text-blue-400/60 text-xs mt-6">
-          © 2025 Bệnh viện Hữu nghị Đa khoa Nghệ An
+          © 2026 Bệnh viện Hữu Nghị Đa Khoa Nghệ An
         </p>
       </div>
     </div>

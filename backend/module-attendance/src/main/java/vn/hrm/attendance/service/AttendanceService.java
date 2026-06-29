@@ -15,8 +15,10 @@ import vn.hrm.shared.event.CheckedInEvent;
 import vn.hrm.shared.exception.HrmException;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,11 +38,18 @@ public class AttendanceService {
                 "Nhân viên đã check-in hôm nay: " + req.employeeId());
         }
 
+        OffsetDateTime now = OffsetDateTime.now();
+        // Giờ vào muộn hơn 08:00 Asia/Ho_Chi_Minh → LATE
+        LocalTime checkInLocal = now.atZoneSameInstant(ZoneId.of("Asia/Ho_Chi_Minh")).toLocalTime();
+        AttendanceStatus status = checkInLocal.isAfter(LocalTime.of(8, 0))
+                ? AttendanceStatus.LATE
+                : AttendanceStatus.PRESENT;
+
         AttendanceRecord record = AttendanceRecord.builder()
             .employeeId(req.employeeId())
             .workDate(today)
-            .checkIn(OffsetDateTime.now())
-            .status(AttendanceStatus.PRESENT)
+            .checkIn(now)
+            .status(status)
             .note(req.note())
             .createdBy(createdBy)
             .build();
@@ -63,7 +72,15 @@ public class AttendanceService {
                 "Nhân viên đã check-out hôm nay: " + employeeId);
         }
 
-        record.setCheckOut(OffsetDateTime.now());
+        OffsetDateTime checkOutTime = OffsetDateTime.now();
+        record.setCheckOut(checkOutTime);
+
+        // Tính thời gian làm (phút)
+        if (record.getCheckIn() != null) {
+            long mins = java.time.Duration.between(record.getCheckIn(), checkOutTime).toMinutes();
+            if (mins > 0) record.setDurationMinutes((int) mins);
+        }
+
         return AttendanceRecordResponse.from(attendanceRepository.save(record));
     }
 

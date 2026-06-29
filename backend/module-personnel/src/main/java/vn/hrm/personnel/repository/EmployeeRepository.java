@@ -26,6 +26,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     List<Employee> findByHrmRoleIn(List<String> roles);
 
+    /** Tìm trưởng phòng của một khoa/phòng cụ thể */
+    @Query("SELECT e FROM Employee e WHERE e.department.id = :deptId AND e.hrmRole = 'DEPT_HEAD'")
+    List<Employee> findDeptHeadByDepartmentId(@Param("deptId") UUID deptId);
+
     @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.department ORDER BY e.fullName")
     Page<Employee> findAllActive(Pageable pageable);
 
@@ -36,9 +40,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         SELECT e FROM Employee e
         LEFT JOIN FETCH e.department d
         WHERE (:keyword = '' OR
-            LOWER(e.fullName)     LIKE LOWER(CONCAT('%', :keyword, '%'))
+            LOWER(e.fullName)        LIKE LOWER(CONCAT('%', :keyword, '%'))
             OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
             OR LOWER(e.email)        LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR e.phone               LIKE CONCAT('%', :keyword, '%')
         )
         AND (:status IS NULL OR e.status = :status)
         AND (:departmentId IS NULL OR d.id = :departmentId)

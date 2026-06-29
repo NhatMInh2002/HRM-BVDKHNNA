@@ -2,6 +2,7 @@ package vn.hrm.app.notification;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.hrm.personnel.repository.EmployeeRepository;
@@ -18,6 +19,7 @@ public class NotificationController {
 
     private final NotificationService notificationService;
     private final EmployeeRepository employeeRepository;
+    private final AttendanceReminderScheduler reminderScheduler;
 
     @GetMapping("/my")
     public ResponseEntity<ApiResponse<List<NotificationDto>>> getMyNotifications(Authentication auth) {
@@ -43,6 +45,20 @@ public class NotificationController {
         UUID empId = resolveEmployeeId(auth);
         notificationService.markAllRead(empId);
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @PostMapping("/admin/trigger-checkin-reminder")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> triggerCheckIn() {
+        reminderScheduler.triggerCheckInReminder();
+        return ResponseEntity.ok(ApiResponse.ok("Đã gửi nhắc check-in đến toàn bộ nhân viên"));
+    }
+
+    @PostMapping("/admin/trigger-checkout-reminder")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> triggerCheckOut() {
+        reminderScheduler.triggerCheckOutReminder();
+        return ResponseEntity.ok(ApiResponse.ok("Đã gửi nhắc check-out đến toàn bộ nhân viên"));
     }
 
     private UUID resolveEmployeeId(Authentication auth) {

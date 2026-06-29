@@ -38,21 +38,22 @@ public class PayslipPdfService {
         PdfWriter.getInstance(doc, out);
         doc.open();
 
-        // Fonts
-        BaseFont bf = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
-        Font titleFont  = new Font(bf, 16, Font.BOLD, Color.decode("#1e40af"));
-        Font headerFont = new Font(bf, 10, Font.BOLD, Color.DARK_GRAY);
-        Font bodyFont   = new Font(bf, 9, Font.NORMAL);
-        Font boldFont   = new Font(bf, 9, Font.BOLD);
-        Font totalFont  = new Font(bf, 11, Font.BOLD, Color.decode("#15803d"));
+        // Fonts — DejaVu Sans hỗ trợ Unicode tiếng Việt
+        BaseFont bf     = loadUnicodeFont();
+        BaseFont bfBold = loadUnicodeFontBold();
+        Font titleFont  = new Font(bfBold, 16, Font.NORMAL, Color.decode("#1e40af"));
+        Font headerFont = new Font(bfBold, 10, Font.NORMAL, Color.DARK_GRAY);
+        Font bodyFont   = new Font(bf,     9,  Font.NORMAL);
+        Font boldFont   = new Font(bfBold, 9,  Font.NORMAL);
+        Font totalFont  = new Font(bfBold, 11, Font.NORMAL, Color.decode("#15803d"));
 
         // Hospital header
-        Paragraph hospital = new Paragraph("BENH VIEN DA KHOA HA NOI NA", titleFont);
+        Paragraph hospital = new Paragraph("BỆNH VIỆN HỮU NGHỊ ĐA KHOA NGHỆ AN", titleFont);
         hospital.setAlignment(Element.ALIGN_CENTER);
         doc.add(hospital);
 
         Paragraph phieuLuong = new Paragraph(
-                "PHIEU LUONG THANG " + rec.getPeriodMonth() + "/" + rec.getPeriodYear(),
+                "PHIẾU LƯƠNG THÁNG " + rec.getPeriodMonth() + "/" + rec.getPeriodYear(),
                 new Font(bf, 13, Font.BOLD));
         phieuLuong.setAlignment(Element.ALIGN_CENTER);
         phieuLuong.setSpacingBefore(4);
@@ -64,17 +65,17 @@ public class PayslipPdfService {
         infoTable.setWidthPercentage(100);
         infoTable.setWidths(new float[]{1.5f, 2f, 1.5f, 2f});
         infoTable.setSpacingAfter(12);
-        addInfoCell(infoTable, "Ho va ten:", headerFont, false);
+        addInfoCell(infoTable, "Họ và tên:", headerFont, false);
         addInfoCell(infoTable, str(emp.get("full_name")), boldFont, false);
-        addInfoCell(infoTable, "Ma NV:", headerFont, false);
+        addInfoCell(infoTable, "Mã NV:", headerFont, false);
         addInfoCell(infoTable, str(emp.get("employee_code")), boldFont, false);
-        addInfoCell(infoTable, "Chuc vu:", headerFont, false);
+        addInfoCell(infoTable, "Chức vụ:", headerFont, false);
         addInfoCell(infoTable, str(emp.get("position")), bodyFont, false);
-        addInfoCell(infoTable, "Phong ban:", headerFont, false);
+        addInfoCell(infoTable, "Phòng ban:", headerFont, false);
         addInfoCell(infoTable, str(emp.get("dept_name")), bodyFont, false);
-        addInfoCell(infoTable, "Ngay cong chuan:", headerFont, false);
+        addInfoCell(infoTable, "Ngày công chuẩn:", headerFont, false);
         addInfoCell(infoTable, String.valueOf(rec.getWorkingDays()), bodyFont, false);
-        addInfoCell(infoTable, "Ngay cong thuc te:", headerFont, false);
+        addInfoCell(infoTable, "Ngày công thực tế:", headerFont, false);
         addInfoCell(infoTable, String.valueOf(rec.getActualDays()), bodyFont, false);
         doc.add(infoTable);
 
@@ -84,29 +85,29 @@ public class PayslipPdfService {
         t.setWidths(new float[]{3f, 1.5f});
 
         // Header row
-        addHeaderRow(t, "KHOAN MUC", "SO TIEN (VND)", headerFont, Color.decode("#1e40af"));
+        addHeaderRow(t, "KHOẢN MỤC", "SỐ TIỀN (VNĐ)", headerFont, Color.decode("#1e40af"));
 
         // Thu nhap
-        addSectionHeader(t, "A. THU NHAP", headerFont, Color.decode("#dbeafe"));
-        addRow(t, "1. Luong co ban (theo ngay thuc te)", fmt(rec.getBasicSalary()), bodyFont, boldFont, null);
-        addRow(t, "2. Phu cap (an trua + di lai + dien thoai + khac)", fmt(rec.getTotalAllowance()), bodyFont, boldFont, null);
-        addRow(t, "3. Luong tang ca (OT)", fmt(rec.getOtPay()), bodyFont, boldFont, null);
-        addRow(t, "TONG THU NHAP (GROSS)", fmt(rec.getGrossSalary()), boldFont, boldFont,
+        addSectionHeader(t, "A. THU NHẬP", headerFont, Color.decode("#dbeafe"));
+        addRow(t, "1. Lương cơ bản (theo ngày thực tế)", fmt(rec.getBasicSalary()), bodyFont, boldFont, null);
+        addRow(t, "2. Phụ cấp (ăn trưa + đi lại + điện thoại + khác)", fmt(rec.getTotalAllowance()), bodyFont, boldFont, null);
+        addRow(t, "3. Lương tăng ca (OT)", fmt(rec.getOtPay()), bodyFont, boldFont, null);
+        addRow(t, "TỔNG THU NHẬP (GROSS)", fmt(rec.getGrossSalary()), boldFont, boldFont,
                 Color.decode("#eff6ff"));
 
         // Khau tru
-        addSectionHeader(t, "B. KHAU TRU", headerFont, Color.decode("#fef2f2"));
-        addRow(t, "1. BHXH nguoi lao dong (8%)", fmt(rec.getBhxhEmployee()), bodyFont, boldFont, null);
-        addRow(t, "2. BHYT nguoi lao dong (1.5%)", fmt(rec.getBhytEmployee()), bodyFont, boldFont, null);
-        addRow(t, "3. BHTN nguoi lao dong (1%)", fmt(rec.getBhtnEmployee()), bodyFont, boldFont, null);
-        addRow(t, "4. Thue TNCN", fmt(rec.getPit()), bodyFont, boldFont, null);
+        addSectionHeader(t, "B. KHẤU TRỪ", headerFont, Color.decode("#fef2f2"));
+        addRow(t, "1. BHXH người lao động (8%)", fmt(rec.getBhxhEmployee()), bodyFont, boldFont, null);
+        addRow(t, "2. BHYT người lao động (1.5%)", fmt(rec.getBhytEmployee()), bodyFont, boldFont, null);
+        addRow(t, "3. BHTN người lao động (1%)", fmt(rec.getBhtnEmployee()), bodyFont, boldFont, null);
+        addRow(t, "4. Thuế TNCN", fmt(rec.getPit()), bodyFont, boldFont, null);
         if (rec.getOtherDeduction().compareTo(java.math.BigDecimal.ZERO) > 0)
-            addRow(t, "5. Khac", fmt(rec.getOtherDeduction()), bodyFont, boldFont, null);
-        addRow(t, "TONG KHAU TRU", fmt(rec.getTotalDeduction()), boldFont, boldFont,
+            addRow(t, "5. Khác", fmt(rec.getOtherDeduction()), bodyFont, boldFont, null);
+        addRow(t, "TỔNG KHẤU TRỪ", fmt(rec.getTotalDeduction()), boldFont, boldFont,
                 Color.decode("#fff1f2"));
 
         // Net
-        PdfPCell netLabel = new PdfPCell(new Phrase("LUONG THUC NHAN (NET)", totalFont));
+        PdfPCell netLabel = new PdfPCell(new Phrase("LƯƠNG THỰC NHẬN (NET)", totalFont));
         netLabel.setPadding(8);
         netLabel.setBackgroundColor(Color.decode("#f0fdf4"));
         netLabel.setBorderColor(Color.decode("#15803d"));
@@ -127,8 +128,8 @@ public class PayslipPdfService {
         }
 
         Paragraph footer = new Paragraph(
-                "Trang thai: " + rec.getStatus()
-                + (rec.getApprovedBy() != null ? " | Duyet boi: " + rec.getApprovedBy() : ""),
+                "Trạng thái: " + rec.getStatus()
+                + (rec.getApprovedBy() != null ? " | Duyệt bởi: " + rec.getApprovedBy() : ""),
                 new Font(bf, 8, Font.ITALIC, Color.GRAY));
         footer.setSpacingBefore(20);
         footer.setAlignment(Element.ALIGN_RIGHT);
@@ -246,4 +247,31 @@ public class PayslipPdfService {
     }
 
     private String str(Object v) { return v != null ? v.toString() : ""; }
+
+    private static final String[] FONT_PATHS = {
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "C:/Windows/Fonts/arial.ttf"
+    };
+    private static final String[] FONT_BOLD_PATHS = {
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf"
+    };
+
+    private BaseFont loadUnicodeFont() throws DocumentException, java.io.IOException {
+        for (String path : FONT_PATHS) {
+            if (new java.io.File(path).exists())
+                return BaseFont.createFont(path, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+        }
+        return BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+    }
+
+    private BaseFont loadUnicodeFontBold() throws DocumentException, java.io.IOException {
+        for (String path : FONT_BOLD_PATHS) {
+            if (new java.io.File(path).exists())
+                return BaseFont.createFont(path, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+        }
+        return BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+    }
 }

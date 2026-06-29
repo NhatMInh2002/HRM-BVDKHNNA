@@ -42,6 +42,7 @@ services:
     environment:
       MINIO_ROOT_USER: hrm_minio
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_SERVER_URL: http://localhost:9000
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -73,6 +74,9 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
       MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: hrm_minio
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
     ports:
@@ -100,17 +104,17 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev   # dev mode: hot reload, mount source
+      dockerfile: Dockerfile.prod
+      args:
+        BACKEND_URL: http://backend:8080
+        NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     container_name: hrm-frontend
     restart: unless-stopped
-    volumes:
-      - ./frontend:/app            # mount toàn bộ source → HMR hoạt động
-      - frontend_node_modules:/app/node_modules  # named volume giữ node_modules
     environment:
       BACKEND_URL: http://backend:8080
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      WATCHPACK_POLLING: "true"   # bật polling vì inotify không hoạt động Windows→WSL2
     ports:
       - "3000:3000"
     depends_on:

@@ -25,19 +25,72 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const COEFFICIENT_PRESETS = [
-  { label: '1.00 — Thử việc / nhân viên mới',  value: 1.00 },
-  { label: '1.35 — Nhân viên bậc 1',            value: 1.35 },
-  { label: '1.68 — Nhân viên bậc 2',            value: 1.68 },
-  { label: '2.06 — Nhân viên bậc 3',            value: 2.06 },
-  { label: '2.49 — Nhân viên bậc 4',            value: 2.49 },
-  { label: '2.97 — Nhân viên bậc 5',            value: 2.97 },
-  { label: '3.50 — Chuyên viên / kỹ sư',        value: 3.50 },
-  { label: '4.00 — Chuyên viên chính',           value: 4.00 },
-  { label: '4.98 — Phó trưởng phòng',           value: 4.98 },
-  { label: '5.76 — Trưởng phòng',               value: 5.76 },
-  { label: '6.56 — Phó giám đốc',               value: 6.56 },
-  { label: '7.55 — Giám đốc bệnh viện',         value: 7.55 },
+// Bảng hệ số lương CBCC-VC theo Nghị định 204/2004/NĐ-CP (lương cơ sở 2,530,000 từ 01/07/2026)
+const SALARY_GRADE_GROUPS = [
+  {
+    label: 'Ngạch C — Nhân viên (bậc 1-12, hs 1.50-3.48)',
+    grades: [
+      { bac: 1, he_so: 1.50 }, { bac: 2, he_so: 1.68 }, { bac: 3, he_so: 1.86 },
+      { bac: 4, he_so: 2.04 }, { bac: 5, he_so: 2.22 }, { bac: 6, he_so: 2.40 },
+      { bac: 7, he_so: 2.58 }, { bac: 8, he_so: 2.76 }, { bac: 9, he_so: 2.94 },
+      { bac: 10, he_so: 3.12 }, { bac: 11, he_so: 3.30 }, { bac: 12, he_so: 3.48 },
+    ],
+  },
+  {
+    label: 'Ngạch B — Nhân viên trung cấp (bậc 1-12, hs 1.86-4.06)',
+    grades: [
+      { bac: 1, he_so: 1.86 }, { bac: 2, he_so: 2.06 }, { bac: 3, he_so: 2.26 },
+      { bac: 4, he_so: 2.46 }, { bac: 5, he_so: 2.66 }, { bac: 6, he_so: 2.86 },
+      { bac: 7, he_so: 3.06 }, { bac: 8, he_so: 3.26 }, { bac: 9, he_so: 3.46 },
+      { bac: 10, he_so: 3.66 }, { bac: 11, he_so: 3.86 }, { bac: 12, he_so: 4.06 },
+    ],
+  },
+  {
+    label: 'Ngạch A0 — Cán sự / Kỹ thuật viên (bậc 1-8, hs 2.10-4.27)',
+    grades: [
+      { bac: 1, he_so: 2.10 }, { bac: 2, he_so: 2.41 }, { bac: 3, he_so: 2.72 },
+      { bac: 4, he_so: 3.03 }, { bac: 5, he_so: 3.34 }, { bac: 6, he_so: 3.65 },
+      { bac: 7, he_so: 3.96 }, { bac: 8, he_so: 4.27 },
+    ],
+  },
+  {
+    label: 'Ngạch A1 — Chuyên viên / BS / Điều dưỡng hạng II-III (bậc 1-9, hs 2.34-4.98)',
+    grades: [
+      { bac: 1, he_so: 2.34 }, { bac: 2, he_so: 2.67 }, { bac: 3, he_so: 3.00 },
+      { bac: 4, he_so: 3.33 }, { bac: 5, he_so: 3.66 }, { bac: 6, he_so: 3.99 },
+      { bac: 7, he_so: 4.32 }, { bac: 8, he_so: 4.65 }, { bac: 9, he_so: 4.98 },
+    ],
+  },
+  {
+    label: 'Ngạch A2.2 — Chuyên viên chính / BS hạng II / Điều dưỡng hạng I (bậc 1-8, hs 4.00-6.38)',
+    grades: [
+      { bac: 1, he_so: 4.00 }, { bac: 2, he_so: 4.34 }, { bac: 3, he_so: 4.68 },
+      { bac: 4, he_so: 5.02 }, { bac: 5, he_so: 5.36 }, { bac: 6, he_so: 5.70 },
+      { bac: 7, he_so: 6.04 }, { bac: 8, he_so: 6.38 },
+    ],
+  },
+  {
+    label: 'Ngạch A2.1 — Chuyên viên cao cấp / BS chuyên khoa II (bậc 1-8, hs 4.40-6.78)',
+    grades: [
+      { bac: 1, he_so: 4.40 }, { bac: 2, he_so: 4.74 }, { bac: 3, he_so: 5.08 },
+      { bac: 4, he_so: 5.42 }, { bac: 5, he_so: 5.76 }, { bac: 6, he_so: 6.10 },
+      { bac: 7, he_so: 6.44 }, { bac: 8, he_so: 6.78 },
+    ],
+  },
+  {
+    label: 'Ngạch A3.2 — Cao cấp / BS hạng I (bậc 1-6, hs 5.75-7.55)',
+    grades: [
+      { bac: 1, he_so: 5.75 }, { bac: 2, he_so: 6.11 }, { bac: 3, he_so: 6.47 },
+      { bac: 4, he_so: 6.83 }, { bac: 5, he_so: 7.19 }, { bac: 6, he_so: 7.55 },
+    ],
+  },
+  {
+    label: 'Ngạch A3.1 — Giáo sư / Phó GS (bậc 1-6, hs 6.20-8.00)',
+    grades: [
+      { bac: 1, he_so: 6.20 }, { bac: 2, he_so: 6.56 }, { bac: 3, he_so: 6.92 },
+      { bac: 4, he_so: 7.28 }, { bac: 5, he_so: 7.64 }, { bac: 6, he_so: 8.00 },
+    ],
+  },
 ]
 
 const fmt = (n: number) => new Intl.NumberFormat('vi-VN').format(Math.round(n))
@@ -60,7 +113,7 @@ function SectionCard({ step, title, desc, children }: {
   step: number; title: string; desc?: string; children: React.ReactNode
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
       <div className="flex items-start gap-4 px-5 py-4 border-b border-gray-100 bg-gray-50/60">
         <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold
                          flex items-center justify-center mt-0.5">{step}</span>
@@ -424,12 +477,21 @@ export default function SalaryConfigPage() {
                     </div>
                   </div>
                   {coeffMode === 'preset' ? (
-                    <select onChange={e => setValue('coefficient', parseFloat(e.target.value), { shouldValidate: true })}
+                    <select onChange={e => {
+                        const v = parseFloat(e.target.value)
+                        if (!isNaN(v)) setValue('coefficient', v, { shouldValidate: true })
+                      }}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
                                  focus:outline-none focus:ring-2 focus:ring-blue-400">
-                      <option value="">-- Chọn bậc hệ số --</option>
-                      {COEFFICIENT_PRESETS.map(p => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
+                      <option value="">-- Chọn ngạch / bậc --</option>
+                      {SALARY_GRADE_GROUPS.map(grp => (
+                        <optgroup key={grp.label} label={grp.label}>
+                          {grp.grades.map(g => (
+                            <option key={g.he_so} value={g.he_so}>
+                              Bậc {g.bac} — Hệ số {g.he_so.toFixed(2)}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   ) : (

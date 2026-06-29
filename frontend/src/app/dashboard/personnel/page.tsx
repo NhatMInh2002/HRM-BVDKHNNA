@@ -64,6 +64,26 @@ export default function PersonnelPage() {
     }
   }
 
+  const DEFAULT_PASSWORD = 'NgheAn@2026'
+
+  // Reset password
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
+  const [pwdMsg, setPwdMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const resetMut = useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      import('@/lib/api').then(({ apiFetch }) =>
+        apiFetch('/auth-backend/admin/reset-password', {
+          method: 'POST',
+          body: JSON.stringify({ employeeId: id, newPassword: DEFAULT_PASSWORD }),
+        })
+      ),
+    onSuccess: () => {
+      setPwdMsg({ ok: true, text: `Đặt lại thành công. Mật khẩu mặc định: ${DEFAULT_PASSWORD}` })
+      setTimeout(() => { setResetTarget(null); setPwdMsg(null) }, 3000)
+    },
+    onError: (e: Error) => setPwdMsg({ ok: false, text: e.message }),
+  })
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -150,7 +170,7 @@ export default function PersonnelPage() {
               <th className="px-4 py-3 text-left">Vào làm</th>
               <th className="px-4 py-3 text-left">Hợp đồng</th>
               <th className="px-4 py-3 text-left">Trạng thái</th>
-              {canWrite && <th className="px-4 py-3 text-center w-24">Thao tác</th>}
+              {canWrite && <th className="px-4 py-3 text-center w-28">Thao tác</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -196,29 +216,33 @@ export default function PersonnelPage() {
                       <button
                         onClick={() => { setEditId(emp.id); setShowForm(true) }}
                         title="Sửa thông tin"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
-                          bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200
-                          transition-colors"
+                        className="p-1.5 rounded-md text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                        Sửa
+                      </button>
+                      <button
+                        onClick={() => { setResetTarget({ id: emp.id, name: emp.fullName }); setPwdMsg(null) }}
+                        title="Đặt lại mật khẩu"
+                        className="p-1.5 rounded-md text-gray-500 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
                       </button>
                       {emp.status !== 'TERMINATED' && (
                         <button
                           onClick={() => handleTerminate(emp.id, emp.fullName)}
-                          title="Cho nghỉ việc — dữ liệu vẫn lưu trong DB"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
-                            bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200
-                            transition-colors"
+                          title="Cho nghỉ việc"
+                          className="p-1.5 rounded-md text-orange-600 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition-colors"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                           </svg>
-                          Nghỉ
                         </button>
                       )}
                     </div>
@@ -294,6 +318,78 @@ export default function PersonnelPage() {
             qc.invalidateQueries({ queryKey: ['employees'] })
           }}
         />
+      )}
+
+      {/* Modal đặt lại mật khẩu */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            {pwdMsg?.ok ? (
+              /* Trạng thái thành công */
+              <div className="flex flex-col items-center text-center p-8 gap-4">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-800 text-lg">Đặt lại thành công</p>
+                  <p className="text-sm text-gray-500 mt-1">{resetTarget.name}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl px-5 py-3 w-full">
+                  <p className="text-xs text-gray-400 mb-1">Mật khẩu mới</p>
+                  <p className="font-mono font-bold text-gray-800 text-lg tracking-wider">{DEFAULT_PASSWORD}</p>
+                </div>
+                <p className="text-xs text-gray-400">Cửa sổ sẽ tự đóng sau 3 giây</p>
+              </div>
+            ) : (
+              /* Trạng thái xác nhận */
+              <>
+                <div className="px-6 pt-6 pb-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-800">Đặt lại mật khẩu</h3>
+                      <p className="text-sm text-gray-400">{resetTarget.name}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Mật khẩu của nhân viên sẽ được đặt lại về mặc định:
+                  </p>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                    <span className="font-mono font-bold text-amber-800 text-base tracking-wider">{DEFAULT_PASSWORD}</span>
+                    <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">Mặc định</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Nhân viên nên đổi mật khẩu sau lần đăng nhập đầu tiên.</p>
+                  {pwdMsg && !pwdMsg.ok && (
+                    <p className="text-sm text-red-500 mt-3 font-medium">✗ {pwdMsg.text}</p>
+                  )}
+                </div>
+                <div className="flex border-t border-gray-100">
+                  <button
+                    onClick={() => { setResetTarget(null); setPwdMsg(null) }}
+                    className="flex-1 py-3.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <div className="w-px bg-gray-100" />
+                  <button
+                    onClick={() => resetMut.mutate({ id: resetTarget.id })}
+                    disabled={resetMut.isPending}
+                    className="flex-1 py-3.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                  >
+                    {resetMut.isPending ? 'Đang lưu...' : 'Xác nhận'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

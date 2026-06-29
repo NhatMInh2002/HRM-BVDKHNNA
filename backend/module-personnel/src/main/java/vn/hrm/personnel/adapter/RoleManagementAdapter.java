@@ -19,18 +19,18 @@ public class RoleManagementAdapter implements RoleManagementPort {
 
     @Override
     public List<EmployeeRoleView> findAllForRoleManagement(String keyword, int page, int size) {
-        return employeeRepository.findAllActive(PageRequest.of(page, size))
+        String kw = keyword == null ? "" : keyword.trim();
+        return employeeRepository
+                .search(kw, null, null, PageRequest.of(page, size))
                 .stream()
-                .filter(e -> keyword == null || keyword.isBlank()
-                        || e.getFullName().toLowerCase().contains(keyword.toLowerCase())
-                        || e.getEmployeeCode().toLowerCase().contains(keyword.toLowerCase()))
                 .map(this::toView)
                 .toList();
     }
 
     @Override
     public long countAll(String keyword) {
-        return employeeRepository.count();
+        String kw = keyword == null ? "" : keyword.trim();
+        return employeeRepository.search(kw, null, null, PageRequest.of(0, Integer.MAX_VALUE)).getTotalElements();
     }
 
     @Override

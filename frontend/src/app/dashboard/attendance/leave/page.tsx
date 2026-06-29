@@ -1,109 +1,142 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRoles } from '@/hooks/useRoles'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { format, differenceInBusinessDays, addDays } from 'date-fns'
+import { useSession } from 'next-auth/react'
+import { format } from 'date-fns'
 import {
   getMyLeaveRequests,
-  getPendingLeaveRequests,
-  createLeaveRequest,
-  approveLeave,
-  rejectLeave,
+  getDeptPendingLeave,
+  getHrPendingLeave,
+  deptApproveLeave,
+  deptRejectLeave,
+  hrApproveLeave,
+  hrRejectLeave,
   LEAVE_TYPE_LABELS,
-  LEAVE_TYPE_META,
-  LEAVE_TYPE_GROUPS,
   LEAVE_STATUS_LABELS,
-  type LeaveType,
+  type LeaveRequest,
   type LeaveStatus,
 } from '@/lib/attendance'
 import { useCurrentEmployee } from '@/hooks/useCurrentEmployee'
+import { useRoles } from '@/hooks/useRoles'
 import { Badge } from '@/components/ui/badge'
+import { LeaveModal } from '@/components/leave-modal'
 
-const ALL_LEAVE_TYPES = Object.keys(LEAVE_TYPE_META) as LeaveType[]
-
-const schema = z.object({
-  leaveType: z.enum(ALL_LEAVE_TYPES as [LeaveType, ...LeaveType[]]),
-  startDate: z.string().min(1, 'Bắt buộc'),
-  endDate:   z.string().min(1, 'Bắt buộc'),
-  reason:    z.string().optional(),
-}).refine(d => d.endDate >= d.startDate, {
-  message: 'Ngày kết thúc phải sau ngày bắt đầu',
-  path: ['endDate'],
-})
-
-type FormValues = z.infer<typeof schema>
-
-const STATUS_VARIANT: Record<LeaveStatus, 'yellow' | 'green' | 'red'> = {
-  PENDING: 'yellow', APPROVED: 'green', REJECTED: 'red',
-}
-
-function countWorkdays(start: string, end: string): number {
-  if (!start || !end || end < start) return 0
-  // Đếm ngày dương lịch (đơn giản), không trừ lễ — có thể cải thiện sau
-  const s = new Date(start)
-  const e = new Date(end)
-  let count = 0
-  const cur = new Date(s)
-  while (cur <= e) {
-    const day = cur.getDay()
-    if (day !== 0 && day !== 6) count++
-    cur.setDate(cur.getDate() + 1)
+/** Chuyển bất kỳ URL file nào về /api/files/view?key= */
+function toViewUrl(raw: string): string {
+  if (!raw) return raw
+  if (raw.startsWith('/api/files/view')) return raw
+  let key = raw
+  if (raw.startsWith('http')) {
+    try {
+      const u = new URL(raw)
+      key = u.pathname.replace(/^\/[^/]+\//, '') // bỏ /bucket-name/ prefix
+    } catch { /* keep raw */ }
   }
-  return count
+  key = key.replace(/^hrm-avatars\//, '')
+  return `/api/files/view?key=${encodeURIComponent(key)}`
 }
+
+const STATUS_VARIANT: Record<LeaveStatus, 'yellow' | 'green' | 'red' | 'blue'> = {
+  PENDING: 'yellow', DEPT_APPROVED: 'blue', APPROVED: 'green', REJECTED: 'red',
+}
+
+type Tab = 'my' | 'dept' | 'hr'
 
 export default function LeavePage() {
-  const { canApproveLeave: canApprove } = useRoles()
-  const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [tab, setTab] = useState<'my' | 'pending'>('my')
-
-  useEffect(() => { if (canApprove) setTab('pending') }, [canApprove])
-
+  const { data: session } = useSession()
+  const { canApproveLeave } = useRoles()
   const { data: me } = useCurrentEmployee()
+  const qc = useQueryClient()
 
+  const role = (session as any)?.role as string | undefined
+  const isDeptHead = role === 'DEPT_HEAD' || role === 'ADMIN'
+  const isHr = role === 'HR_MANAGER' || role === 'ADMIN'
+
+  const [tab, setTab] = useState<Tab>('my')
+  const [showForm, setShowForm] = useState(false)
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; level: 'dept' | 'hr' } | null>(null)
+  const [rejectNote, setRejectNote] = useState('')
+
+  // Preview state
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [blobType, setBlobType] = useState<string>('application/pdf')
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  useEffect(() => {
+    if (isDeptHead) setTab('dept')
+    else if (isHr) setTab('hr')
+  }, [isDeptHead, isHr])
+
+  // Queries
   const { data: myRequests = [], isLoading: loadingMy } = useQuery({
     queryKey: ['my-leave', me?.id],
     queryFn: () => getMyLeaveRequests(me!.id),
     enabled: tab === 'my' && !!me?.id,
   })
-  const { data: pendingRequests = [], isLoading: loadingPending } = useQuery({
-    queryKey: ['pending-leave'],
-    queryFn: getPendingLeaveRequests,
-    enabled: tab === 'pending' && canApprove,
+  const { data: deptRequests = [], isLoading: loadingDept } = useQuery({
+    queryKey: ['dept-leave'],
+    queryFn: getDeptPendingLeave,
+    enabled: tab === 'dept' && isDeptHead,
+  })
+  const { data: hrRequests = [], isLoading: loadingHr } = useQuery({
+    queryKey: ['hr-leave'],
+    queryFn: getHrPendingLeave,
+    enabled: tab === 'hr' && isHr,
   })
 
-  const approveMut = useMutation({
-    mutationFn: approveLeave,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pending-leave'] }),
+  // Mutations — trưởng phòng
+  const deptApproveMut = useMutation({
+    mutationFn: deptApproveLeave,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dept-leave'] }),
   })
-  const rejectMut = useMutation({
-    mutationFn: rejectLeave,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pending-leave'] }),
-  })
-
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { leaveType: 'ANNUAL' },
+  const deptRejectMut = useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) => deptRejectLeave(id, note),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['dept-leave'] }); setRejectTarget(null) },
   })
 
-  const createMut = useMutation({
-    mutationFn: (values: FormValues) => createLeaveRequest({ employeeId: me!.id, ...values }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['my-leave'] }); setShowForm(false); reset() },
+  // Mutations — TCCB
+  const hrApproveMut = useMutation({
+    mutationFn: hrApproveLeave,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr-leave'] }),
+  })
+  const hrRejectMut = useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) => hrRejectLeave(id, note),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['hr-leave'] }); setRejectTarget(null) },
   })
 
-  const watchedType  = watch('leaveType')
-  const watchedStart = watch('startDate')
-  const watchedEnd   = watch('endDate')
-  const meta         = LEAVE_TYPE_META[watchedType]
-  const workdays     = countWorkdays(watchedStart, watchedEnd)
-  const overLimit    = meta.maxDays !== undefined && workdays > meta.maxDays
+  const rows = tab === 'my' ? myRequests : tab === 'dept' ? deptRequests : hrRequests
+  const isLoading = tab === 'my' ? loadingMy : tab === 'dept' ? loadingDept : loadingHr
 
-  const rows      = tab === 'my' ? myRequests : pendingRequests
-  const isLoading = tab === 'my' ? loadingMy  : loadingPending
+  async function openPreview(rawUrl: string) {
+    const viewUrl = toViewUrl(rawUrl)
+    setPreviewUrl(viewUrl)
+    setPreviewLoading(true)
+    setBlobUrl(null)
+    try {
+      const res = await fetch(viewUrl, {
+        headers: { Authorization: `Bearer ${session?.accessToken ?? ''}` }
+      })
+      const blob = await res.blob()
+      setBlobType(blob.type || 'application/octet-stream')
+      setBlobUrl(URL.createObjectURL(blob))
+    } catch { setBlobUrl(null) }
+    finally { setPreviewLoading(false) }
+  }
+
+  function closePreview() {
+    if (blobUrl) URL.revokeObjectURL(blobUrl)
+    setPreviewUrl(null)
+    setBlobUrl(null)
+  }
+
+  const tabs: { key: Tab; label: string; show: boolean; count?: number }[] = [
+    { key: 'my', label: 'Đơn của tôi', show: true },
+    { key: 'dept', label: 'Duyệt cấp 1 (Trưởng phòng)', show: isDeptHead, count: deptRequests.length },
+    { key: 'hr', label: 'Duyệt cấp 2 (TCCB)', show: isHr, count: hrRequests.length },
+  ]
+
+  const showActions = (tab === 'dept' && isDeptHead) || (tab === 'hr' && isHr)
 
   return (
     <div>
@@ -112,40 +145,37 @@ export default function LeavePage() {
           <h1 className="text-2xl font-bold text-gray-800">Nghỉ phép</h1>
           <p className="text-sm text-gray-500 mt-0.5">{rows.length} đơn</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          disabled={!me}
-          className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-        >
-          + Tạo đơn nghỉ
-        </button>
+        {tab === 'my' && (
+          <button
+            onClick={() => setShowForm(true)}
+            disabled={!me}
+            className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+          >
+            + Tạo đơn nghỉ
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-gray-200">
-        {canApprove && (
+      <div className="flex gap-1 mb-5 border-b border-gray-200">
+        {tabs.filter(t => t.show).map(t => (
           <button
-            onClick={() => setTab('pending')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'pending' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              tab === t.key
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Chờ duyệt
-            {pendingRequests.length > 0 && (
-              <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-1.5 py-0.5 rounded-full">
-                {pendingRequests.length}
+            {t.label}
+            {t.count != null && t.count > 0 && (
+              <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                {t.count}
               </span>
             )}
           </button>
-        )}
-        <button
-          onClick={() => setTab('my')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            tab === 'my' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Đơn của tôi
-        </button>
+        ))}
       </div>
 
       {/* Table */}
@@ -153,54 +183,84 @@ export default function LeavePage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
             <tr>
-              <th className="px-4 py-3 text-left">Nhân viên</th>
+              {showActions && <th className="px-4 py-3 text-left">Nhân viên</th>}
               <th className="px-4 py-3 text-left">Loại nghỉ</th>
               <th className="px-4 py-3 text-left">Từ ngày</th>
               <th className="px-4 py-3 text-left">Đến ngày</th>
               <th className="px-4 py-3 text-left">Số ngày</th>
               <th className="px-4 py-3 text-left">Lý do</th>
+              <th className="px-4 py-3 text-left">File</th>
               <th className="px-4 py-3 text-left">Trạng thái</th>
-              {canApprove && tab === 'pending' && <th className="px-4 py-3 text-right">Thao tác</th>}
+              {showActions && <th className="px-4 py-3 text-right">Thao tác</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">Đang tải...</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">Đang tải...</td></tr>
             )}
             {!isLoading && rows.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">Không có đơn nào.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">
+                {tab === 'my' ? 'Bạn chưa có đơn nghỉ nào.' : 'Không có đơn nào chờ duyệt.'}
+              </td></tr>
             )}
             {rows.map(r => (
-              <tr key={r.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-xs text-gray-500 font-mono">{r.createdBy}</td>
-                <td className="px-4 py-3 text-gray-700">
-                  {LEAVE_TYPE_LABELS[r.leaveType] ?? r.leaveType}
-                </td>
+              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                {showActions && (
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-gray-800 text-xs">{r.employeeName ?? r.createdBy}</div>
+                    {r.employeeCode && <div className="text-gray-400 text-xs">{r.employeeCode}</div>}
+                  </td>
+                )}
+                <td className="px-4 py-3 font-medium text-gray-800">{LEAVE_TYPE_LABELS[r.leaveType] ?? r.leaveType}</td>
                 <td className="px-4 py-3 text-gray-600">{format(new Date(r.startDate), 'dd/MM/yyyy')}</td>
                 <td className="px-4 py-3 text-gray-600">{format(new Date(r.endDate), 'dd/MM/yyyy')}</td>
-                <td className="px-4 py-3 font-medium text-gray-800">{r.totalDays}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs max-w-[160px] truncate">{r.reason ?? '—'}</td>
+                <td className="px-4 py-3 font-semibold text-gray-800">{r.totalDays}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs max-w-[120px] truncate">{r.reason ?? '—'}</td>
                 <td className="px-4 py-3">
-                  <Badge label={LEAVE_STATUS_LABELS[r.status]} variant={STATUS_VARIANT[r.status]} />
+                  <div className="flex items-center gap-1">
+                    {r.attachmentUrl && (
+                      <button onClick={() => openPreview(r.attachmentUrl!)}
+                        title="Xem file đính kèm"
+                        className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                        <EyeIcon />
+                      </button>
+                    )}
+                    {r.pdfUrl && (
+                      <button onClick={() => openPreview(r.pdfUrl!)}
+                        title="Xem PDF quyết định"
+                        className="p-1 rounded text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
+                        <PdfIcon />
+                      </button>
+                    )}
+                    {!r.attachmentUrl && !r.pdfUrl && <span className="text-gray-300 text-xs">—</span>}
+                  </div>
                 </td>
-                {canApprove && tab === 'pending' && (
-                  <td className="px-4 py-3 text-right space-x-2">
-                    <button
-                      onClick={() => approveMut.mutate(r.id)}
-                      disabled={approveMut.isPending}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded
-                        bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 disabled:opacity-50"
-                    >
-                      Duyệt
-                    </button>
-                    <button
-                      onClick={() => rejectMut.mutate(r.id)}
-                      disabled={rejectMut.isPending}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded
-                        bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 disabled:opacity-50"
-                    >
-                      Từ chối
-                    </button>
+                <td className="px-4 py-3">
+                  <Badge label={LEAVE_STATUS_LABELS[r.status] ?? r.status} variant={STATUS_VARIANT[r.status] ?? 'yellow'} />
+                  {r.status === 'REJECTED' && (r.deptRejectNote || r.hrRejectNote) && (
+                    <p className="text-xs text-red-500 mt-0.5 max-w-[120px] truncate">
+                      {r.deptRejectNote ?? r.hrRejectNote}
+                    </p>
+                  )}
+                </td>
+                {showActions && (
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => tab === 'dept' ? deptApproveMut.mutate(r.id) : hrApproveMut.mutate(r.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all"
+                      >
+                        <CheckIcon /> Duyệt
+                      </button>
+                      <button
+                        onClick={() => { setRejectTarget({ id: r.id, level: tab as 'dept' | 'hr' }); setRejectNote('') }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-400 transition-all"
+                      >
+                        <XIcon /> Từ chối
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>
@@ -209,142 +269,126 @@ export default function LeavePage() {
         </table>
       </div>
 
-      {/* Modal tạo đơn */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-800">Tạo đơn xin nghỉ</h2>
-              <button onClick={() => { setShowForm(false); reset() }}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
-            </div>
+      <LeaveModal open={showForm} onClose={() => setShowForm(false)} />
 
-            <form onSubmit={handleSubmit(d => createMut.mutate(d))} className="px-6 py-5 space-y-4">
-              {me && (
-                <p className="text-sm text-gray-600 bg-blue-50 rounded-lg px-3 py-2">
-                  Người nộp đơn: <span className="font-semibold">{me.fullName}</span>
-                  <span className="text-gray-400 ml-1">({me.employeeCode})</span>
-                </p>
-              )}
-
-              {/* Loại nghỉ — dropdown có nhóm */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Loại nghỉ *</label>
-                <select
-                  {...register('leaveType')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {LEAVE_TYPE_GROUPS.map(({ group, types }) => (
-                    <optgroup key={group} label={group}>
-                      {types.map(t => (
-                        <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-
-              {/* Info card — hiện theo loại đã chọn */}
-              <div className={`rounded-lg px-4 py-3 text-xs space-y-1 border ${
-                meta.paid ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-600'
-              }`}>
-                <div className="flex items-center gap-2 font-medium">
-                  <span>{meta.paid ? '✅ Nghỉ có lương' : '⚠️ Nghỉ không lương'}</span>
-                  {meta.maxDays && (
-                    <span className="ml-auto bg-white/70 rounded px-1.5 py-0.5 border border-current/20">
-                      Tối đa {meta.maxDays} ngày theo quy định
-                    </span>
-                  )}
-                </div>
-                {meta.requiresDoc && (
-                  <div className="flex items-start gap-1.5 text-orange-700">
-                    <span className="mt-0.5">📎</span>
-                    <span>Cần nộp: <strong>{meta.requiresDoc}</strong></span>
-                  </div>
-                )}
-              </div>
-
-              {/* Ngày */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Từ ngày *</label>
-                  <input {...register('startDate')} type="date"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Đến ngày *</label>
-                  <input {...register('endDate')} type="date"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate.message}</p>}
-                </div>
-              </div>
-
-              {/* Số ngày preview */}
-              {workdays > 0 && (
-                <div className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${
-                  overLimit
-                    ? 'bg-red-50 text-red-700 border border-red-200'
-                    : 'bg-blue-50 text-blue-700 border border-blue-200'
-                }`}>
-                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-                  </svg>
-                  <span>
-                    <strong>{workdays} ngày làm việc</strong>
-                    {overLimit && (
-                      <span className="ml-1">
-                        — vượt quá quy định ({meta.maxDays} ngày). Vui lòng liên hệ Phòng Tổ chức.
-                      </span>
-                    )}
-                  </span>
-                </div>
-              )}
-
-              {/* Lý do */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Lý do / ghi chú
-                  {['ANNUAL','COMPENSATORY','UNPAID'].includes(watchedType) && (
-                    <span className="text-gray-400 font-normal ml-1">(bắt buộc)</span>
-                  )}
-                </label>
-                <textarea
-                  {...register('reason')}
-                  rows={2}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder={
-                    watchedType === 'SICK' ? 'VD: Sốt, cảm cúm — đã có giấy BHXH' :
-                    watchedType === 'ANNUAL' ? 'VD: Nghỉ phép theo kế hoạch' :
-                    watchedType === 'COMPENSATORY' ? 'VD: Bù ngày làm thêm ngày 20/06' :
-                    'Ghi rõ lý do...'
+      {/* Modal từ chối */}
+      {rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-1">Lý do từ chối</h3>
+            <p className="text-sm text-gray-500 mb-4">Nhập lý do từ chối đơn nghỉ phép này</p>
+            <textarea
+              value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+              rows={3}
+              placeholder="Ví dụ: Thiếu nhân lực trong thời gian này..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+            />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setRejectTarget(null)}
+                className="flex-1 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  if (rejectTarget.level === 'dept') {
+                    deptRejectMut.mutate({ id: rejectTarget.id, note: rejectNote })
+                  } else {
+                    hrRejectMut.mutate({ id: rejectTarget.id, note: rejectNote })
                   }
-                />
-              </div>
+                }}
+                disabled={deptRejectMut.isPending || hrRejectMut.isPending}
+                className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {deptRejectMut.isPending || hrRejectMut.isPending ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {createMut.error && (
-                <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-                  {(createMut.error as Error).message}
-                </p>
+      {/* Modal xem trước file */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={closePreview}>
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
+               onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+              <p className="text-sm font-medium text-gray-700">Xem trước file</p>
+              <div className="flex items-center gap-2">
+                {blobUrl && (
+                  <a href={blobUrl} download className="text-xs text-blue-600 hover:underline px-2 py-1">
+                    Tải xuống ↓
+                  </a>
+                )}
+                <button onClick={closePreview} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+                  <XIcon />
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-[80vh] flex items-center justify-center bg-gray-50 p-4 min-h-[300px]">
+              {previewLoading ? (
+                <div className="text-gray-400 text-sm flex flex-col items-center gap-2">
+                  <SpinnerIcon />
+                  Đang tải file...
+                </div>
+              ) : blobUrl ? (
+                blobType.startsWith('image/') ? (
+                  <img src={blobUrl} alt="Đính kèm" className="max-w-full max-h-[75vh] object-contain rounded-lg shadow" />
+                ) : (
+                  <iframe src={blobUrl} className="w-full h-[75vh] rounded-lg border-0" title="Xem trước file" />
+                )
+              ) : (
+                <p className="text-red-500 text-sm">Không thể tải file. Vui lòng thử lại.</p>
               )}
-
-              <div className="flex justify-end gap-3 pt-1">
-                <button type="button" onClick={() => { setShowForm(false); reset() }}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMut.isPending || !me || overLimit}
-                  className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60"
-                >
-                  {createMut.isPending ? 'Đang gửi...' : 'Gửi đơn'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+function EyeIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+    </svg>
+  )
+}
+
+function PdfIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+    </svg>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+    </svg>
+  )
+}
+
+function SpinnerIcon() {
+  return (
+    <svg className="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
   )
 }

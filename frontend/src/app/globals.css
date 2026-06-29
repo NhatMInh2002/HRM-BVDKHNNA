@@ -7,3 +7,13 @@
     @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white;
   }
 }
+
+/* Scrollbar toàn cục — mỏng, nhẹ */
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Sidebar scrollbar tối màu hơn để hợp nền dark */
+aside ::-webkit-scrollbar-thumb       { background: #334155; }
+aside ::-webkit-scrollbar-thumb:hover { background: #475569; }

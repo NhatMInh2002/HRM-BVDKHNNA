@@ -26,6 +26,9 @@ export interface SalaryConfig {
 export interface PayrollRecord {
   id: string
   employeeId: string
+  employeeCode?: string
+  fullName?: string
+  departmentName?: string
   periodYear: number
   periodMonth: number
   basicSalary: number

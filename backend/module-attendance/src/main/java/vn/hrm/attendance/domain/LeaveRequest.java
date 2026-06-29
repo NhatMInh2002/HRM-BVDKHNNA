@@ -38,14 +38,44 @@ public class LeaveRequest {
     @Column(length = 500)
     private String reason;
 
+    @Column(length = 1000)
+    private String attachmentUrl;
+
+    @Column(length = 255)
+    private String attachmentName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private LeaveStatus status;
 
+    // Cấp 1: Trưởng phòng
+    @Column(length = 100)
+    private String deptApprovedBy;
+    private OffsetDateTime deptApprovedAt;
+    @Column(length = 100)
+    private String deptRejectedBy;
+    private OffsetDateTime deptRejectedAt;
+    @Column(length = 500)
+    private String deptRejectNote;
+
+    // Cấp 2: TCCB (HR)
+    @Column(length = 100)
+    private String hrApprovedBy;
+    private OffsetDateTime hrApprovedAt;
+    @Column(length = 100)
+    private String hrRejectedBy;
+    private OffsetDateTime hrRejectedAt;
+    @Column(length = 500)
+    private String hrRejectNote;
+
+    // Legacy — giữ để tương thích
     @Column(length = 100)
     private String approvedBy;
-
     private OffsetDateTime approvedAt;
+
+    // PDF được tạo khi TCCB duyệt xong
+    @Column(length = 1000)
+    private String pdfUrl;
 
     @Column(nullable = false, length = 100)
     private String createdBy;

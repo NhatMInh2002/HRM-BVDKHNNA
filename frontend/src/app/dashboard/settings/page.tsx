@@ -1,147 +1,210 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  getRoleAssignments, updateRoleAssignment,
-  HRM_ROLE_LABELS, HRM_ROLE_COLORS,
-  type HrmRole, type RoleAssignment,
-} from '@/lib/admin'
 import { useRoles } from '@/hooks/useRoles'
+import {
+  getPermissionDefinitions,
+  getEmployeesWithPermissions,
+  setEmployeePermissions,
+  type DeptWithEmployees,
+  type EmployeeSummary,
+} from '@/lib/permissions'
 
-const ROLES: HrmRole[] = ['ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'ACCOUNTANT', 'EMPLOYEE']
-
-function RoleBadge({ role }: { role: HrmRole | null }) {
-  if (!role) return <span className="text-xs text-gray-400">—</span>
+// ── Icons ──────────────────────────────────────────────────────────────
+function ChevronIcon({ open }: { open: boolean }) {
   return (
-    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${HRM_ROLE_COLORS[role]}`}>
-      {HRM_ROLE_LABELS[role]}
-    </span>
+    <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? 'rotate-90' : ''}`}
+      fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+    </svg>
   )
 }
 
-function EditRoleModal({
-  emp,
-  onClose,
-  onSave,
+function PersonIcon() {
+  return (
+    <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+    </svg>
+  )
+}
+
+function SaveIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M5 13l4 4L19 7"/>
+    </svg>
+  )
+}
+
+// ── Dept Tree ──────────────────────────────────────────────────────────
+function DeptTree({
+  depts,
+  selectedId,
+  onSelect,
+  onDeptSelect,
 }: {
-  emp: RoleAssignment
-  onClose: () => void
-  onSave: (id: string, role: HrmRole, keycloakUsername: string) => void
+  depts: DeptWithEmployees[]
+  selectedId: string | null
+  onSelect: (emp: EmployeeSummary) => void
+  onDeptSelect: (dept: DeptWithEmployees) => void
 }) {
-  const [role, setRole] = useState<HrmRole>((emp.hrmRole as HrmRole) ?? 'EMPLOYEE')
-  const [username, setUsername] = useState(emp.keycloakUsername ?? '')
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const [search, setSearch] = useState('')
+
+  const filtered = depts.filter(d =>
+    d.departmentName != null &&
+    d.departmentName.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-800">Phân quyền — {emp.fullName}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+    <div className="flex flex-col h-full text-sm select-none">
+      {/* Root node */}
+      <div className="px-3 py-2 border-b border-gray-100 bg-gray-50 flex-shrink-0">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 mb-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+          BVHNĐK Nghệ An
         </div>
+        {/* Search box */}
+        <div className="relative">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Tìm khoa/phòng..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+          />
+        </div>
+      </div>
 
-        <div className="px-6 py-5 space-y-4">
-          {/* Info */}
-          <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm space-y-1">
-            <p><span className="text-gray-400">Mã NV:</span> <span className="font-mono text-gray-700">{emp.employeeCode}</span></p>
-            <p><span className="text-gray-400">Email:</span> <span className="text-gray-700">{emp.email ?? '—'}</span></p>
-            <p><span className="text-gray-400">Phòng ban:</span> <span className="text-gray-700">{emp.departmentName ?? '—'}</span></p>
-          </div>
-
-          {/* Vai trò */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">Vai trò hệ thống</label>
-            <div className="space-y-2">
-              {ROLES.map(r => (
-                <label key={r} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors
-                  ${role === r ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+      <div className="flex-1 overflow-y-auto">
+        {filtered.map(dept => {
+          const key = dept.departmentName ?? '__null__'
+          const isOpen = !!open[key]
+          return (
+            <div key={key} className="border-b border-gray-50">
+              {/* Phòng ban header */}
+              <div className="flex items-center hover:bg-gray-50 group">
+                {/* Checkbox chọn cả phòng */}
+                <label
+                  className="flex items-center pl-3 py-2.5 cursor-pointer"
+                  onClick={e => e.stopPropagation()}
+                >
                   <input
-                    type="radio"
-                    name="role"
-                    value={r}
-                    checked={role === r}
-                    onChange={() => setRole(r)}
-                    className="accent-blue-600"
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded text-blue-600 border-gray-300 cursor-pointer"
+                    onChange={() => onDeptSelect(dept)}
                   />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{HRM_ROLE_LABELS[r]}</p>
-                    <p className="text-xs text-gray-400">{ROLE_DESC[r]}</p>
-                  </div>
                 </label>
+                {/* Tên phòng — click để mở rộng */}
+                <button
+                  onClick={() => setOpen(p => ({ ...p, [key]: !p[key] }))}
+                  className="flex-1 flex items-center gap-2 px-2 py-2.5 text-left"
+                >
+                  <ChevronIcon open={isOpen} />
+                  <span className="font-medium text-gray-700 text-xs leading-tight">
+                    {dept.departmentName ?? 'Chưa phân khoa/phòng'}
+                  </span>
+                  <span className="ml-auto text-[10px] text-gray-400 flex-shrink-0">{dept.employees.length}</span>
+                </button>
+              </div>
+
+              {/* Nhân viên trong phòng */}
+              {isOpen && dept.employees.map(emp => (
+                <button
+                  key={emp.id}
+                  onClick={() => onSelect(emp)}
+                  className={`w-full flex items-center gap-2 pl-10 pr-3 py-2 text-left hover:bg-blue-50 transition-colors border-t border-gray-50 ${
+                    selectedId === emp.id ? 'bg-blue-50 border-r-2 border-r-blue-500' : ''
+                  }`}
+                >
+                  <PersonIcon />
+                  <div className="min-w-0">
+                    <p className={`text-xs truncate ${selectedId === emp.id ? 'text-blue-700 font-medium' : 'text-gray-700'}`}>
+                      {emp.fullName}
+                    </p>
+                    <p className="text-[10px] text-gray-400 truncate">{emp.code}</p>
+                  </div>
+                  {emp.permissions.length > 0 && (
+                    <span className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" title={`${emp.permissions.length} quyền`} />
+                  )}
+                </button>
               ))}
             </div>
-          </div>
-
-          {/* Keycloak username */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Tên đăng nhập Keycloak
-              <span className="ml-1 text-gray-400 font-normal">(để đồng bộ quyền ngay)</span>
-            </label>
-            <input
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              placeholder="vd: minhnqn"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-          <button onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100">
-            Hủy
-          </button>
-          <button onClick={() => onSave(emp.id, role, username)}
-            className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-            Lưu phân quyền
-          </button>
-        </div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-const ROLE_DESC: Record<HrmRole, string> = {
-  ADMIN:              'Toàn quyền hệ thống, quản lý cài đặt',
-  HR_MANAGER:         'Quản lý nhân sự, lương, chấm công toàn viện',
-  DEPARTMENT_MANAGER: 'Xem nhân sự & chấm công trong khoa/phòng',
-  ACCOUNTANT:         'Xem và xuất bảng lương',
-  EMPLOYEE:           'Xem hồ sơ và lương cá nhân',
-}
-
+// ── Main Page ──────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { isAdmin } = useRoles()
   const qc = useQueryClient()
-  const [keyword, setKeyword] = useState('')
-  const [pendingKeyword, setPendingKeyword] = useState('')
-  const [page, setPage] = useState(0)
-  const [editing, setEditing] = useState<RoleAssignment | null>(null)
+
+  const [selected, setSelected] = useState<EmployeeSummary | null>(null)
+  const [checkedPerms, setCheckedPerms] = useState<Set<string>>(new Set())
+  const [dirty, setDirty] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['role-assignments', keyword, page],
-    queryFn: () => getRoleAssignments({ keyword, page, size: 20 }),
+  const { data: depts = [], isLoading: loadingDepts, error: deptsError } = useQuery({
+    queryKey: ['permission-employees'],
+    queryFn: getEmployeesWithPermissions,
+    // không filter isAdmin để tránh query không chạy khi session chưa load
+    retry: 1,
+  })
+
+  const { data: permDefs = [] } = useQuery({
+    queryKey: ['permission-defs'],
+    queryFn: getPermissionDefinitions,
     enabled: isAdmin,
   })
 
-  const update = useMutation({
-    mutationFn: ({ id, role, keycloakUsername }: { id: string; role: HrmRole; keycloakUsername: string }) =>
-      updateRoleAssignment(id, role, keycloakUsername),
-    onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ['role-assignments'] })
-      setEditing(null)
-      setToast({ msg: `Đã lưu — ${result}`, ok: true })
-      setTimeout(() => setToast(null), 3500)
+  const saveMut = useMutation({
+    mutationFn: ({ id, perms }: { id: string; perms: string[] }) =>
+      setEmployeePermissions(id, perms),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['permission-employees'] })
+      setDirty(false)
+      setToast({ msg: 'Đã lưu phân quyền', ok: true })
+      setTimeout(() => setToast(null), 3000)
     },
     onError: () => {
-      setToast({ msg: 'Lỗi khi lưu phân quyền', ok: false })
-      setTimeout(() => setToast(null), 3500)
+      setToast({ msg: 'Lỗi khi lưu', ok: false })
+      setTimeout(() => setToast(null), 3000)
     },
   })
 
-  const handleSave = useCallback((id: string, role: HrmRole, keycloakUsername: string) => {
-    update.mutate({ id, role, keycloakUsername })
-  }, [update])
+  function handleSelect(emp: EmployeeSummary) {
+    setSelected(emp)
+    setCheckedPerms(new Set(emp.permissions))
+    setDirty(false)
+  }
+
+  function togglePerm(code: string) {
+    setCheckedPerms(prev => {
+      const next = new Set(prev)
+      if (next.has(code)) next.delete(code)
+      else next.add(code)
+      return next
+    })
+    setDirty(true)
+  }
+
+  function handleSave() {
+    if (!selected) return
+    saveMut.mutate({ id: selected.id, perms: Array.from(checkedPerms) })
+  }
 
   if (!isAdmin) {
     return (
@@ -152,145 +215,141 @@ export default function SettingsPage() {
     )
   }
 
-  const totalPages = data ? Math.ceil(data.totalElements / 20) : 0
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Cài đặt hệ thống</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Quản lý phân quyền tài khoản người dùng</p>
+        <h1 className="text-2xl font-bold text-gray-800">Phân quyền</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Chọn nhân viên bên trái, tích quyền bên phải</p>
       </div>
 
-      {/* Section phân quyền */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        {/* Section header */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-800">Phân quyền sử dụng</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Gán vai trò cho từng nhân viên. Thay đổi có hiệu lực sau lần đăng nhập kế tiếp.
-            </p>
+      <div className="flex gap-4 h-[calc(100vh-180px)]">
+
+        {/* ── Tree bên trái ──────────────────────────────────── */}
+        <div className="w-96 flex-shrink-0 bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+          <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Khoa / Phòng</p>
           </div>
-          <span className="text-xs text-gray-400">{data?.totalElements ?? '—'} tài khoản</span>
-        </div>
-
-        {/* Search */}
-        <div className="px-5 py-3 border-b border-gray-100 flex gap-3">
-          <input
-            type="text"
-            placeholder="Tìm theo tên, mã cán bộ..."
-            value={pendingKeyword}
-            onChange={e => setPendingKeyword(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { setKeyword(pendingKeyword); setPage(0) } }}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={() => { setKeyword(pendingKeyword); setPage(0) }}
-            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Tìm
-          </button>
-        </div>
-
-        {/* Table */}
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-            <tr>
-              <th className="px-5 py-3 text-left">Mã NV</th>
-              <th className="px-5 py-3 text-left">Họ tên</th>
-              <th className="px-5 py-3 text-left">Phòng ban</th>
-              <th className="px-5 py-3 text-left">Tên đăng nhập</th>
-              <th className="px-5 py-3 text-left">Vai trò hiện tại</th>
-              <th className="px-5 py-3 text-center">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {isLoading && (
-              <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-400">Đang tải...</td></tr>
-            )}
-            {!isLoading && data?.content?.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-400">Không tìm thấy</td></tr>
-            )}
-            {data?.content?.map(emp => (
-              <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-5 py-3 font-mono text-xs text-gray-500">{emp.employeeCode}</td>
-                <td className="px-5 py-3">
-                  <p className="font-medium text-gray-800">{emp.fullName}</p>
-                  <p className="text-xs text-gray-400">{emp.email}</p>
-                </td>
-                <td className="px-5 py-3 text-xs text-gray-500">{emp.departmentName ?? '—'}</td>
-                <td className="px-5 py-3">
-                  {emp.keycloakUsername
-                    ? <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{emp.keycloakUsername}</span>
-                    : <span className="text-xs text-gray-300">chưa liên kết</span>
-                  }
-                </td>
-                <td className="px-5 py-3">
-                  <RoleBadge role={emp.hrmRole as HrmRole} />
-                </td>
-                <td className="px-5 py-3 text-center">
-                  <button
-                    onClick={() => setEditing(emp)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
-                      bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    Phân quyền
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 text-sm text-gray-500">
-            <span>{data!.totalElements} tài khoản — trang {page + 1}/{totalPages}</span>
-            <div className="flex gap-1">
-              <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">‹</button>
-              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">›</button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Bảng vai trò */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-800">Mô tả các vai trò</h2>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {ROLES.map(r => (
-            <div key={r} className="px-5 py-3 flex items-center gap-4">
-              <div className="w-40 flex-shrink-0">
-                <RoleBadge role={r} />
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {loadingDepts ? (
+              <div className="p-4 text-center text-xs text-gray-400">Đang tải...</div>
+            ) : deptsError ? (
+              <div className="p-4 text-xs text-red-500">
+                Lỗi: {(deptsError as Error).message}
               </div>
-              <p className="text-sm text-gray-600">{ROLE_DESC[r]}</p>
+            ) : depts.length === 0 ? (
+              <div className="p-4 text-xs text-gray-400">Không có dữ liệu</div>
+            ) : (
+              <DeptTree
+                depts={depts}
+                selectedId={selected?.id ?? null}
+                onSelect={handleSelect}
+                onDeptSelect={(dept) => {
+                  // Chọn nhân viên đầu tiên của phòng để load quyền, đồng thời highlight
+                  if (dept.employees.length > 0) handleSelect(dept.employees[0])
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ── Panel quyền bên phải ───────────────────────────── */}
+        <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+          {!selected ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3">
+              <svg className="w-12 h-12 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              <p className="text-sm">Chọn một nhân viên để phân quyền</p>
             </div>
-          ))}
+          ) : (
+            <>
+              {/* Header nhân viên được chọn */}
+              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-800">{selected.fullName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {selected.code} · {selected.departmentName ?? 'Chưa phân phòng'}
+                    {selected.position && ` · ${selected.position}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {dirty && (
+                    <span className="text-xs text-amber-600 font-medium">● Chưa lưu</span>
+                  )}
+                  <button
+                    onClick={handleSave}
+                    disabled={!dirty || saveMut.isPending}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
+                      bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <SaveIcon />
+                    {saveMut.isPending ? 'Đang lưu...' : 'Lưu quyền'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Danh sách nhóm quyền */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                {permDefs.map(group => (
+                  <div key={group.group}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      {group.group}
+                    </p>
+                    <div className="space-y-1">
+                      {group.items.map(item => {
+                        const checked = checkedPerms.has(item.code)
+                        return (
+                          <label
+                            key={item.code}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors
+                              ${checked ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => togglePerm(item.code)}
+                              className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span className={`text-sm ${checked ? 'text-blue-800 font-medium' : 'text-gray-700'}`}>
+                              {item.label}
+                            </span>
+                            <span className="ml-auto text-[10px] text-gray-300 font-mono">{item.code}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer — tóm tắt */}
+              <div className="px-5 py-2.5 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
+                <span className="text-xs text-gray-500">
+                  Đã chọn <strong className="text-blue-600">{checkedPerms.size}</strong> / {permDefs.reduce((s, g) => s + g.items.length, 0)} quyền
+                </span>
+                {checkedPerms.size > 0 && (
+                  <button
+                    onClick={() => { setCheckedPerms(new Set()); setDirty(true) }}
+                    className="ml-auto text-xs text-red-500 hover:text-red-700"
+                  >
+                    Xóa tất cả
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
-
-      {/* Modal */}
-      {editing && (
-        <EditRoleModal
-          emp={editing}
-          onClose={() => setEditing(null)}
-          onSave={handleSave}
-        />
-      )}
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium
-          ${toast.ok ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white
+          ${toast.ok ? 'bg-emerald-500' : 'bg-red-500'}`}>
+          {toast.ok
+            ? <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+            : <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+          }
           {toast.msg}
         </div>
       )}

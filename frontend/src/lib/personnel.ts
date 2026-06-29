@@ -37,6 +37,9 @@ export interface Employee {
   status: EmployeeStatus
   createdAt: string
   updatedAt: string
+  avatarUrl?: string
+  signatureUrl?: string
+  hrmRole?: string
 }
 
 export interface EmployeePage {

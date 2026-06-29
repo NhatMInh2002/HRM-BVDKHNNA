@@ -18,9 +18,12 @@ async function getToken(): Promise<string | undefined> {
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getToken()
+  const customHeaders = (options.headers as Record<string, string>) ?? {}
+  const isMultipart = options.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
+    // Không set Content-Type với FormData — browser tự set boundary
+    ...(isMultipart ? {} : { 'Content-Type': 'application/json' }),
+    ...customHeaders,
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 

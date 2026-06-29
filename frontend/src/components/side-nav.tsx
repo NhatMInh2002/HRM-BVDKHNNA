@@ -18,6 +18,9 @@ const Icons = {
   profile:   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/></svg>,
   otp:       <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>,
   shield:    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>,
+  chart:     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>,
+  check:     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>,
+  star:      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>,
   logout:    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd"/></svg>,
   chevron:   <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/></svg>,
 }
@@ -50,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
     key: 'hr', label: 'NHÂN SỰ',
     items: [
       { href: '/dashboard/personnel',   label: 'Cán bộ nhân viên', icon: Icons.personnel, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
+      { href: '/dashboard/contracts',   label: 'Hợp đồng',         icon: Icons.recruit,   roles: ['ADMIN','HR_MANAGER'] },
       { href: '/dashboard/departments', label: 'Phòng ban / Khoa',  icon: Icons.department },
       { href: '/dashboard/categories',  label: 'Danh mục',          icon: Icons.category, roles: ['ADMIN','HR_MANAGER'] },
     ],
@@ -70,8 +74,18 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    key: 'recruit', label: 'TUYỂN DỤNG',
-    items: [{ href: '/dashboard/recruitment', label: 'Tuyển dụng', icon: Icons.recruit, roles: ['ADMIN','HR_MANAGER'] }],
+    key: 'recruit', label: 'TUYỂN DỤNG & NHÂN SỰ',
+    items: [
+      { href: '/dashboard/recruitment', label: 'Tuyển dụng', icon: Icons.recruit, roles: ['ADMIN','HR_MANAGER'] },
+      { href: '/dashboard/onboarding',  label: 'Onboarding',  icon: Icons.check,   roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
+      { href: '/dashboard/kpi',         label: 'KPI & Đánh giá', icon: Icons.star, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
+    ],
+  },
+  {
+    key: 'analytics', label: 'BÁO CÁO',
+    items: [
+      { href: '/dashboard/reports', label: 'Báo cáo & Thống kê', icon: Icons.chart, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
+    ],
   },
 ]
 
@@ -109,15 +123,17 @@ export function SideNav({ roles }: { roles: string[] }) {
       onMouseLeave={() => setExpanded(false)}
     >
       {/* Logo */}
-      <div className="flex items-center h-14 border-b border-[#243556] flex-shrink-0 px-3">
-        <div className="w-8 h-8 rounded bg-blue-500 flex items-center justify-center
-                        text-white font-bold text-sm flex-shrink-0 select-none">
-          H
+      <div className="flex items-center h-16 border-b border-[#243556] flex-shrink-0 px-2">
+        {/* Icon mode: chỉ hiện logo tròn nhỏ */}
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden shadow">
+          <img src="/logo-nentrang.png" alt="Logo BVHN Nghệ An" className="w-9 h-9 object-contain" />
         </div>
-        <div className={`ml-3 overflow-hidden transition-opacity duration-150
+        {/* Expanded: tên bệnh viện */}
+        <div className={`ml-2.5 overflow-hidden transition-opacity duration-150
                          ${expanded ? 'opacity-100' : 'opacity-0'}`}>
-          <p className="text-sm font-semibold text-white leading-tight whitespace-nowrap">HRM BVHN</p>
-          <p className="text-[11px] text-blue-300 leading-tight whitespace-nowrap">Đa khoa Nghệ An</p>
+          <p className="text-[11px] font-bold text-green-300 leading-tight whitespace-nowrap uppercase tracking-wide">Bệnh viện Hữu Nghị</p>
+          <p className="text-sm font-bold text-white leading-tight whitespace-nowrap">Đa Khoa Nghệ An</p>
+          <p className="text-[10px] text-blue-300 leading-tight whitespace-nowrap">Hệ thống quản lý nhân sự</p>
         </div>
       </div>
 

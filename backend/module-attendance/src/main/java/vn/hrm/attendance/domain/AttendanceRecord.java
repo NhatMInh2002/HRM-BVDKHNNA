@@ -32,6 +32,8 @@ public class AttendanceRecord {
     @Column(nullable = false, length = 20)
     private AttendanceStatus status;
 
+    private Integer durationMinutes;
+
     @Column(length = 255)
     private String note;
 

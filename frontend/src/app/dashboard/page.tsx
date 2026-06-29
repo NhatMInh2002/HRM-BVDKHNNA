@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { LeaveModal } from '@/components/leave-modal'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
@@ -28,8 +29,11 @@ const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function fmtTime(iso?: string) {
   if (!iso) return null
-  const t = iso.includes('T') ? iso.split('T')[1] : iso
-  return t.slice(0, 5)
+  // Convert sang Asia/Ho_Chi_Minh (UTC+7)
+  return new Date(iso).toLocaleTimeString('vi-VN', {
+    hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
 }
 
 function fmtMinutes(mins?: number) {
@@ -267,8 +271,9 @@ function SummaryChip({ label, value, sub, color }: {
 function EmployeeDashboard() {
   const now   = new Date()
   const today = now.toISOString().slice(0, 10)
-  const [year, setYear]   = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [year, setYear]       = useState(now.getFullYear())
+  const [month, setMonth]     = useState(now.getMonth() + 1)
+  const [showLeave, setShowLeave] = useState(false)
 
   const { data: me } = useCurrentEmployee()
 
@@ -351,42 +356,44 @@ function EmployeeDashboard() {
             {me?.position && <span className="text-gray-400"> · {me.position}</span>}
           </p>
         </div>
-        <Link href="/dashboard/attendance/leave"
+        <button
+          onClick={() => setShowLeave(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/>
           </svg>
           Đơn nghỉ phép
-        </Link>
+        </button>
+        <LeaveModal open={showLeave} onClose={() => setShowLeave(false)} />
       </div>
 
       {/* Today card */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-5 text-white">
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="text-blue-200 text-xs font-medium uppercase tracking-wide">Hôm nay</p>
-            <p className="text-lg font-semibold mt-0.5">
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">Hôm nay</p>
+            <p className="text-lg font-semibold text-gray-800 mt-0.5">
               {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-center">
-              <p className="text-blue-200 text-xs">Check-in</p>
-              <p className={`text-2xl font-bold mt-0.5 ${todayRec?.checkIn ? 'text-green-300' : 'text-blue-300'}`}>
+              <p className="text-gray-400 text-xs">Check-in</p>
+              <p className={`text-2xl font-bold mt-0.5 ${todayRec?.checkIn ? 'text-gray-800' : 'text-gray-300'}`}>
                 {fmtTime(todayRec?.checkIn) ?? '--:--'}
               </p>
             </div>
-            <div className="w-px h-10 bg-blue-500" />
+            <div className="w-px h-10 bg-gray-200" />
             <div className="text-center">
-              <p className="text-blue-200 text-xs">Check-out</p>
-              <p className={`text-2xl font-bold mt-0.5 ${todayRec?.checkOut ? 'text-green-300' : 'text-blue-300'}`}>
+              <p className="text-gray-400 text-xs">Check-out</p>
+              <p className={`text-2xl font-bold mt-0.5 ${todayRec?.checkOut ? 'text-gray-800' : 'text-gray-300'}`}>
                 {fmtTime(todayRec?.checkOut) ?? '--:--'}
               </p>
             </div>
-            <div className="w-px h-10 bg-blue-500" />
+            <div className="w-px h-10 bg-gray-200" />
             <div className="text-center">
-              <p className="text-blue-200 text-xs">Thời gian làm</p>
-              <p className="text-2xl font-bold mt-0.5 text-white">
+              <p className="text-gray-400 text-xs">Thời gian làm</p>
+              <p className={`text-2xl font-bold mt-0.5 ${todayRec?.durationMinutes ? 'text-gray-800' : 'text-gray-300'}`}>
                 {fmtMinutes(todayRec?.durationMinutes) ?? '--'}
               </p>
             </div>

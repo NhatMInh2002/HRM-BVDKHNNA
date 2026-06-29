@@ -42,6 +42,10 @@ public class AttendanceReminderScheduler {
         );
     }
 
+    /** Test endpoint — admin trigger thủ công */
+    public void triggerCheckInReminder() { remindCheckIn(); }
+    public void triggerCheckOutReminder() { remindCheckOut(); }
+
     private void sendToAll(String type, String title, String body, String link) {
         try {
             List<Employee> employees = employeeRepository.findAll();

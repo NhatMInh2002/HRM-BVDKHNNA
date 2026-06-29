@@ -44,6 +44,8 @@ public class LeaveService {
             .endDate(dto.endDate())
             .totalDays(BigDecimal.valueOf(days))
             .reason(dto.reason())
+            .attachmentUrl(dto.attachmentUrl())
+            .attachmentName(dto.attachmentName())
             .status(LeaveStatus.PENDING)
             .createdBy(createdBy)
             .build();

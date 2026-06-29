@@ -94,4 +94,10 @@ public class Employee {
 
     @Column(length = 255)
     private String passwordHash;
+
+    @Column(length = 500)
+    private String avatarUrl;
+
+    @Column(length = 500)
+    private String signatureUrl;
 }

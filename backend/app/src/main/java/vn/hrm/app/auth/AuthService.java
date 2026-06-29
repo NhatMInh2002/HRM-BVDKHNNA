@@ -4,16 +4,20 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.hrm.personnel.repository.EmployeePermissionRepository;
 import vn.hrm.personnel.repository.EmployeeRepository;
 import vn.hrm.shared.exception.HrmException;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final EmployeeRepository employeeRepository;
+    private final EmployeePermissionRepository permissionRepository;
     private final JwtService jwtService;
     private final BCryptPasswordEncoder passwordEncoder;
 
@@ -34,6 +38,19 @@ public class AuthService {
         employeeRepository.save(employee);
     }
 
+    /** Admin đặt lại mật khẩu cho nhân viên — không cần mật khẩu cũ */
+    @Transactional
+    public void adminResetPassword(UUID employeeId, String newPassword) {
+        if (newPassword == null || newPassword.length() < 8)
+            throw HrmException.badRequest("WEAK_PASSWORD", "Mật khẩu phải có ít nhất 8 ký tự");
+
+        var employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> HrmException.notFound("EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên"));
+
+        employee.setPasswordHash(passwordEncoder.encode(newPassword));
+        employeeRepository.save(employee);
+    }
+
     public Map<String, Object> login(String email, String password) {
         var employee = employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
@@ -47,15 +64,18 @@ public class AuthService {
         }
 
         String role = employee.getHrmRole() != null ? employee.getHrmRole() : "EMPLOYEE";
+        Set<String> permissions = permissionRepository.findPermissionsByEmployeeId(employee.getId());
+
         String token = jwtService.generateToken(
-                employee.getId(), employee.getEmail(), employee.getFullName(), role);
+                employee.getId(), employee.getEmail(), employee.getFullName(), role, permissions);
 
         return Map.of(
-                "token",      token,
-                "employeeId", employee.getId().toString(),
-                "email",      employee.getEmail(),
-                "fullName",   employee.getFullName(),
-                "role",       role
+                "token",       token,
+                "employeeId",  employee.getId().toString(),
+                "email",       employee.getEmail(),
+                "fullName",    employee.getFullName(),
+                "role",        role,
+                "permissions", permissions
         );
     }
 }

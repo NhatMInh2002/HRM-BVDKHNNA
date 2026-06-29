@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -36,20 +37,27 @@ public class JwtService {
         key = Keys.hmacShaKeyFor(bytes);
     }
 
-    public String generateToken(UUID employeeId, String email, String fullName, String role) {
+    public String generateToken(UUID employeeId, String email, String fullName, String role,
+                                Collection<String> permissions) {
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject(email)
                 .claims(Map.of(
-                        "employeeId", employeeId.toString(),
-                        "fullName", fullName,
-                        "role", role,
-                        "roles", new String[]{ role }
+                        "employeeId",  employeeId.toString(),
+                        "fullName",    fullName,
+                        "role",        role,
+                        "roles",       new String[]{ role },
+                        "permissions", permissions
                 ))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(key)
                 .compact();
+    }
+
+    /** Backward-compat — không có permissions */
+    public String generateToken(UUID employeeId, String email, String fullName, String role) {
+        return generateToken(employeeId, email, fullName, role, java.util.List.of());
     }
 
     public Claims parseToken(String token) {

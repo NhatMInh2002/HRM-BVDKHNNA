@@ -28,18 +28,18 @@ public class PayrollService {
 
     // ── Hằng số theo quy định hiện hành ──────────────────────────────────────
 
-    /** Lương cơ sở từ 01/07/2024 — Nghị định 73/2024/NĐ-CP */
-    private static final BigDecimal LUONG_CO_SO = new BigDecimal("2340000");
+    /** Lương cơ sở từ 01/07/2026 — Nghị định (dự kiến) */
+    private static final BigDecimal LUONG_CO_SO = new BigDecimal("2530000");
 
     /** Trần đóng BHXH/BHYT = 20 × lương cơ sở */
-    private static final BigDecimal MAX_BHXH_BHYT_BASE = LUONG_CO_SO.multiply(new BigDecimal("20")); // 46,800,000
+    private static final BigDecimal MAX_BHXH_BHYT_BASE = LUONG_CO_SO.multiply(new BigDecimal("20")); // 50,600,000
 
     /**
      * Trần đóng BHTN = 20 × lương tối thiểu vùng.
-     * Nghệ An thuộc Vùng III — Nghị định 38/2022/NĐ-CP: 3,640,000 VND/tháng.
+     * Nghệ An thuộc Vùng III — cập nhật theo Nghị định mới nhất.
      */
-    private static final BigDecimal LUONG_VUNG_III   = new BigDecimal("3640000");
-    private static final BigDecimal MAX_BHTN_BASE     = LUONG_VUNG_III.multiply(new BigDecimal("20")); // 72,800,000
+    private static final BigDecimal LUONG_VUNG_III   = new BigDecimal("3860000");
+    private static final BigDecimal MAX_BHTN_BASE     = LUONG_VUNG_III.multiply(new BigDecimal("20")); // 77,200,000
 
     // Tỉ lệ BHXH/BHYT/BHTN — nhân viên
     private static final BigDecimal BHXH_EMP_RATE  = new BigDecimal("0.08");   // 8%
@@ -271,13 +271,28 @@ public class PayrollService {
 
     public Page<PayrollRecordResponse> listByPeriod(int year, int month, Pageable pageable) {
         return payrollRecordRepo.findByPeriodYearAndPeriodMonth((short) year, (short) month, pageable)
-                .map(PayrollRecordResponse::from);
+                .map(r -> {
+                    try {
+                        Map<String, Object> emp = jdbc.queryForMap(
+                            "SELECT employee_code, full_name, d.name as dept_name " +
+                            "FROM personnel.employees e LEFT JOIN personnel.departments d ON d.id = e.department_id " +
+                            "WHERE e.id = ?", r.getEmployeeId());
+                        return PayrollRecordResponse.from(r,
+                            str(emp.get("employee_code")),
+                            str(emp.get("full_name")),
+                            str(emp.get("dept_name")));
+                    } catch (Exception ex) {
+                        return PayrollRecordResponse.from(r, null, null, null);
+                    }
+                });
     }
 
     public List<PayrollRecordResponse> myPayroll(UUID employeeId) {
         return payrollRecordRepo.findByEmployeeIdOrderByPeriodYearDescPeriodMonthDesc(employeeId)
                 .stream().map(PayrollRecordResponse::from).toList();
     }
+
+    private static String str(Object v) { return v != null ? v.toString() : ""; }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

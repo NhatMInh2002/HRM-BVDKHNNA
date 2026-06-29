@@ -13,7 +13,7 @@ export type LeaveType =
   | 'COMPENSATORY'
   | 'UNPAID'
   | 'OTHER'
-export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type LeaveStatus = 'PENDING' | 'DEPT_APPROVED' | 'APPROVED' | 'REJECTED'
 
 export interface LeaveTypeMeta {
   label: string
@@ -123,7 +123,7 @@ export const LEAVE_TYPE_GROUPS: { group: string; types: LeaveType[] }[] = [
 ]
 
 export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
-  PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối',
+  PENDING: 'Chờ trưởng phòng', DEPT_APPROVED: 'Chờ TCCB', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối',
 }
 
 export interface AttendanceRecord {
@@ -148,14 +148,28 @@ export interface AttendancePage {
 export interface LeaveRequest {
   id: string
   employeeId: string
+  employeeName?: string
+  employeeCode?: string
   leaveType: LeaveType
   startDate: string
   endDate: string
   totalDays: number
   reason?: string
+  attachmentUrl?: string
+  attachmentName?: string
   status: LeaveStatus
-  approvedBy?: string
-  approvedAt?: string
+  // Cấp 1: Trưởng phòng
+  deptApprovedBy?: string
+  deptApprovedAt?: string
+  deptRejectedBy?: string
+  deptRejectNote?: string
+  // Cấp 2: TCCB
+  hrApprovedBy?: string
+  hrApprovedAt?: string
+  hrRejectedBy?: string
+  hrRejectNote?: string
+  // PDF kết quả
+  pdfUrl?: string
   createdBy: string
   createdAt: string
 }
@@ -168,6 +182,8 @@ export interface CreateLeaveDto {
   startDate: string
   endDate: string
   reason?: string
+  attachmentUrl?: string
+  attachmentName?: string
 }
 
 export const checkIn = (data: CheckInDto) =>
@@ -196,3 +212,28 @@ export const approveLeave = (id: string) =>
 
 export const rejectLeave = (id: string) =>
   apiFetch<LeaveRequest>(`/attendance/leave/${id}/reject`, { method: 'PUT' })
+
+// Luồng duyệt 2 cấp
+export const getDeptPendingLeave = () =>
+  apiFetch<LeaveRequest[]>('/attendance/leave/dept-pending')
+
+export const getHrPendingLeave = () =>
+  apiFetch<LeaveRequest[]>('/attendance/leave/hr-pending')
+
+export const deptApproveLeave = (id: string) =>
+  apiFetch<LeaveRequest>(`/attendance/leave/${id}/dept-approve`, { method: 'POST' })
+
+export const deptRejectLeave = (id: string, note?: string) =>
+  apiFetch<LeaveRequest>(`/attendance/leave/${id}/dept-reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+
+export const hrApproveLeave = (id: string) =>
+  apiFetch<LeaveRequest>(`/attendance/leave/${id}/hr-approve`, { method: 'POST' })
+
+export const hrRejectLeave = (id: string, note?: string) =>
+  apiFetch<LeaveRequest>(`/attendance/leave/${id}/hr-reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })

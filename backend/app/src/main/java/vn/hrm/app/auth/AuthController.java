@@ -6,7 +6,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.hrm.shared.dto.ApiResponse;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -29,6 +31,15 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
+    @PostMapping("/admin/reset-password")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public ResponseEntity<ApiResponse<Void>> adminResetPassword(
+            @RequestBody AdminResetRequest req) {
+        authService.adminResetPassword(req.employeeId(), req.newPassword());
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
     public record LoginRequest(String email, String password) {}
     public record ChangePasswordRequest(String currentPassword, String newPassword) {}
+    public record AdminResetRequest(UUID employeeId, String newPassword) {}
 }

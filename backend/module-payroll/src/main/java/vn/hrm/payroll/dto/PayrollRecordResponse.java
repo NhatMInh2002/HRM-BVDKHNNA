@@ -10,6 +10,9 @@ import java.util.UUID;
 public record PayrollRecordResponse(
         UUID id,
         UUID employeeId,
+        String employeeCode,
+        String fullName,
+        String departmentName,
         int periodYear,
         int periodMonth,
 
@@ -52,8 +55,13 @@ public record PayrollRecordResponse(
         LocalDateTime createdAt
 ) {
     public static PayrollRecordResponse from(PayrollRecord r) {
+        return from(r, null, null, null);
+    }
+
+    public static PayrollRecordResponse from(PayrollRecord r, String employeeCode, String fullName, String departmentName) {
         return new PayrollRecordResponse(
                 r.getId(), r.getEmployeeId(),
+                employeeCode, fullName, departmentName,
                 r.getPeriodYear(), r.getPeriodMonth(),
                 r.getBasicSalary(), r.getTotalAllowance(),
                 orZero(r.getTaxExemptAllowance()), orZero(r.getBonus()),

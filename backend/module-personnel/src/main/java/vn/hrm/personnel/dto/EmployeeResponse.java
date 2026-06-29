@@ -29,7 +29,10 @@ public record EmployeeResponse(
     DepartmentSummary department,
     ManagerSummary manager,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    String avatarUrl,
+    String signatureUrl,
+    String hrmRole
 ) {
     public record DepartmentSummary(UUID id, String code, String name) {}
     public record ManagerSummary(UUID id, String employeeCode, String fullName) {}
@@ -45,7 +48,10 @@ public record EmployeeResponse(
                 e.getDepartment().getId(), e.getDepartment().getCode(), e.getDepartment().getName()),
             e.getManager() == null ? null : new ManagerSummary(
                 e.getManager().getId(), e.getManager().getEmployeeCode(), e.getManager().getFullName()),
-            e.getCreatedAt(), e.getUpdatedAt()
+            e.getCreatedAt(), e.getUpdatedAt(),
+            e.getAvatarUrl(),
+            e.getSignatureUrl(),
+            e.getHrmRole()
         );
     }
 }

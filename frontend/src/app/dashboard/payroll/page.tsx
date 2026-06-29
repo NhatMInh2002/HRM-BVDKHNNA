@@ -142,8 +142,9 @@ export default function PayrollPage() {
             )}
             {data?.content?.map(rec => (
               <tr key={rec.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                  {rec.employeeId.slice(0, 8)}…
+                <td className="px-4 py-3">
+                  <div className="font-mono text-xs text-gray-500">{rec.employeeCode || rec.employeeId.slice(0, 8)}</div>
+                  {rec.fullName && <div className="text-xs text-gray-700">{rec.fullName}</div>}
                 </td>
                 <td className="px-4 py-3 text-right">{fmt(rec.basicSalary)}</td>
                 <td className="px-4 py-3 text-right">{fmt(rec.totalAllowance)}</td>
