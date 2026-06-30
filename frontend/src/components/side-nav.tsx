@@ -25,7 +25,7 @@ const Icons = {
   chevron:   <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/></svg>,
 }
 
-type AppRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'ACCOUNTANT'
+type AppRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'DEPT_HEAD' | 'EMPLOYEE' | 'ACCOUNTANT'
 
 interface NavItem {
   href: string
@@ -52,7 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: 'hr', label: 'NHÂN SỰ',
     items: [
-      { href: '/dashboard/personnel',   label: 'Cán bộ nhân viên', icon: Icons.personnel, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
+      { href: '/dashboard/personnel',   label: 'Cán bộ nhân viên', icon: Icons.personnel, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
       { href: '/dashboard/contracts',   label: 'Hợp đồng',         icon: Icons.recruit,   roles: ['ADMIN','HR_MANAGER'] },
       { href: '/dashboard/departments', label: 'Phòng ban / Khoa',  icon: Icons.department },
       { href: '/dashboard/categories',  label: 'Danh mục',          icon: Icons.category, roles: ['ADMIN','HR_MANAGER'] },
@@ -77,14 +77,14 @@ const NAV_GROUPS: NavGroup[] = [
     key: 'recruit', label: 'TUYỂN DỤNG & NHÂN SỰ',
     items: [
       { href: '/dashboard/recruitment', label: 'Tuyển dụng', icon: Icons.recruit, roles: ['ADMIN','HR_MANAGER'] },
-      { href: '/dashboard/onboarding',  label: 'Onboarding',  icon: Icons.check,   roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
-      { href: '/dashboard/kpi',         label: 'KPI & Đánh giá', icon: Icons.star, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
+      { href: '/dashboard/onboarding',  label: 'Onboarding',  icon: Icons.check,   roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
+      { href: '/dashboard/kpi',         label: 'KPI & Đánh giá', icon: Icons.star, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
     ],
   },
   {
     key: 'analytics', label: 'BÁO CÁO',
     items: [
-      { href: '/dashboard/reports', label: 'Báo cáo & Thống kê', icon: Icons.chart, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER'] },
+      { href: '/dashboard/reports', label: 'Báo cáo & Thống kê', icon: Icons.chart, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
     ],
   },
 ]
