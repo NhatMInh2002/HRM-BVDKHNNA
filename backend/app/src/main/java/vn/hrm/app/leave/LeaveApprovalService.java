@@ -11,10 +11,12 @@ import vn.hrm.attendance.dto.LeaveRequestResponse;
 import vn.hrm.attendance.repository.LeaveRequestRepository;
 import vn.hrm.personnel.domain.Employee;
 import vn.hrm.personnel.repository.EmployeeRepository;
+import vn.hrm.shared.audit.AuditLogService;
 import vn.hrm.shared.exception.HrmException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -31,6 +33,7 @@ public class LeaveApprovalService {
     private final EmployeeRepository employeeRepo;
     private final StorageService storageService;
     private final LeavePdfService leavePdfService;
+    private final AuditLogService auditLog;
 
     /** Trưởng phòng duyệt — chuyển PENDING → DEPT_APPROVED */
     public LeaveRequestResponse deptApprove(UUID leaveId, String approverEmail) {
@@ -48,7 +51,10 @@ public class LeaveApprovalService {
         leave.setDeptApprovedBy(approverEmail);
         leave.setDeptApprovedAt(OffsetDateTime.now());
 
-        return toResponse(leaveRepo.save(leave));
+        LeaveRequestResponse result = toResponse(leaveRepo.save(leave));
+        auditLog.record(null, approverEmail, "DEPT_HEAD", "APPROVE", "LEAVE_REQUEST", leaveId.toString(),
+            Map.of("status", "PENDING"), Map.of("status", "DEPT_APPROVED"));
+        return result;
     }
 
     /** Trưởng phòng từ chối — PENDING → REJECTED */
@@ -66,7 +72,10 @@ public class LeaveApprovalService {
         leave.setDeptRejectedAt(OffsetDateTime.now());
         leave.setDeptRejectNote(note);
 
-        return toResponse(leaveRepo.save(leave));
+        LeaveRequestResponse result = toResponse(leaveRepo.save(leave));
+        auditLog.record(null, approverEmail, "DEPT_HEAD", "REJECT", "LEAVE_REQUEST", leaveId.toString(),
+            Map.of("status", "PENDING"), Map.of("status", "REJECTED", "note", note == null ? "" : note));
+        return result;
     }
 
     /** TCCB (HR_MANAGER) duyệt — DEPT_APPROVED → APPROVED + sinh PDF */
@@ -93,6 +102,8 @@ public class LeaveApprovalService {
             // Không throw — PDF lỗi không chặn việc duyệt
         }
 
+        auditLog.record(null, approverEmail, "HR_MANAGER", "APPROVE", "LEAVE_REQUEST", leaveId.toString(),
+            Map.of("status", "DEPT_APPROVED"), Map.of("status", "APPROVED"));
         return toResponse(leaveRepo.findById(leaveId).orElseThrow());
     }
 
@@ -108,7 +119,10 @@ public class LeaveApprovalService {
         leave.setHrRejectedAt(OffsetDateTime.now());
         leave.setHrRejectNote(note);
 
-        return toResponse(leaveRepo.save(leave));
+        LeaveRequestResponse result = toResponse(leaveRepo.save(leave));
+        auditLog.record(null, approverEmail, "HR_MANAGER", "REJECT", "LEAVE_REQUEST", leaveId.toString(),
+            Map.of("status", "DEPT_APPROVED"), Map.of("status", "REJECTED", "note", note == null ? "" : note));
+        return result;
     }
 
     /** Lấy đơn đang chờ trưởng phòng (theo phòng ban) */

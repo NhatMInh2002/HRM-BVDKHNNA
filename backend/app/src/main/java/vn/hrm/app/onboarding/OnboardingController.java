@@ -19,29 +19,29 @@ public class OnboardingController {
 
     @GetMapping("/templates")
     public ResponseEntity<?> listTemplates() {
-        return ResponseEntity.ok(ApiResponse.success(svc.listTemplates()));
+        return ResponseEntity.ok(ApiResponse.ok(svc.listTemplates()));
     }
 
     @GetMapping("/templates/{id}/tasks")
     public ResponseEntity<?> templateTasks(@PathVariable String id) {
-        return ResponseEntity.ok(ApiResponse.success(svc.listTemplateTasks(id)));
+        return ResponseEntity.ok(ApiResponse.ok(svc.listTemplateTasks(id)));
     }
 
     @GetMapping("/checklists")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
     public ResponseEntity<?> listChecklists(@RequestParam(required = false) String employeeId) {
-        return ResponseEntity.ok(ApiResponse.success(svc.listChecklists(employeeId)));
+        return ResponseEntity.ok(ApiResponse.ok(svc.listChecklists(employeeId)));
     }
 
     @GetMapping("/checklists/{id}")
     public ResponseEntity<?> getChecklist(@PathVariable String id) {
-        return ResponseEntity.ok(ApiResponse.success(svc.getChecklist(id)));
+        return ResponseEntity.ok(ApiResponse.ok(svc.getChecklist(id)));
     }
 
     @PostMapping("/checklists")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public ResponseEntity<?> createChecklist(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(ApiResponse.success(svc.createChecklist(body)));
+        return ResponseEntity.ok(ApiResponse.ok(svc.createChecklist(body)));
     }
 
     @PatchMapping("/tasks/{taskId}/status")
@@ -58,12 +58,12 @@ public class OnboardingController {
             } catch (Exception ignored) {}
         }
         svc.updateTaskStatus(taskId, status, notes, completedBy);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public ResponseEntity<?> stats() {
-        return ResponseEntity.ok(ApiResponse.success(svc.stats()));
+        return ResponseEntity.ok(ApiResponse.ok(svc.stats()));
     }
 }

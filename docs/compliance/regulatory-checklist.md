@@ -1,6 +1,6 @@
 # Checklist Tuân thủ Pháp lý — HRM DNNN Việt Nam
 
-**Last updated:** 2026-06-19
+**Last updated:** 2026-06-30
 
 ---
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | Phân loại dữ liệu cá nhân nhạy cảm | ⬜ Todo | Data Classification Service — gắn nhãn từng trường |
 | Mã hóa dữ liệu nhạy cảm (lương, CCCD, sức khỏe) | ⬜ Todo | Column-level encryption trong schema lương riêng |
-| Ghi nhận lịch sử truy cập dữ liệu cá nhân | ⬜ Todo | Audit log bất biến |
+| Ghi nhận lịch sử truy cập dữ liệu cá nhân | ✅ Done | Audit log bất biến (`audit.audit_log`, trigger chặn UPDATE/DELETE) — Employee CRUD, Leave approval, Permission |
 | Cơ chế xóa/ẩn danh hóa khi hết hạn lưu trữ | ⬜ Todo | Data retention policy + scheduled purge job |
 | Chính sách thu thập dữ liệu và đồng ý | ⬜ Todo | Consent form tại onboarding |
 

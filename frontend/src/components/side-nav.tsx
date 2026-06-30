@@ -91,8 +91,9 @@ const NAV_GROUPS: NavGroup[] = [
 
 // Menu con Cài đặt hệ thống
 const SETTINGS_CHILDREN: NavItem[] = [
-  { href: '/dashboard/settings',     label: 'Phân quyền',        icon: Icons.shield, roles: ['ADMIN'], exact: true },
-  { href: '/dashboard/settings/otp', label: 'Đăng ký mã xác thực', icon: Icons.otp },
+  { href: '/dashboard/settings',           label: 'Phân quyền',        icon: Icons.shield, roles: ['ADMIN'], exact: true },
+  { href: '/dashboard/settings/otp',       label: 'Đăng ký mã xác thực', icon: Icons.otp },
+  { href: '/dashboard/settings/audit-log', label: 'Nhật ký kiểm toán', icon: Icons.check, roles: ['ADMIN'] },
 ]
 
 function isActive(href: string, pathname: string, exact?: boolean): boolean {

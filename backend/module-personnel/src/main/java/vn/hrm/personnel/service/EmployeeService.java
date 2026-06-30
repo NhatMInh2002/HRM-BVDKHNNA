@@ -11,8 +11,10 @@ import vn.hrm.personnel.dto.EmployeeRequest;
 import vn.hrm.personnel.dto.EmployeeResponse;
 import vn.hrm.personnel.repository.DepartmentRepository;
 import vn.hrm.personnel.repository.EmployeeRepository;
+import vn.hrm.shared.audit.AuditLogService;
 import vn.hrm.shared.exception.HrmException;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -22,6 +24,7 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepo;
     private final DepartmentRepository departmentRepo;
+    private final AuditLogService auditLog;
 
     public Page<EmployeeResponse> search(String keyword, EmployeeStatus status, UUID departmentId, Pageable pageable) {
         String kw = (keyword != null) ? keyword : "";
@@ -79,13 +82,21 @@ public class EmployeeService {
                 .orElseThrow(() -> HrmException.notFound("MANAGER_NOT_FOUND", "Không tìm thấy quản lý: " + req.managerId())));
         }
 
-        return EmployeeResponse.from(employeeRepo.save(employee));
+        EmployeeResponse saved = EmployeeResponse.from(employeeRepo.save(employee));
+        auditLog.record(null, createdBy, null, "CREATE", "EMPLOYEE", saved.id().toString(),
+            null, Map.of("employeeCode", req.employeeCode(), "fullName", req.fullName()));
+        return saved;
     }
 
     @Transactional
     public EmployeeResponse update(UUID id, EmployeeRequest req, String updatedBy) {
         Employee employee = employeeRepo.findById(id)
             .orElseThrow(() -> HrmException.notFound("EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên: " + id));
+
+        Map<String, Object> before = Map.of(
+            "fullName", String.valueOf(employee.getFullName()),
+            "email", String.valueOf(employee.getEmail()),
+            "position", String.valueOf(employee.getPosition()));
 
         if (!employee.getEmployeeCode().equals(req.employeeCode())
                 && employeeRepo.existsByEmployeeCode(req.employeeCode())) {
@@ -122,7 +133,12 @@ public class EmployeeService {
             employee.setManager(null);
         }
 
-        return EmployeeResponse.from(employeeRepo.save(employee));
+        EmployeeResponse saved = EmployeeResponse.from(employeeRepo.save(employee));
+        auditLog.record(null, updatedBy, null, "UPDATE", "EMPLOYEE", id.toString(), before,
+            Map.of("fullName", String.valueOf(req.fullName()),
+                   "email", String.valueOf(req.email()),
+                   "position", String.valueOf(req.position())));
+        return saved;
     }
 
     @Transactional
@@ -141,5 +157,7 @@ public class EmployeeService {
         }
         employee.setStatus(EmployeeStatus.TERMINATED);
         employeeRepo.save(employee);
+        auditLog.record(null, updatedBy, null, "UPDATE", "EMPLOYEE", id.toString(),
+            Map.of("status", "ACTIVE"), Map.of("status", "TERMINATED"));
     }
 }

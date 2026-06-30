@@ -10,6 +10,7 @@ import vn.hrm.personnel.domain.Employee;
 import vn.hrm.personnel.domain.EmployeePermission;
 import vn.hrm.personnel.repository.EmployeePermissionRepository;
 import vn.hrm.personnel.repository.EmployeeRepository;
+import vn.hrm.shared.audit.AuditLogService;
 import vn.hrm.shared.dto.ApiResponse;
 import vn.hrm.shared.security.Permissions;
 
@@ -25,6 +26,7 @@ public class PermissionController {
 
     private final EmployeeRepository employeeRepo;
     private final EmployeePermissionRepository permRepo;
+    private final AuditLogService auditLog;
 
     /** Lấy danh sách nhân viên theo phòng ban (để hiển thị tree) */
     @GetMapping("/employees")
@@ -86,6 +88,7 @@ public class PermissionController {
             .distinct()
             .toList();
 
+        List<String> before = new ArrayList<>(permRepo.findPermissionsByEmployeeId(employeeId));
         permRepo.deleteAllByEmployeeId(employeeId);
         String grantedBy = principal != null ? principal.getName() : "system";
 
@@ -103,6 +106,9 @@ public class PermissionController {
             emp.setHrmRole(role);
             employeeRepo.save(emp);
         });
+
+        auditLog.record(null, grantedBy, null, "UPDATE", "PERMISSION", employeeId.toString(),
+            Map.of("permissions", before), Map.of("permissions", filtered));
 
         return ResponseEntity.ok(ApiResponse.ok(filtered));
     }

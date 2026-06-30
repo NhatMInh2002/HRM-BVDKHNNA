@@ -19,6 +19,8 @@
 
 **Còn thiếu (sẽ làm Phase 5):** Keycloak SSO, SSL/Nginx, Prometheus, ELK stack
 
+**Bổ sung 2026-06-30:** Audit log bất biến (`audit.audit_log`, schema riêng, trigger chặn UPDATE/DELETE ở DB) — hook vào Employee CRUD, Leave approval 2 cấp, Permission changes. Xem `/dashboard/settings/audit-log`.
+
 ---
 
 ## Phase 2 — Core HR Modules (Weeks 9–20) ✅ HOÀN THÀNH
