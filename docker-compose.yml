@@ -93,7 +93,7 @@ services:
     container_name: hrm-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@hrm.local
+      PGADMIN_DEFAULT_EMAIL: dba@bvnghean.vn
       PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5050:80"
