@@ -113,15 +113,19 @@ export default function LeavePage() {
     setPreviewUrl(viewUrl)
     setPreviewLoading(true)
     setBlobUrl(null)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000) // tránh treo vô hạn nếu storage chậm/đứng
     try {
       const res = await fetch(viewUrl, {
-        headers: { Authorization: `Bearer ${session?.accessToken ?? ''}` }
+        headers: { Authorization: `Bearer ${session?.accessToken ?? ''}` },
+        signal: controller.signal,
       })
+      if (!res.ok) { setBlobUrl(null); return }
       const blob = await res.blob()
       setBlobType(blob.type || 'application/octet-stream')
       setBlobUrl(URL.createObjectURL(blob))
     } catch { setBlobUrl(null) }
-    finally { setPreviewLoading(false) }
+    finally { clearTimeout(timeout); setPreviewLoading(false) }
   }
 
   function closePreview() {
