@@ -33,9 +33,24 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email:    { label: 'Email',      type: 'email' },
         password: { label: 'Mật khẩu',  type: 'password' },
+        // Dùng khi login page đã tự gọi /auth/login (+ /auth/2fa/verify-login nếu cần)
+        // và có sẵn token hợp lệ — tránh gọi lại backend lần 2 (vốn sẽ lại yêu cầu 2FA).
+        token:    { label: 'Token',      type: 'text' },
+        fullName: { label: 'Full name',  type: 'text' },
+        role:     { label: 'Role',       type: 'text' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
+        if (!credentials) return null
+
+        if (credentials.token) {
+          return {
+            id: credentials.email, email: credentials.email,
+            name: credentials.fullName, fullName: credentials.fullName,
+            token: credentials.token, role: credentials.role,
+          }
+        }
+
+        if (!credentials.email || !credentials.password) return null
 
         const res = await fetch(`${BACKEND}/api/auth/login`, {
           method: 'POST',
@@ -47,7 +62,7 @@ export const authOptions: NextAuthOptions = {
         })
 
         const json = await res.json().catch(() => null)
-        if (!res.ok || !json?.data) return null
+        if (!res.ok || !json?.data || json.data.requires2fa) return null
 
         const { token, email, fullName, role } = json.data
         return { id: email, email, name: fullName, fullName, token, role }

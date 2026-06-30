@@ -1,88 +1,91 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { getTotpStatus, setupTotp, confirmTotp, disableTotp, type TotpSetupResponse } from '@/lib/totp'
 
-export default function OtpSettingsPage() {
-  const { data: session, status } = useSession()
+export default function TotpSettingsPage() {
+  const { status } = useSession()
   const router = useRouter()
 
-  const [phone, setPhone]         = useState('')
-  const [savedPhone, setSavedPhone] = useState('')
-  const [agreed, setAgreed]       = useState(false)
-  const [saving, setSaving]       = useState(false)
-  const [toast, setToast]         = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [enabled, setEnabled]   = useState<boolean | null>(null)
+  const [setupData, setSetupData] = useState<TotpSetupResponse | null>(null)
+  const [code, setCode]         = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [toast, setToast]       = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [showDisableForm, setShowDisableForm] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.replace('/login'); return }
     if (status !== 'authenticated') return
-    // Load số điện thoại hiện tại từ profile
-    const token = (session as any)?.accessToken
-    if (!token) return
-    fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        const p = data?.data?.phone ?? data?.phone ?? ''
-        setPhone(p)
-        setSavedPhone(p)
-      })
-      .catch(() => {})
+    getTotpStatus().then(r => setEnabled(r.enabled)).catch(() => setEnabled(false))
   }, [status])
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg })
-    setTimeout(() => setToast(null), 3500)
+    setTimeout(() => setToast(null), 4000)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!agreed) { showToast('error', 'Vui lòng tích vào ô đồng ý đăng ký.'); return }
-    if (!phone.trim()) { showToast('error', 'Vui lòng nhập số di động.'); return }
-    if (!/^(0|\+84)[0-9]{9}$/.test(phone.trim())) {
-      showToast('error', 'Số điện thoại không hợp lệ (VD: 0858682425).'); return
-    }
-    setSaving(true)
+  async function handleStartSetup() {
+    setLoading(true)
     try {
-      const token = (session as any)?.accessToken
-      const res = await fetch('/api/settings/otp-phone', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ phone: phone.trim() }),
-      })
-      if (res.ok) {
-        setSavedPhone(phone.trim())
-        setAgreed(false)
-        showToast('success', 'Cập nhật số điện thoại nhận mã xác thực thành công!')
-      } else {
-        const err = await res.json().catch(() => null)
-        showToast('error', err?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.')
-      }
-    } catch {
-      showToast('error', 'Không thể kết nối máy chủ.')
+      const data = await setupTotp()
+      setSetupData(data)
+    } catch (e: any) {
+      showToast('error', e?.message ?? 'Không thể khởi tạo thiết lập 2FA')
     } finally {
-      setSaving(false)
+      setLoading(false)
     }
   }
 
-  if (status === 'loading') {
+  async function handleConfirm(e: React.FormEvent) {
+    e.preventDefault()
+    if (code.length !== 6) return
+    setLoading(true)
+    try {
+      await confirmTotp(code)
+      setEnabled(true)
+      setSetupData(null)
+      setCode('')
+      showToast('success', 'Đã bật xác thực 2 lớp thành công!')
+    } catch (e: any) {
+      showToast('error', e?.message ?? 'Mã xác thực không đúng')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDisable(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await disableTotp(password)
+      setEnabled(false)
+      setShowDisableForm(false)
+      setPassword('')
+      showToast('success', 'Đã tắt xác thực 2 lớp.')
+    } catch (e: any) {
+      showToast('error', e?.message ?? 'Mật khẩu không đúng')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (status === 'loading' || enabled === null) {
     return <div className="flex items-center justify-center h-64 text-gray-400">Đang tải...</div>
   }
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
         <span className="text-gray-400">Hệ thống</span>
         <span className="text-gray-300">›</span>
-        <span className="text-gray-700 font-medium">Đăng ký nhận mã xác thực</span>
+        <span className="text-gray-700 font-medium">Xác thực 2 lớp (2FA)</span>
       </div>
 
-      <h1 className="text-xl font-semibold text-gray-800 mb-6">Đăng ký nhận mã xác thực</h1>
+      <h1 className="text-xl font-semibold text-gray-800 mb-6">Xác thực 2 lớp (2FA)</h1>
 
-      {/* Toast */}
       {toast && (
         <div className={`mb-5 px-4 py-3 rounded-lg text-sm font-medium border
           ${toast.type === 'success'
@@ -92,94 +95,115 @@ export default function OtpSettingsPage() {
         </div>
       )}
 
-      {/* Form card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-5">
-        <form onSubmit={handleSubmit}>
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="border-b border-gray-100">
-                <td className="px-6 py-4 text-right font-medium text-gray-600 w-52 bg-gray-50">
-                  Số di động hiện tại:
-                </td>
-                <td className="px-6 py-4">
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="VD: 0858682425"
-                    className="w-full max-w-xs border border-gray-300 rounded px-3 py-1.5 text-sm
-                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100">
-                <td className="px-6 py-4 text-right font-medium text-gray-600 bg-gray-50">
-                  Đồng ý đăng ký:
-                </td>
-                <td className="px-6 py-4">
-                  <input
-                    type="checkbox"
-                    id="agree"
-                    checked={agreed}
-                    onChange={e => setAgreed(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded cursor-pointer"
-                  />
-                  <label htmlFor="agree" className="ml-2 text-gray-600 cursor-pointer select-none">
-                    Tôi đồng ý đăng ký nhận mã xác thực qua số di động trên
-                  </label>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 bg-gray-50" />
-                <td className="px-6 py-4">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 px-5 py-2 rounded text-sm font-medium
-                      bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60 transition-colors"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293z"/>
-                    </svg>
-                    {saving ? 'Đang cập nhật...' : 'Cập nhật'}
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </form>
-      </div>
-
-      {/* Chú ý */}
-      <div className="bg-red-600 text-white rounded-xl px-6 py-5 text-sm">
-        <p className="font-semibold text-base mb-3">Chú ý!</p>
-        <ul className="space-y-2 list-none">
-          <li className="flex gap-2">
-            <span className="mt-0.5 flex-shrink-0">▶</span>
-            <span>
-              Hệ thống HRM được ứng dụng công nghệ{' '}
-              <strong>&ldquo;Mã xác thực theo ngày để bảo mật&rdquo;</strong>.
-            </span>
-          </li>
-          <li className="flex gap-2">
-            <span className="mt-0.5 flex-shrink-0">▶</span>
-            <span>
-              Khi đăng nhập hệ thống, ngoài mật khẩu của tài khoản thì người dùng phải nhập thêm
-              Mã xác thực được gửi đến máy di động mà bạn đăng ký khi sử dụng hệ thống.
-            </span>
-          </li>
-        </ul>
-      </div>
-
-      {/* Trạng thái hiện tại */}
-      {savedPhone && (
-        <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
-          <svg className="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-          </svg>
-          Số đang đăng ký: <strong className="text-gray-700">{savedPhone}</strong>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="font-medium text-gray-800">Trạng thái</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Dùng app Google/Microsoft Authenticator để sinh mã đăng nhập, không phụ thuộc SMS/email.
+            </p>
+          </div>
+          <span className={`text-xs px-3 py-1 rounded-full font-medium flex-shrink-0 ${
+            enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+          }`}>
+            {enabled ? 'Đang bật' : 'Đang tắt'}
+          </span>
         </div>
-      )}
+
+        <div className="p-6">
+          {/* Đã bật — cho phép tắt */}
+          {enabled && !showDisableForm && (
+            <div>
+              <p className="text-sm text-gray-600 mb-4">
+                Tài khoản của bạn đang được bảo vệ bằng xác thực 2 lớp. Mỗi lần đăng nhập sẽ cần thêm
+                mã 6 số từ app Authenticator.
+              </p>
+              <button onClick={() => setShowDisableForm(true)}
+                className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+                Tắt xác thực 2 lớp
+              </button>
+            </div>
+          )}
+
+          {enabled && showDisableForm && (
+            <form onSubmit={handleDisable} className="space-y-3">
+              <p className="text-sm text-gray-600">Nhập mật khẩu để xác nhận tắt 2FA:</p>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                required autoFocus placeholder="Mật khẩu hiện tại"
+                className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-red-400" />
+              <div className="flex gap-2">
+                <button type="submit" disabled={loading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60">
+                  {loading ? 'Đang xử lý...' : 'Xác nhận tắt'}
+                </button>
+                <button type="button" onClick={() => { setShowDisableForm(false); setPassword('') }}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  Hủy
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Chưa bật, chưa bắt đầu setup */}
+          {!enabled && !setupData && (
+            <div>
+              <p className="text-sm text-gray-600 mb-4">
+                Bật xác thực 2 lớp để tăng bảo mật tài khoản — kể cả khi lộ mật khẩu, kẻ tấn công
+                vẫn không đăng nhập được nếu không có mã từ điện thoại của bạn.
+              </p>
+              <button onClick={handleStartSetup} disabled={loading}
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {loading ? 'Đang khởi tạo...' : 'Bắt đầu thiết lập'}
+              </button>
+            </div>
+          )}
+
+          {/* Đang setup — hiện QR code */}
+          {!enabled && setupData && (
+            <div>
+              <ol className="text-sm text-gray-600 space-y-1.5 mb-5 list-decimal list-inside">
+                <li>Mở app <strong className="text-gray-800">Google Authenticator</strong> hoặc <strong className="text-gray-800">Microsoft Authenticator</strong> trên điện thoại</li>
+                <li>Chọn &ldquo;Quét mã QR&rdquo; và quét ảnh bên dưới</li>
+                <li>Nhập mã 6 số app vừa hiện ra để xác nhận</li>
+              </ol>
+
+              <div className="flex justify-center mb-5">
+                <img src={setupData.qrCodeUri} alt="QR code thiết lập 2FA"
+                  className="w-56 h-56 border border-gray-200 rounded-lg" />
+              </div>
+
+              <details className="mb-5 text-xs text-gray-500">
+                <summary className="cursor-pointer hover:text-gray-700">Không quét được? Nhập mã thủ công</summary>
+                <code className="block mt-2 px-3 py-2 bg-gray-50 rounded border border-gray-200 break-all">
+                  {setupData.secret}
+                </code>
+              </details>
+
+              <form onSubmit={handleConfirm} className="flex items-end gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Mã xác thực</label>
+                  <input
+                    type="text" inputMode="numeric" maxLength={6}
+                    value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                    required autoFocus placeholder="000000"
+                    className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-center text-lg tracking-[0.3em] font-mono
+                      focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <button type="submit" disabled={loading || code.length !== 6}
+                  className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                  {loading ? 'Đang xác nhận...' : 'Xác nhận & bật'}
+                </button>
+                <button type="button" onClick={() => { setSetupData(null); setCode('') }}
+                  className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
+                  Hủy
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

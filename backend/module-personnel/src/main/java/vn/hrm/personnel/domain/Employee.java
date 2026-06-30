@@ -97,4 +97,12 @@ public class Employee {
 
     @Column(length = 500)
     private String signatureUrl;
+
+    @Column(length = 64)
+    private String totpSecret;
+
+    @Column(nullable = false)
+    private boolean totpEnabled;
+
+    private java.time.OffsetDateTime totpConfirmedAt;
 }

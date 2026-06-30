@@ -60,6 +60,21 @@ public class JwtService {
         return generateToken(employeeId, email, fullName, role, java.util.List.of());
     }
 
+    /**
+     * Token tạm (5 phút) dùng giữa bước 1 (mật khẩu đúng) và bước 2 (nhập mã TOTP) khi 2FA bật.
+     * Không chứa role/permissions — không thể dùng để gọi API thường, chỉ hợp lệ ở endpoint xác minh 2FA.
+     */
+    public String generatePending2faToken(UUID employeeId, String email) {
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(email)
+                .claims(Map.of("employeeId", employeeId.toString(), "stage", "2fa_pending"))
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 5 * 60 * 1000))
+                .signWith(key)
+                .compact();
+    }
+
     public Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(key)

@@ -45,8 +45,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: 'overview',
     items: [
-      { href: '/dashboard',         label: 'Tổng quan',      icon: Icons.dashboard, exact: true },
-      { href: '/dashboard/profile', label: 'Hồ sơ cá nhân', icon: Icons.profile, exact: true },
+      { href: '/dashboard',             label: 'Tổng quan',           icon: Icons.dashboard, exact: true },
+      { href: '/dashboard/profile',     label: 'Hồ sơ cá nhân',       icon: Icons.profile, exact: true },
+      { href: '/dashboard/settings/otp', label: 'Xác thực 2 lớp (2FA)', icon: Icons.otp },
     ],
   },
   {
@@ -92,7 +93,6 @@ const NAV_GROUPS: NavGroup[] = [
 // Menu con Cài đặt hệ thống
 const SETTINGS_CHILDREN: NavItem[] = [
   { href: '/dashboard/settings',           label: 'Phân quyền',        icon: Icons.shield, roles: ['ADMIN'], exact: true },
-  { href: '/dashboard/settings/otp',       label: 'Đăng ký mã xác thực', icon: Icons.otp },
   { href: '/dashboard/settings/audit-log', label: 'Nhật ký kiểm toán', icon: Icons.check, roles: ['ADMIN'] },
 ]
 
