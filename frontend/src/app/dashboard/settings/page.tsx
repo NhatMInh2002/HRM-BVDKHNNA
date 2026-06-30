@@ -179,9 +179,10 @@ export default function SettingsPage() {
       setToast({ msg: 'Đã lưu phân quyền', ok: true })
       setTimeout(() => setToast(null), 3000)
     },
-    onError: () => {
-      setToast({ msg: 'Lỗi khi lưu', ok: false })
-      setTimeout(() => setToast(null), 3000)
+    onError: (err: any) => {
+      console.error('Lỗi lưu phân quyền:', err)
+      setToast({ msg: err?.message ? `Lỗi khi lưu: ${err.message}` : 'Lỗi khi lưu', ok: false })
+      setTimeout(() => setToast(null), 4000)
     },
   })
 
