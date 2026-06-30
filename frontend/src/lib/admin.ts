@@ -27,7 +27,6 @@ export interface RoleAssignment {
   email: string
   departmentName: string | null
   position: string | null
-  keycloakUsername: string | null
   hrmRole: HrmRole | null
   status: string
 }
@@ -47,9 +46,9 @@ export function getRoleAssignments(params: { keyword?: string; page?: number; si
   return apiFetch<RoleAssignmentPage>(`/admin/role-assignments?${q}`)
 }
 
-export function updateRoleAssignment(id: string, role: HrmRole, keycloakUsername: string) {
+export function updateRoleAssignment(id: string, role: HrmRole) {
   return apiFetch<string>(`/admin/role-assignments/${id}`, {
     method: 'PUT',
-    body: JSON.stringify({ role, keycloakUsername }),
+    body: JSON.stringify({ role }),
   })
 }

@@ -9,7 +9,6 @@ public record RoleAssignmentDto(
         String email,
         String departmentName,
         String position,
-        String keycloakUsername,
         String hrmRole,
         String status
 ) {}

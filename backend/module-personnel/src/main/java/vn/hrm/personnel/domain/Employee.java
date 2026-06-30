@@ -86,9 +86,6 @@ public class Employee {
     @Column(nullable = false)
     private String createdBy;
 
-    @Column(length = 100)
-    private String keycloakUsername;
-
     @Column(length = 50)
     private String hrmRole;
 

@@ -1,3 +1,3 @@
 package vn.hrm.app.admin.dto;
 
-public record UpdateRoleRequest(String role, String keycloakUsername) {}
+public record UpdateRoleRequest(String role) {}

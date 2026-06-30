@@ -409,14 +409,7 @@ export function TopBar({ user }: { user?: { name?: string | null; email?: string
 
   async function handleLogout() {
     setOpen(false)
-    try {
-      const res = await fetch('/api/auth/keycloak-logout-url')
-      const { url } = await res.json()
-      await signOut({ redirect: false })
-      window.location.href = url
-    } catch {
-      signOut({ callbackUrl: '/login' })
-    }
+    signOut({ callbackUrl: '/login' })
   }
 
   return (

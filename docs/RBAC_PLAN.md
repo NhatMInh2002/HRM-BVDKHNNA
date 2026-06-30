@@ -7,7 +7,7 @@
 
 ## 1. Vai trò (Roles)
 
-### Định nghĩa trong Keycloak
+### Định nghĩa role trong hệ thống (JWT tự quản lý)
 
 | Role | Mã | Mô tả | Đối tượng |
 |---|---|---|---|
@@ -163,7 +163,7 @@ const canAccess = (required: string[]) =>
   required.length === 0 || required.some(r => roles.includes(r))
 ```
 
-### 4.3 Tài khoản cần tạo trong Keycloak
+### 4.3 Tài khoản test cần tạo
 
 | Tài khoản | Role | Mục đích |
 |---|---|---|
@@ -190,5 +190,5 @@ const canAccess = (required: string[]) =>
 - [ ] Tạo `useRoles()` hook frontend
 - [ ] Cập nhật `side-nav.tsx` lọc menu theo role thực
 - [ ] Thay `canWrite = !!session` → `canWrite = isAdmin || isHR`
-- [ ] Tạo tài khoản test cho từng role trong Keycloak
+- [ ] Tạo tài khoản test cho từng role (qua Phân quyền/employee_permissions)
 - [ ] Test matrix: mỗi role → thử truy cập tất cả endpoints

@@ -1,4 +1,4 @@
-# Developer Guide — HRM BVĐK Hà Nội NA
+# Developer Guide — HRM BVĐK Nghệ An
 
 Hướng dẫn này giúp developer mới chạy được project trong vòng **15 phút**.
 
@@ -45,19 +45,17 @@ cd HRM-BVDKHNNA
 ```
 HRM/
 ├── backend/              ← Spring Boot 3 (Java 21), Modular Monolith
-│   ├── app/              ← entry point (chứa SecurityConfig, application.yml)
-│   ├── module-personnel/ ← nhân sự
-│   ├── module-attendance/← chấm công
+│   ├── app/              ← entry point (SecurityConfig, AuthService, application.yml)
+│   ├── module-personnel/ ← nhân sự, phòng ban, hợp đồng, KPI, onboarding
+│   ├── module-attendance/← chấm công, nghỉ phép
 │   ├── module-payroll/   ← lương
-│   └── shared-kernel/    ← entity cha, exception, audit
-├── frontend/             ← Next.js 15 (App Router)
+│   └── shared-kernel/    ← entity cha, exception, audit log
+├── frontend/             ← Next.js 15 (App Router) + NextAuth
 │   └── src/
 │       ├── app/          ← pages & layouts
 │       ├── components/   ← UI components
 │       └── lib/          ← auth.ts, api.ts
-├── keycloak/             ← realm config auto-import
-│   ├── hrm-realm.json    ← roles, clients, users mặc định
-│   └── init-keycloak-schema.sql
+├── nginx/                ← reverse proxy + TLS (production-like)
 ├── docs/                 ← tài liệu kiến trúc, phased-plan
 ├── docker-compose.yml    ← tất cả services
 └── .claude/launch.json   ← cấu hình dev servers
@@ -77,47 +75,45 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/hrm}
     username: ${DB_USERNAME:hrm}
     password: ${DB_PASSWORD:hrm_dev_pass}
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/hrm/protocol/openid-connect/certs}
+app:
+  jwt:
+    secret: ${JWT_SECRET:...}   # ký JWT tự quản lý — không phụ thuộc IdP ngoài
 ```
 
-> Nếu Keycloak chạy trên Docker, backend local kết nối qua `localhost:8180` — không cần đổi gì.
+Auth tự quản lý: `POST /api/auth/login` nhận `email` + `password`, so khớp BCrypt với `employees.password_hash`, trả về JWT ký bằng `JWT_SECRET`. Không có Keycloak/Azure AD nào tham gia ở giai đoạn hiện tại (xem `docs/implementation/phased-plan.md` — SSO/AD FS là việc của Phase 5, chưa triển khai).
+
+### Root — file `.env` (copy từ `.env.example`)
+
+```env
+POSTGRES_PASSWORD=hrm_dev_pass
+JWT_SECRET=<chuỗi random tối thiểu 32 ký tự>
+NEXTAUTH_SECRET=<chuỗi random bất kỳ, ví dụ: openssl rand -base64 32>
+MINIO_ROOT_PASSWORD=hrm_minio_dev
+```
 
 ### Frontend — tạo file `frontend/.env.local`
 
 ```env
-KEYCLOAK_CLIENT_ID=hrm-frontend
-KEYCLOAK_CLIENT_SECRET=<lấy từ Keycloak Admin hoặc hỏi team lead>
-KEYCLOAK_ISSUER=http://localhost:8180/realms/hrm
+BACKEND_URL=http://localhost:8080
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=<chuỗi random bất kỳ, ví dụ: openssl rand -base64 32>
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api
+NEXTAUTH_SECRET=<giống NEXTAUTH_SECRET ở trên>
 ```
-
-> `KEYCLOAK_CLIENT_SECRET` lấy từ: Keycloak Admin (`localhost:8180`) → Realm `hrm` → Clients → `hrm-frontend` → Credentials tab.
 
 ---
 
 ## 4. Khởi động môi trường dev
 
-**Bước đầu tiên luôn phải chạy infrastructure (PostgreSQL, Redis, Keycloak, MinIO, OpenSearch):**
+**Bước đầu tiên luôn phải chạy infrastructure (PostgreSQL, Redis, MinIO):**
 
 ```bash
-# Chạy toàn bộ infrastructure (trừ backend/frontend)
-docker compose up postgres redis keycloak minio opensearch -d
+docker compose up postgres redis minio -d
 ```
 
-Chờ Keycloak healthy (~60 giây lần đầu):
+Chờ healthy:
 
 ```bash
 docker compose ps        # cột STATUS phải là "healthy"
-docker logs hrm-keycloak --tail 20
 ```
-
-Khi thấy `Keycloak 24.0.4 on /` trong log là xong.
 
 **Services và port:**
 
@@ -125,91 +121,48 @@ Khi thấy `Keycloak 24.0.4 on /` trong log là xong.
 |---|---|---|
 | PostgreSQL | `localhost:5432` DB: `hrm` | `hrm` / `hrm_dev_pass` |
 | Redis | `localhost:6379` | — |
-| Keycloak Admin | http://localhost:8180 | `admin` / `admin_dev_pass` |
 | MinIO Console | http://localhost:9001 | `hrm_minio` / `hrm_minio_dev` |
-| OpenSearch | http://localhost:9200 | — (security disabled) |
+| pgAdmin | http://localhost:5050 | xem `.env` → `PGADMIN_DEFAULT_EMAIL` |
+| Nginx (reverse proxy, tùy chọn) | https://localhost | TLS tự ký, dùng cho test production-like |
+
+> OpenSearch hiện **tắt** trong `docker-compose.yml` (tốn ~512MB RAM) — tìm kiếm nhân viên dùng `LIKE` query trong PostgreSQL.
 
 ---
 
 ## 5. Tài khoản test
 
-> Tất cả tài khoản dưới đây được import **tự động** khi Keycloak khởi động từ `keycloak/hrm-realm.json`.  
-> Không cần tạo tay. Nếu mất → xem mục [Reset toàn bộ database](#reset-toàn-bộ-database).
+Tài khoản được seed sẵn qua Flyway migration (`V14__add_password_hash.sql` và các seed khác) — không cần tạo tay.
 
----
+### 5.1 Tài khoản mặc định
 
-### 5.1 Tài khoản ứng dụng HRM (đăng nhập SSO)
-
-| Username | Mật khẩu ban đầu | Role | Quyền hạn |
+| Email | Mật khẩu | Role | Quyền hạn |
 |---|---|---|---|
-| `admin.hrm` | `Admin@123` | `ADMIN` | Toàn quyền: xem/thêm/sửa/xóa tất cả module |
-| `hr.manager` | `Hr@123456` | `HR_MANAGER` | Quản lý nhân sự, lương, chấm công — không terminate nhân viên |
+| `admin@bvnghean.vn` | `Admin@2025` | `ADMIN` | Toàn quyền: xem/thêm/sửa/xóa tất cả module |
 
-> **Lần đầu đăng nhập** Keycloak sẽ yêu cầu đổi mật khẩu. Đặt mật khẩu mới bất kỳ, độ dài ≥ 8 ký tự.
+Các tài khoản khác (HR_MANAGER, DEPT_HEAD, ACCOUNTANT...) được gán quyền qua giao diện **Phân quyền** (`/dashboard/settings`, chỉ ADMIN truy cập) — chọn nhân viên, tick các permission tương ứng (`SYSTEM_ADMIN`, `LEAVE_APPROVE_HR`, `LEAVE_APPROVE_DEPT`, `PAYROLL_MANAGE`...), hệ thống tự suy ra `hrmRole` từ tập quyền (xem `PermissionController.deriveRole()`).
 
-**Thêm tài khoản test mới (nếu cần):**
-
-```bash
-# Lấy admin token Keycloak
-ADMIN_TOKEN=$(curl -sf -X POST http://localhost:8180/realms/master/protocol/openid-connect/token \
-  -d "client_id=admin-cli&grant_type=password&username=admin&password=admin_dev_pass" \
-  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-
-# Tạo user mới
-curl -X POST http://localhost:8180/admin/realms/hrm/users \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "dept.manager",
-    "enabled": true,
-    "credentials": [{"type":"password","value":"Dev@123456","temporary":true}],
-    "realmRoles": ["DEPARTMENT_MANAGER"]
-  }'
-```
-
----
-
-### 5.2 Tài khoản hạ tầng (services nội bộ)
-
-| Service | URL | Username | Password | Ghi chú |
-|---|---|---|---|---|
-| Keycloak Admin | http://localhost:8180 | `admin` | `admin_dev_pass` | Quản lý realm, client, user |
-| PostgreSQL | `localhost:5432` | `hrm` | `hrm_dev_pass` | DB: `hrm` |
-| MinIO Console | http://localhost:9001 | `hrm_minio` | `hrm_minio_dev` | Object storage |
-| OpenSearch | http://localhost:9200 | — | — | Security tắt trong dev |
-| Redis | `localhost:6379` | — | — | Không có auth trong dev |
-
----
-
-### 5.3 Roles và quyền hạn chi tiết
+### 5.2 Roles và quyền hạn chi tiết
 
 | Role | Xem DS nhân viên | Thêm/Sửa NV | Cho thôi việc | Xem lương | Duyệt nghỉ phép |
 |---|:---:|:---:|:---:|:---:|:---:|
 | `ADMIN` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `HR_MANAGER` | ✅ | ✅ | ❌ | ✅ | ✅ |
-| `DEPARTMENT_MANAGER` | ✅ (phòng ban) | ❌ | ❌ | ❌ | ✅ (phòng mình) |
+| `HR_MANAGER` | ✅ | ✅ | ❌ | ✅ | ✅ (cấp 2) |
+| `DEPT_HEAD` / `DEPARTMENT_MANAGER` | ✅ (phòng ban) | ❌ | ❌ | ❌ | ✅ (cấp 1, phòng mình) |
+| `ACCOUNTANT` | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `EMPLOYEE` | ❌ | ❌ | ❌ | ❌ (chỉ xem lương mình) | ❌ |
 
----
+> `DEPT_HEAD` và `DEPARTMENT_MANAGER` là hai tên gọi tương đương cho cùng vai trò trưởng phòng — cả hai đều được công nhận ở cả frontend (`useRoles.ts`, `side-nav.tsx`) lẫn backend (`@PreAuthorize`).
 
-### 5.4 Lấy JWT token để test API (curl / Postman)
+### 5.3 Lấy JWT token để test API (curl / Postman)
 
 ```bash
-# Đăng nhập với admin.hrm (sau khi đã đổi mật khẩu lần đầu)
-TOKEN=$(curl -sf -X POST \
-  http://localhost:8180/realms/hrm/protocol/openid-connect/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=hrm-frontend" \
-  -d "client_secret=<KEYCLOAK_CLIENT_SECRET>" \
-  -d "username=admin.hrm" \
-  -d "password=<mật_khẩu_mới>" \
-  -d "grant_type=password" \
-  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+TOKEN=$(curl -sf -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@bvnghean.vn","password":"Admin@2025"}' \
+  | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
 echo $TOKEN   # paste vào Postman hoặc dùng trực tiếp trong curl
 ```
-
-> `KEYCLOAK_CLIENT_SECRET` lấy từ file `frontend/.env.local` hoặc Keycloak Admin → Realm `hrm` → Clients → `hrm-frontend` → Credentials tab.
 
 Dùng token để gọi API:
 
@@ -221,60 +174,12 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/personnel/emplo
 
 ## 6. Chạy backend local (hot-reload)
 
-> **Yêu cầu:** Java 21 phải được cài. Maven thì **không cần cài riêng** — dùng Maven Wrapper có sẵn trong repo.
-
-### Cách A — Maven Wrapper (khuyến nghị, không cần cài Maven)
-
-Chạy **2 lệnh theo thứ tự** từ thư mục `backend`:
-
-```cmd
-cd D:\Workspace\HRM\backend
-
-REM Bước 1: build + install tất cả modules (chỉ cần làm lần đầu hoặc sau khi pull code mới)
-mvnw install -DskipTests
-
-REM Bước 2: chạy app
-mvnw -pl app spring-boot:run
+```bash
+cd backend
+mvn spring-boot:run -pl app
 ```
 
-> **Tại sao cần 2 bước?** Project là Modular Monolith — `app` phụ thuộc vào `shared-kernel`, `module-personnel`… Nếu bỏ qua bước install, Maven báo lỗi `Could not find artifact` hoặc `Unable to find a suitable main class`.
-
-### Cách B — Dùng `mvn` toàn cục (nếu đã cài Maven 3.9+)
-
-```cmd
-cd D:\Workspace\HRM\backend
-mvn install -DskipTests
-mvn -pl app spring-boot:run
-```
-
-> Nếu thấy `'mvn' is not recognized` → dùng Cách A, hoặc cài Maven:
-> 1. Tải [apache-maven-3.9.x-bin.zip](https://maven.apache.org/download.cgi), giải nén vào `C:\tools\maven`
-> 2. Thêm vào PATH (chạy PowerShell với quyền Admin):
->    ```powershell
->    [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\tools\maven\bin", "Machine")
->    ```
-> 3. Mở terminal mới, kiểm tra: `mvn -version`
-
-### Cách C — Docker (không cần Java/Maven trên máy)
-
-Nếu không muốn cài bất cứ thứ gì, chạy backend bên trong Docker:
-
-```powershell
-cd D:\Workspace\HRM
-docker compose up --build backend -d
-docker compose logs -f backend
-```
-
----
-
-Chờ log `Started HrmApplication` → backend đang chạy tại `http://localhost:8080`.
-
-Kiểm tra health:
-
-```powershell
-curl http://localhost:8080/actuator/health
-# → {"status":"UP"}
-```
+Backend chạy tại http://localhost:8080, context path `/api`. Health check: http://localhost:8080/api/actuator/health
 
 ---
 
@@ -289,8 +194,7 @@ npm run dev
 Mở trình duyệt: http://localhost:3000
 
 - Tự động redirect sang `/login`
-- Click **"Đăng nhập với SSO"** → Keycloak login page
-- Đăng nhập bằng tài khoản test ở bước 5
+- Đăng nhập bằng tài khoản test ở mục 5 (email + password — form thường, không có SSO)
 
 ---
 
@@ -300,17 +204,16 @@ Sau khi đăng nhập, mở F12 → Application → Cookies → `next-auth.sessi
 
 Checklist:
 
-- [ ] http://localhost:8180 → Keycloak Admin mở được
-- [ ] http://localhost:8080/actuator/health → `{"status":"UP"}`
+- [ ] http://localhost:8080/api/actuator/health → `{"status":"UP"}`
 - [ ] http://localhost:3000 → redirect về `/login`
-- [ ] Đăng nhập SSO → vào `/dashboard` thành công
+- [ ] Đăng nhập → vào `/dashboard` thành công
 - [ ] SideNav hiện đúng menu theo role
 
 ---
 
 ## 9. Gọi API với JWT
 
-> Xem [mục 5.4](#54-lấy-jwt-token-để-test-api-curl--postman) để lấy token trước.
+> Xem [mục 5.3](#53-lấy-jwt-token-để-test-api-curl--postman) để lấy token trước.
 
 ```bash
 # Danh sách nhân viên (có phân trang + tìm kiếm)
@@ -323,11 +226,11 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   -d '{
     "employeeCode": "NV001",
     "fullName": "Nguyễn Văn A",
-    "email": "nva@bvhn.vn",
+    "email": "nva@bvnghean.vn",
     "phone": "0901234567",
     "position": "Điều dưỡng",
     "contractType": "INDEFINITE",
-    "startDate": "2024-01-01"
+    "joinDate": "2024-01-01"
   }' \
   "http://localhost:8080/api/personnel/employees"
 
@@ -357,6 +260,21 @@ docker compose down
 
 # Dừng và xóa volume (reset database)
 docker compose down -v
+```
+
+Đẩy code mới lên container đang chạy mà không rebuild image (nhanh hơn nhiều, xem thêm trong memory `feedback-deploy-workflow`):
+
+```bash
+# Backend
+cd backend && mvn package -q -DskipTests
+docker cp app/target/app-1.0.0-SNAPSHOT.jar hrm-backend:/app/app.jar
+docker restart hrm-backend
+
+# Frontend
+cd frontend && npm run build
+docker cp .next/standalone/. hrm-frontend:/app/
+docker cp .next/static hrm-frontend:/app/.next/static
+docker restart hrm-frontend
 ```
 
 ---
@@ -413,38 +331,18 @@ Mỗi PR chạy 3 workflow tự động:
 
 ## 13. Troubleshooting
 
-### Keycloak không khởi động được
-
-```bash
-docker logs hrm-keycloak --tail 50
-```
-
-Thường gặp: `schema "keycloak" does not exist` → postgres chưa chạy xong.
-
-```bash
-# Reset và chạy lại đúng thứ tự
-docker compose down -v
-docker compose up postgres -d
-# Chờ postgres healthy rồi mới chạy keycloak
-docker compose up keycloak -d
-```
-
 ### Backend lỗi `401 Unauthorized`
 
-Token hết hạn (mặc định 5 phút). Lấy token mới theo hướng dẫn ở mục 9.
+Token hết hạn. Lấy token mới theo hướng dẫn ở mục 9.
 
-### Backend lỗi `Could not resolve token issuer`
+### Upload file / xem trước file đính kèm lỗi treo hoặc 500
 
-Backend đang kết nối sai URL Keycloak. Kiểm tra `application.yml`:
+MinIO chưa chạy hoặc bị dừng. Kiểm tra:
 
-```yaml
-# Đúng (dùng jwk-set-uri, KHÔNG dùng issuer-uri khi backend chạy local)
-spring.security.oauth2.resourceserver.jwt.jwk-set-uri: http://localhost:8180/realms/hrm/protocol/openid-connect/certs
+```bash
+docker ps --filter "name=hrm-minio"
+docker start hrm-minio    # nếu đang Exited
 ```
-
-### Frontend lỗi `KEYCLOAK_CLIENT_SECRET` missing
-
-File `.env.local` chưa có hoặc sai secret. Xem lại mục 3.
 
 ### Port bị chiếm
 
@@ -454,11 +352,15 @@ netstat -ano | findstr :8080
 taskkill /PID <pid> /F
 ```
 
+### pgAdmin cứ load mãi không vào được (crash-loop)
+
+Email trong `PGADMIN_DEFAULT_EMAIL` (docker-compose.yml) không hợp lệ — tránh các TLD dành riêng như `.local`, `.test`, `.localhost`. Dùng domain thật (ví dụ `dba@bvnghean.vn`).
+
 ### Reset toàn bộ database
 
 ```bash
 docker compose down -v   # xóa tất cả volumes
-docker compose up postgres redis keycloak minio opensearch -d
+docker compose up postgres redis minio -d
 ```
 
 ---
@@ -467,4 +369,3 @@ docker compose up postgres redis keycloak minio opensearch -d
 
 - **Tech Lead / câu hỏi architecture:** xem `docs/adr/ADR-001-architecture-evaluation.md`
 - **Kế hoạch triển khai theo phase:** xem `docs/implementation/phased-plan.md`
-- **Báo lỗi / tính năng mới:** tạo Issue trên GitHub

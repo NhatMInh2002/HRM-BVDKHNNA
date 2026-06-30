@@ -12,7 +12,6 @@ public interface RoleManagementPort {
             String email,
             String departmentName,
             String position,
-            String keycloakUsername,
             String hrmRole,
             String status
     ) {}
@@ -21,5 +20,5 @@ public interface RoleManagementPort {
 
     long countAll(String keyword);
 
-    void updateRole(UUID employeeId, String role, String keycloakUsername);
+    void updateRole(UUID employeeId, String role);
 }

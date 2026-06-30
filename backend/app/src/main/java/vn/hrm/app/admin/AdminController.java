@@ -33,7 +33,7 @@ public class AdminController {
                 .map(v -> new RoleAssignmentDto(
                         v.id(), v.employeeCode(), v.fullName(), v.email(),
                         v.departmentName(), v.position(),
-                        v.keycloakUsername(), v.hrmRole(), v.status()))
+                        v.hrmRole(), v.status()))
                 .toList();
 
         long total = roleManagementPort.countAll(keyword);
@@ -51,7 +51,7 @@ public class AdminController {
             @PathVariable UUID id,
             @RequestBody UpdateRoleRequest req
     ) {
-        roleManagementPort.updateRole(id, req.role(), req.keycloakUsername());
+        roleManagementPort.updateRole(id, req.role());
         return ResponseEntity.ok(ApiResponse.ok("Role updated"));
     }
 }

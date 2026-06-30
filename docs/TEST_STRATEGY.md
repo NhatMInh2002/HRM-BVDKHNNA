@@ -28,24 +28,25 @@
 
 ## 2. Module Auth (P0)
 
-### 2.1 Unit Tests — `auth.ts` (NextAuth callbacks)
+### 2.1 Unit Tests — `auth.ts` (NextAuth credentials callback)
+
+> Hệ thống dùng JWT tự quản lý (`POST /api/auth/login` email+password → JwtService ký token), không có IdP ngoài hay refresh-token flow.
 
 | ID | Test case | Input | Expected |
 |---|---|---|---|
-| AUTH-U01 | Parse roles từ `realm_access.roles` | JWT có `realm_access.roles: ["ADMIN"]` | `session.roles = ["ADMIN"]` |
-| AUTH-U02 | Fallback khi không có `realm_access` | JWT không có `realm_access` | `session.roles = []` |
-| AUTH-U03 | Token còn hạn — không refresh | `expiresAt` = now + 120s | Trả token cũ |
-| AUTH-U04 | Token sắp hết hạn — trigger refresh | `expiresAt` = now + 20s | Gọi Keycloak refresh endpoint |
-| AUTH-U05 | Refresh token thất bại | Keycloak trả 401 | `session.error = "RefreshTokenError"` |
+| AUTH-U01 | Parse role từ response login | Backend trả `role: "ADMIN"` | `session.roles = ["ADMIN"]` |
+| AUTH-U02 | Fallback khi login thất bại | Backend trả lỗi (sai mật khẩu) | `session = null`, hiện lỗi ở form |
+| AUTH-U03 | Token còn hạn | JWT chưa hết hạn | `apiFetch` dùng token hiện tại |
+| AUTH-U04 | Token hết hạn | JWT hết hạn (mặc định theo `JwtService`) | API trả 401, frontend buộc đăng nhập lại (không có auto-refresh) |
 
-### 2.2 Integration Tests — Keycloak SSO flow
+### 2.2 Integration Tests — Login flow (JWT nội bộ)
 
 | ID | Test case | Steps | Expected |
 |---|---|---|---|
-| AUTH-I01 | Đăng nhập thành công | GET `/login` → redirect Keycloak → callback | Session có `accessToken`, `roles` |
+| AUTH-I01 | Đăng nhập thành công | GET `/login` → submit email/password → `POST /api/auth/login` | Session có `accessToken`, `roles` |
 | AUTH-I02 | Truy cập trang bảo vệ khi chưa đăng nhập | GET `/dashboard` không có session | Redirect `/login` |
-| AUTH-I03 | Token hết hạn — tự refresh | Session với token hết hạn | Auto-refresh, tiếp tục request |
-| AUTH-I04 | Đăng xuất | POST `/api/auth/signout` | Session bị xóa, redirect `/login` |
+| AUTH-I03 | Sai mật khẩu | Submit sai password | Hiện lỗi "Mật khẩu không đúng", không tạo session |
+| AUTH-I04 | Đăng xuất | Click "Đăng xuất" (`signOut`) | Session bị xóa, redirect `/login` |
 
 ---
 

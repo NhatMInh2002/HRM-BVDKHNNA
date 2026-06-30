@@ -35,12 +35,9 @@ public class RoleManagementAdapter implements RoleManagementPort {
 
     @Override
     @Transactional
-    public void updateRole(UUID employeeId, String role, String keycloakUsername) {
+    public void updateRole(UUID employeeId, String role) {
         employeeRepository.findById(employeeId).ifPresent(e -> {
             e.setHrmRole(role);
-            if (keycloakUsername != null && !keycloakUsername.isBlank()) {
-                e.setKeycloakUsername(keycloakUsername);
-            }
             employeeRepository.save(e);
         });
     }
@@ -53,7 +50,6 @@ public class RoleManagementAdapter implements RoleManagementPort {
                 e.getEmail(),
                 e.getDepartment() != null ? e.getDepartment().getName() : null,
                 e.getPosition(),
-                e.getKeycloakUsername(),
                 e.getHrmRole(),
                 e.getStatus() != null ? e.getStatus().name() : null
         );
