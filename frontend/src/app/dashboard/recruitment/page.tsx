@@ -83,6 +83,8 @@ export default function RecruitmentPage() {
   const [showNewPosting, setShowNewPosting] = useState(false)
   const [showNewCandidate, setShowNewCandidate] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null)
 
   const { data: stats } = useQuery({ queryKey: ['recruitment-stats'], queryFn: fetchStats })
   const { data: postings = [] } = useQuery({
@@ -263,24 +265,52 @@ export default function RecruitmentPage() {
             </button>
           </div>
 
-          {/* Kanban board */}
+          {/* Kanban board — kéo thả để chuyển giai đoạn */}
           <div className="grid grid-cols-3 xl:grid-cols-6 gap-3 overflow-x-auto">
             {STAGES.map(stage => {
               const stageCandidates = candidates.filter((c: any) => c.stage === stage)
+              const isDragOver = dragOverStage === stage
               return (
-                <div key={stage} className="min-w-[180px]">
+                <div
+                  key={stage}
+                  className="min-w-[180px]"
+                  onDragOver={e => { e.preventDefault(); setDragOverStage(stage) }}
+                  onDragLeave={() => setDragOverStage(s => (s === stage ? null : s))}
+                  onDrop={e => {
+                    e.preventDefault()
+                    const id = e.dataTransfer.getData('text/plain') || draggedId
+                    setDragOverStage(null)
+                    setDraggedId(null)
+                    if (!id) return
+                    const dragged = candidates.find((c: any) => c.id === id)
+                    if (dragged && dragged.stage !== stage) {
+                      moveStage.mutate({ id, stage })
+                    }
+                  }}
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STAGE_COLORS[stage]}`}>
                       {STAGE_LABELS[stage]}
                     </span>
                     <span className="text-xs text-gray-400">{stageCandidates.length}</span>
                   </div>
-                  <div className="space-y-2 min-h-[200px]">
+                  <div className={`space-y-2 min-h-[200px] rounded-lg transition-colors ${
+                    isDragOver ? 'bg-blue-50/70 ring-2 ring-blue-300 ring-inset' : ''
+                  }`}>
                     {stageCandidates.map((c: any) => (
                       <div
                         key={c.id}
-                        className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-sm cursor-pointer transition-shadow"
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.setData('text/plain', c.id)
+                          e.dataTransfer.effectAllowed = 'move'
+                          setDraggedId(c.id)
+                        }}
+                        onDragEnd={() => { setDraggedId(null); setDragOverStage(null) }}
                         onClick={() => setSelectedCandidate(c)}
+                        className={`bg-white border border-gray-200 rounded-lg p-3 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ${
+                          draggedId === c.id ? 'opacity-40 scale-95' : ''
+                        }`}
                       >
                         <div className="font-medium text-sm text-gray-900 truncate">{c.full_name}</div>
                         <div className="text-xs text-gray-500 truncate mt-0.5">{c.posting_title || '—'}</div>
@@ -288,39 +318,13 @@ export default function RecruitmentPage() {
                           <div className="text-xs text-blue-500 mt-1">🎤 {c.interview_count} lần PV</div>
                         )}
                         <div className="text-[10px] text-gray-400 mt-1">{SOURCE_LABELS[c.source] || c.source}</div>
-
-                        {/* Quick move buttons */}
-                        {stage !== 'HIRED' && stage !== 'REJECTED' && (
-                          <div className="flex gap-1 mt-2">
-                            {stage !== 'OFFER' && (
-                              <button
-                                onClick={e => { e.stopPropagation(); moveStage.mutate({ id: c.id, stage: nextStage(stage) }) }}
-                                className="flex-1 text-[10px] py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
-                              >
-                                → Tiếp
-                              </button>
-                            )}
-                            {stage === 'OFFER' && (
-                              <button
-                                onClick={e => { e.stopPropagation(); moveStage.mutate({ id: c.id, stage: 'HIRED' }) }}
-                                className="flex-1 text-[10px] py-0.5 bg-green-50 text-green-600 rounded hover:bg-green-100"
-                              >
-                                ✓ Tuyển
-                              </button>
-                            )}
-                            <button
-                              onClick={e => { e.stopPropagation(); moveStage.mutate({ id: c.id, stage: 'REJECTED' }) }}
-                              className="flex-1 text-[10px] py-0.5 bg-red-50 text-red-500 rounded hover:bg-red-100"
-                            >
-                              ✗ Loại
-                            </button>
-                          </div>
-                        )}
                       </div>
                     ))}
                     {stageCandidates.length === 0 && (
-                      <div className="h-20 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-300">
-                        Trống
+                      <div className={`h-20 border-2 border-dashed rounded-lg flex items-center justify-center text-xs transition-colors ${
+                        isDragOver ? 'border-blue-300 text-blue-400' : 'border-gray-200 text-gray-300'
+                      }`}>
+                        {isDragOver ? 'Thả vào đây' : 'Trống'}
                       </div>
                     )}
                   </div>
@@ -328,6 +332,7 @@ export default function RecruitmentPage() {
               )
             })}
           </div>
+          <p className="text-xs text-gray-400 mt-3">💡 Kéo thả thẻ ứng viên giữa các cột để chuyển giai đoạn</p>
         </div>
       )}
 
@@ -361,13 +366,6 @@ export default function RecruitmentPage() {
   )
 }
 
-// ── Helper ─────────────────────────────────────────────────────────────────
-
-function nextStage(stage: string): string {
-  const order = ['NEW', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED']
-  const idx = order.indexOf(stage)
-  return idx >= 0 && idx < order.length - 1 ? order[idx + 1] : stage
-}
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
