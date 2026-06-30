@@ -7,8 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import vn.hrm.shared.dto.ApiResponse;
+import vn.hrm.shared.exception.HrmException;
 
 import java.util.Map;
 
@@ -38,24 +38,24 @@ public class FileUploadController {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("url", "/api/files/view?key=" + key, "name", name)));
     }
 
-    /** Stream file từ MinIO qua backend — tránh expose MinIO URL ra ngoài. */
+    /**
+     * Trả file từ MinIO qua backend — tránh expose MinIO URL ra ngoài.
+     * Đọc đồng bộ (byte[]) thay vì StreamingResponseBody: body async của Spring MVC
+     * chạy trên thread riêng không kế thừa SecurityContext (STATELESS + ThreadLocal),
+     * gây AccessDeniedException "response already committed" khi ghi response.
+     */
     @GetMapping("/view")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<StreamingResponseBody> view(@RequestParam String key) {
-        // Strip bucket prefix nếu vô tình có trong key — dùng final var cho lambda
-        final String resolvedKey = key.startsWith("hrm-avatars/")
+    public ResponseEntity<byte[]> view(@RequestParam String key) {
+        // Strip bucket prefix nếu vô tình có trong key
+        String resolvedKey = key.startsWith("hrm-avatars/")
                 ? key.substring("hrm-avatars/".length()) : key;
         String contentType = storageService.getContentType(resolvedKey);
-        StreamingResponseBody body = out -> {
-            try (var in = storageService.getObject(resolvedKey)) {
-                in.transferTo(out);
-            } catch (Exception e) {
-                throw new java.io.IOException("Lỗi đọc file: " + e.getMessage(), e);
-            }
-        };
+        byte[] data = storageService.readBytes(resolvedKey);
+        if (data == null) throw HrmException.notFound("FILE_NOT_FOUND", "Không tìm thấy file: " + resolvedKey);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, contentType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-                .body(body);
+                .body(data);
     }
 }
