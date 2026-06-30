@@ -140,7 +140,10 @@ export function SideNav({ roles }: { roles: string[] }) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
-        {NAV_GROUPS.map(group => (
+        {NAV_GROUPS.map(group => {
+          const visibleItems = group.items.filter(item => canSee(item.roles))
+          if (visibleItems.length === 0) return null
+          return (
           <div key={group.key} className={group.label ? 'mt-1' : ''}>
             <div className={`overflow-hidden transition-all duration-150
                              ${expanded ? 'max-h-8 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -155,7 +158,7 @@ export function SideNav({ roles }: { roles: string[] }) {
               <div className="mx-3 mt-2 mb-1 border-t border-[#243556]" />
             )}
 
-            {group.items.filter(item => canSee(item.roles)).map(item => {
+            {visibleItems.map(item => {
               const active = isActive(item.href, pathname, item.exact)
               return (
                 <Link
@@ -183,7 +186,8 @@ export function SideNav({ roles }: { roles: string[] }) {
               )
             })}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Bottom — Cài đặt hệ thống (chỉ Admin) */}

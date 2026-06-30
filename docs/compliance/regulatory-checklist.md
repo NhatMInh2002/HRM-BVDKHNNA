@@ -32,11 +32,11 @@
 
 | Yêu cầu | Trạng thái | Ghi chú |
 |---|---|---|
-| Tính BHXH 8% (NLĐ) + 17.5% (NSDLĐ) | ⬜ Todo | Theo mức lương cơ sở hiện hành |
-| Tính BHYT 1.5% (NLĐ) + 3% (NSDLĐ) | ⬜ Todo | |
-| Tính BHTN 1% (NLĐ) + 1% (NSDLĐ) | ⬜ Todo | |
-| Thuế TNCN lũy tiến 7 bậc | ⬜ Todo | Theo Luật Thuế TNCN hiện hành |
-| Giảm trừ gia cảnh (bản thân + người phụ thuộc) | ⬜ Todo | |
+| Tính BHXH 8% (NLĐ) + 17.5% (NSDLĐ) | ✅ Done | `PayrollService` — trần đóng = 20× lương cơ sở |
+| Tính BHYT 1.5% (NLĐ) + 3% (NSDLĐ) | ✅ Done | |
+| Tính BHTN 1% (NLĐ) + 1% (NSDLĐ) | ✅ Done | |
+| Thuế TNCN lũy tiến 7 bậc | ✅ Done | Điều 22 Luật Thuế TNCN |
+| Giảm trừ gia cảnh (bản thân 11tr + người phụ thuộc 4.4tr) | ✅ Done | |
 | Kết nối cổng BHXH điện tử | ⬜ Todo | API BHXH Việt Nam |
 | Kết nối e-Tax (Tổng cục Thuế) | ⬜ Todo | API nộp thuế điện tử |
 
@@ -59,5 +59,5 @@
 | TLS 1.3 bắt buộc (không dùng TLS 1.0/1.1) | ✅ Done | Nginx — `ssl_protocols TLSv1.2 TLSv1.3` (dev: self-signed, prod: cần CA thật) |
 | WAF chặn OWASP Top 10 | ⬜ Todo | ModSecurity |
 | Xác thực đa yếu tố (MFA) cho admin | ⬜ Todo | Azure AD MFA policy |
-| Audit log bất biến (không xóa/sửa được) | ⬜ Todo | Append-only PostgreSQL table + WORM policy |
+| Audit log bất biến (không xóa/sửa được) | ✅ Done | `audit.audit_log` — DB trigger chặn UPDATE/DELETE (xem mục 1) |
 | Backup hàng ngày + kiểm tra restore định kỳ | ⬜ Todo | Automated backup + monthly restore drill |
