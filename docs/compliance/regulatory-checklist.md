@@ -56,7 +56,7 @@
 
 | Yêu cầu | Trạng thái | Giải pháp |
 |---|---|---|
-| TLS 1.3 bắt buộc (không dùng TLS 1.0/1.1) | ⬜ Todo | Nginx config |
+| TLS 1.3 bắt buộc (không dùng TLS 1.0/1.1) | ✅ Done | Nginx — `ssl_protocols TLSv1.2 TLSv1.3` (dev: self-signed, prod: cần CA thật) |
 | WAF chặn OWASP Top 10 | ⬜ Todo | ModSecurity |
 | Xác thực đa yếu tố (MFA) cho admin | ⬜ Todo | Azure AD MFA policy |
 | Audit log bất biến (không xóa/sửa được) | ⬜ Todo | Append-only PostgreSQL table + WORM policy |

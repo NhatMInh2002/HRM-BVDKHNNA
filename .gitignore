@@ -1,3 +1,6 @@
+# Nginx — không commit private key / cert
+nginx/certs/
+
 # Java / Maven
 **/target/
 *.class

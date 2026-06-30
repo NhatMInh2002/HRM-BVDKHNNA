@@ -67,11 +67,13 @@
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 39–40 | Keycloak SSO (SAML 2.0/OIDC), SSL/Nginx, sync phần mềm kế toán | ⬜ Todo |
+| 39–40 | Keycloak SSO (SAML 2.0/OIDC), SSL/Nginx, sync phần mềm kế toán | 🔄 Một phần (Nginx/SSL xong) |
 | 41 | BHXH điện tử connector, e-Tax nộp tờ khai | ⬜ Todo |
 | 42 | Penetration testing (OWASP Top 10), khắc phục lỗ hổng | ⬜ Todo |
 | 43 | Load testing (500–1,000 concurrent), tối ưu query DB, tuning cache | ⬜ Todo |
 | 44 | UAT với phòng Nhân sự, sprint fix bug, go-live runbook | ⬜ Todo |
+
+**Bổ sung 2026-06-30:** Nginx reverse proxy + TLS termination (`nginx/nginx.conf`) — HTTP→HTTPS redirect, security headers (HSTS, X-Frame-Options, nosniff), rate limiting (login 5r/s, API 30r/s). Dev dùng self-signed cert (`nginx/gen-dev-cert.ps1`); production thay bằng chứng chỉ CA thật (VNPT-CA/Viettel-CA) trong `nginx/certs/`. Keycloak SSO vẫn chưa làm — hệ thống đang dùng JWT tự quản lý.
 
 ---
 
