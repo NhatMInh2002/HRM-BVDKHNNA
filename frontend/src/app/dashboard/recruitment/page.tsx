@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { RichEditor } from '@/components/rich-editor'
+import { ModalPortal } from '@/components/modal-portal'
 import { ResizableModal } from '@/components/resizable-modal'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -683,7 +684,8 @@ function CandidateDrawer({ candidate, onClose, onStageChanged }:
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-end z-50">
+    <ModalPortal onClose={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-end z-[100]">
       <div className="bg-white w-full sm:w-[480px] h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
         <div className="flex items-start justify-between p-5 border-b flex-shrink-0">
           <div>
@@ -811,6 +813,7 @@ function CandidateDrawer({ candidate, onClose, onStageChanged }:
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

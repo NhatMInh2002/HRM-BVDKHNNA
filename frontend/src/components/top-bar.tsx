@@ -4,6 +4,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
+import { ModalPortal } from '@/components/modal-portal'
 import {
   getMyNotifications,
   getUnreadCount,
@@ -67,8 +68,9 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const strengthLabels = ['', 'Yếu', 'Trung bình', 'Tốt', 'Mạnh']
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <ModalPortal onClose={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 text-white">
@@ -173,6 +175,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
         </form>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

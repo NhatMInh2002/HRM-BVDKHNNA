@@ -10,6 +10,7 @@ import {
   type Contract, type ContractStatus,
 } from '@/lib/contracts'
 import { searchEmployees } from '@/lib/personnel'
+import { ModalPortal } from '@/components/modal-portal'
 import { useRoles } from '@/hooks/useRoles'
 import { useDebounce } from '@/hooks/useDebounce'
 import { Badge } from '@/components/ui/badge'
@@ -211,7 +212,8 @@ export default function ContractsPage() {
       )}
 
       {showModal && !selectedEmp && !editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <ModalPortal onClose={() => setShowModal(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
             <h2 className="text-lg font-bold text-gray-800">Chọn nhân viên</h2>
             <input
@@ -234,6 +236,7 @@ export default function ContractsPage() {
             <button onClick={() => setShowModal(false)} className="w-full text-sm text-gray-500 hover:text-gray-700 pt-1">Hủy</button>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   )

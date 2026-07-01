@@ -1,5 +1,6 @@
 'use client'
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ResizableModalProps {
   children: React.ReactNode
@@ -162,9 +163,9 @@ export function ResizableModal({
   const EDGE = 6   // px edge hit zone
   const CORNER = 14
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 bg-black/40 z-50"
+      className="fixed inset-0 bg-black/50 z-[100]"
       onClick={onBackdropClick}
     >
       <div
@@ -221,6 +222,7 @@ export function ResizableModal({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

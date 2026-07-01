@@ -20,6 +20,7 @@ import { useCurrentEmployee } from '@/hooks/useCurrentEmployee'
 import { useRoles } from '@/hooks/useRoles'
 import { Badge } from '@/components/ui/badge'
 import { LeaveModal } from '@/components/leave-modal'
+import { ModalPortal } from '@/components/modal-portal'
 
 /** Chuyển bất kỳ URL file nào về /api/files/view?key= */
 function toViewUrl(raw: string): string {
@@ -277,7 +278,8 @@ export default function LeavePage() {
 
       {/* Modal từ chối */}
       {rejectTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <ModalPortal onClose={() => setRejectTarget(null)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-1">Lý do từ chối</h3>
             <p className="text-sm text-gray-500 mb-4">Nhập lý do từ chối đơn nghỉ phép này</p>
@@ -309,11 +311,13 @@ export default function LeavePage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Modal xem trước file */}
       {previewUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={closePreview}>
+        <ModalPortal onClose={closePreview}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={closePreview}>
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
                onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
@@ -347,6 +351,7 @@ export default function LeavePage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   )

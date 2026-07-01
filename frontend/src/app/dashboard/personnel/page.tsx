@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmployeeFormModal } from '@/components/personnel/employee-form-modal'
 import { format } from 'date-fns'
 import { useRoles } from '@/hooks/useRoles'
+import { ModalPortal } from '@/components/modal-portal'
 
 const STATUS_VARIANT = {
   ACTIVE: 'green',
@@ -322,7 +323,8 @@ export default function PersonnelPage() {
 
       {/* Modal đặt lại mật khẩu */}
       {resetTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <ModalPortal onClose={() => { setResetTarget(null); setPwdMsg(null) }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             {pwdMsg?.ok ? (
               /* Trạng thái thành công */
@@ -390,6 +392,7 @@ export default function PersonnelPage() {
             )}
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   )
