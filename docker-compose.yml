@@ -139,5 +139,3 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
-  opensearch_data:
-  frontend_node_modules:

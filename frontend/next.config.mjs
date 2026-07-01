@@ -4,7 +4,7 @@ const nextConfig = {
   async rewrites() {
     const backend = process.env.BACKEND_URL ?? 'http://localhost:8080'
     // Chỉ proxy các module backend — KHÔNG proxy /api/auth/* (NextAuth)
-    const modules = ['personnel', 'attendance', 'payroll', 'dashboard', 'notifications', 'files', 'recruitment', 'kpi', 'report', 'workflow', 'admin']
+    const modules = ['personnel', 'attendance', 'payroll', 'dashboard', 'notifications', 'files', 'recruitment', 'kpi', 'report', 'onboarding', 'audit-log', 'admin']
     const moduleRewrites = modules.map(mod => ({
       source: `/api/${mod}/:path*`,
       destination: `${backend}/api/${mod}/:path*`,

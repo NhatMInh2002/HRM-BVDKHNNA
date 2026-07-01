@@ -17,10 +17,6 @@
     <dependency><groupId>vn.hrm</groupId><artifactId>module-personnel</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>vn.hrm</groupId><artifactId>module-attendance</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>vn.hrm</groupId><artifactId>module-payroll</artifactId><version>${project.version}</version></dependency>
-    <dependency><groupId>vn.hrm</groupId><artifactId>module-recruitment</artifactId><version>${project.version}</version></dependency>
-    <dependency><groupId>vn.hrm</groupId><artifactId>module-kpi</artifactId><version>${project.version}</version></dependency>
-    <dependency><groupId>vn.hrm</groupId><artifactId>module-workflow</artifactId><version>${project.version}</version></dependency>
-    <dependency><groupId>vn.hrm</groupId><artifactId>module-report</artifactId><version>${project.version}</version></dependency>
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>

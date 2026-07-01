@@ -22,10 +22,6 @@
     <module>module-personnel</module>
     <module>module-attendance</module>
     <module>module-payroll</module>
-    <module>module-recruitment</module>
-    <module>module-kpi</module>
-    <module>module-workflow</module>
-    <module>module-report</module>
     <module>app</module>
   </modules>
 
