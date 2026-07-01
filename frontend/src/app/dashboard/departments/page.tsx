@@ -1,5 +1,6 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getDepartmentsTree, searchEmployees, updateDepartmentContact,
@@ -116,8 +117,15 @@ function EditModal({ dept, onClose }: { dept: Department; onClose: () => void })
     !empSearch || e.fullName.toLowerCase().includes(empSearch.toLowerCase()) ||
     e.employeeCode.toLowerCase().includes(empSearch.toLowerCase()))
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+  // Đóng bằng phím Esc
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [onClose])
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800">Thông tin liên hệ</h2>
@@ -158,7 +166,8 @@ function EditModal({ dept, onClose }: { dept: Department; onClose: () => void })
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
