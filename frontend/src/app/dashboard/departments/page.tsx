@@ -1,214 +1,252 @@
 'use client'
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getDepartments, getDepartmentsTree, searchEmployees, type Department } from '@/lib/personnel'
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  getDepartmentsTree, searchEmployees, updateDepartmentContact,
+  type Department,
+} from '@/lib/personnel'
 import { useRoles } from '@/hooks/useRoles'
 
-
-function DeptNode({
-  node, level = 0, empCountMap,
+// ── Một dòng phòng ban trong cây ────────────────────────────────
+function DeptRow({
+  node, level, onEdit, canEdit,
 }: {
   node: Department
-  level?: number
-  empCountMap: Map<string, number>
+  level: number
+  onEdit: (d: Department) => void
+  canEdit: boolean
 }) {
-  const children = node.children ?? []
-  const [open, setOpen] = useState(level < 2)
+  const children = (node.children ?? []).filter(c => !c.code.startsWith('GRP-'))
+  const groups   = (node.children ?? []).filter(c => c.code.startsWith('GRP-'))
+  const allChildren = [...groups, ...children]
+  const [open, setOpen] = useState(level < 1)
   const isGroup = node.code.startsWith('GRP-')
-  const count = empCountMap.get(node.id) ?? 0
 
   return (
     <div>
       <div
-        className={`flex items-center gap-2 py-2 rounded-lg hover:bg-gray-50 select-none
-          ${children.length > 0 ? 'cursor-pointer' : 'cursor-default'}
-          ${isGroup ? 'text-gray-400' : 'text-gray-800'}`}
-        style={{ paddingLeft: `${12 + level * 20}px`, paddingRight: 12 }}
-        onClick={() => children.length > 0 && setOpen(o => !o)}
+        className={`group flex items-center gap-3 py-2 px-3 border-b border-gray-50 hover:bg-blue-50/40
+          ${isGroup ? '' : ''}`}
+        style={{ paddingLeft: `${12 + level * 18}px` }}
       >
-        <span className="w-4 flex-shrink-0 text-gray-400 text-xs text-center">
-          {children.length > 0 ? (open ? '▼' : '▶') : ''}
-        </span>
-        <span className={`text-xs font-mono px-1.5 py-0.5 rounded flex-shrink-0
-          ${isGroup ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600'}`}>
-          {node.code}
-        </span>
-        <span className={`text-sm flex-1 ${isGroup ? 'text-gray-400 italic' : 'font-medium'}`}>
-          {node.name}
-        </span>
-        {!isGroup && count > 0 && (
-          <span className="text-xs text-gray-400 flex-shrink-0">{count} người</span>
-        )}
-        {isGroup && (
-          <span className="text-xs text-gray-300 flex-shrink-0 italic">nhóm</span>
+        {/* Toggle */}
+        <button
+          onClick={() => allChildren.length > 0 && setOpen(o => !o)}
+          className={`w-4 flex-shrink-0 text-gray-400 text-xs ${allChildren.length > 0 ? 'cursor-pointer' : 'invisible'}`}
+        >
+          {open ? '▼' : '▶'}
+        </button>
+
+        {/* Tên + mã */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`text-sm truncate ${isGroup ? 'text-gray-400 italic font-medium' : 'font-medium text-gray-800'}`}>
+              {node.name}
+            </span>
+            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0
+              ${isGroup ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600'}`}>
+              {node.code}
+            </span>
+          </div>
+        </div>
+
+        {/* Người đứng đầu + SĐT — chỉ với phòng ban thật */}
+        {!isGroup && (
+          <>
+            <div className="hidden md:block w-48 flex-shrink-0 text-xs">
+              {node.managerName ? (
+                <>
+                  <p className="text-gray-700 font-medium truncate">{node.managerName}</p>
+                  {node.managerPhone && <p className="text-gray-400">{node.managerPhone}</p>}
+                </>
+              ) : <span className="text-gray-300">— chưa có —</span>}
+            </div>
+            <div className="hidden lg:block w-32 flex-shrink-0 text-xs">
+              {node.contactPhone
+                ? <a href={`tel:${node.contactPhone}`} className="text-blue-600 hover:underline">{node.contactPhone}</a>
+                : <span className="text-gray-300">—</span>}
+            </div>
+            <div className="hidden lg:block w-32 flex-shrink-0 text-xs">
+              {node.dutyPhone
+                ? <a href={`tel:${node.dutyPhone}`} className="text-red-600 font-medium hover:underline">{node.dutyPhone}</a>
+                : <span className="text-gray-300">—</span>}
+            </div>
+            {canEdit && (
+              <button
+                onClick={() => onEdit(node)}
+                className="flex-shrink-0 text-xs text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity px-1"
+                title="Chỉnh sửa"
+              >
+                ✎
+              </button>
+            )}
+          </>
         )}
       </div>
-      {open && children.map(child => (
-        <DeptNode key={child.id} node={child} level={level + 1} empCountMap={empCountMap} />
+      {open && allChildren.map(child => (
+        <DeptRow key={child.id} node={child} level={level + 1} onEdit={onEdit} canEdit={canEdit} />
       ))}
+    </div>
+  )
+}
+
+// ── Modal sửa thông tin liên hệ ─────────────────────────────────
+function EditModal({ dept, onClose }: { dept: Department; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [managerId, setManagerId]     = useState(dept.managerId ?? '')
+  const [contactPhone, setContactPhone] = useState(dept.contactPhone ?? '')
+  const [dutyPhone, setDutyPhone]     = useState(dept.dutyPhone ?? '')
+  const [empSearch, setEmpSearch]     = useState('')
+
+  const { data: emps } = useQuery({
+    queryKey: ['dept-emp-search', dept.id],
+    queryFn: () => searchEmployees({ departmentId: dept.id, status: 'ACTIVE', page: 0, size: 200 }),
+  })
+
+  const mut = useMutation({
+    mutationFn: () => updateDepartmentContact(dept.id, {
+      managerId: managerId || null,
+      contactPhone: contactPhone || null,
+      dutyPhone: dutyPhone || null,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['departments-tree'] }); onClose() },
+  })
+
+  const empList = (emps?.content ?? []).filter(e =>
+    !empSearch || e.fullName.toLowerCase().includes(empSearch.toLowerCase()) ||
+    e.employeeCode.toLowerCase().includes(empSearch.toLowerCase()))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-800">Thông tin liên hệ</h2>
+          <p className="text-sm text-gray-500">{dept.name} · {dept.code}</p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Người đứng đầu</label>
+            <input value={empSearch} onChange={e => setEmpSearch(e.target.value)}
+              placeholder="Tìm nhân viên trong phòng..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <select value={managerId} onChange={e => setManagerId(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">— Không chọn —</option>
+              {empList.map(e => (
+                <option key={e.id} value={e.id}>{e.fullName} ({e.employeeCode})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">SĐT liên hệ (hành chính)</label>
+            <input value={contactPhone} onChange={e => setContactPhone(e.target.value)}
+              placeholder="VD: 0238 3844 528"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">SĐT trực (24/7)</label>
+            <input value={dutyPhone} onChange={e => setDutyPhone(e.target.value)}
+              placeholder="VD: 0912 345 678"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Hủy</button>
+          <button onClick={() => mut.mutate()} disabled={mut.isPending}
+            className="px-5 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+            {mut.isPending ? 'Đang lưu...' : 'Lưu'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
 export default function DepartmentsPage() {
   const { isHR } = useRoles()
-  const { data: departments = [], isLoading: deptLoading } = useQuery({
-    queryKey: ['departments'],
-    queryFn: getDepartments,
-  })
+  const [editing, setEditing] = useState<Department | null>(null)
+  const [search, setSearch]   = useState('')
 
-  const { data: tree = [], isLoading: treeLoading } = useQuery({
+  const { data: tree = [], isLoading } = useQuery({
     queryKey: ['departments-tree'],
     queryFn: getDepartmentsTree,
   })
 
-  const isLoading = deptLoading || treeLoading
-
-  const { data: empData } = useQuery({
-    queryKey: ['employees-all-for-count'],
-    queryFn: () => searchEmployees({ status: 'ACTIVE', page: 0, size: 500 }),
-    staleTime: 60_000,
-  })
-
-  const empCountMap = new Map<string, number>()
-  if (empData?.content) {
-    for (const emp of empData.content) {
-      const did = emp.department?.id
-      if (did) empCountMap.set(did, (empCountMap.get(did) ?? 0) + 1)
+  // Đếm số phòng ban thật + số đang trực (có SĐT trực)
+  const stats = useMemo(() => {
+    let total = 0, withDuty = 0, withHead = 0
+    const walk = (nodes: Department[]) => {
+      for (const n of nodes) {
+        if (!n.code.startsWith('GRP-')) {
+          total++
+          if (n.dutyPhone) withDuty++
+          if (n.managerName) withHead++
+        }
+        if (n.children) walk(n.children)
+      }
     }
-  }
+    walk(tree)
+    return { total, withDuty, withHead }
+  }, [tree])
 
-  const realDepts = departments.filter(d => !d.code.startsWith('GRP-'))
+  // Lọc theo tìm kiếm — giữ nhánh cha nếu con khớp
+  const filtered = useMemo(() => {
+    if (!search.trim()) return tree
+    const kw = search.toLowerCase()
+    const filterNode = (n: Department): Department | null => {
+      const kids = (n.children ?? []).map(filterNode).filter(Boolean) as Department[]
+      const selfMatch = n.name.toLowerCase().includes(kw) || n.code.toLowerCase().includes(kw)
+        || (n.managerName?.toLowerCase().includes(kw) ?? false)
+      if (selfMatch || kids.length) return { ...n, children: kids }
+      return null
+    }
+    return tree.map(filterNode).filter(Boolean) as Department[]
+  }, [tree, search])
 
-  // ── Nhân viên: chỉ thấy sơ đồ tổ chức gọn ──────────────────
-  if (!isHR) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Sơ đồ tổ chức</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {realDepts.length} phòng ban / khoa / tổ
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">Khối phòng ban</p>
-            <p className="text-3xl font-bold text-blue-700 mt-1">
-              {realDepts.filter(d => d.code.startsWith('P-')).length}
-            </p>
-            <p className="text-xs text-blue-400 mt-0.5">Phòng hành chính</p>
-          </div>
-          <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-            <p className="text-xs font-semibold text-green-500 uppercase tracking-wide">Khoa lâm sàng</p>
-            <p className="text-3xl font-bold text-green-700 mt-1">
-              {realDepts.filter(d => d.code.startsWith('K-')).length}
-            </p>
-            <p className="text-xs text-green-400 mt-0.5">Khoa điều trị</p>
-          </div>
-          <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
-            <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Trung tâm & Tổ</p>
-            <p className="text-3xl font-bold text-purple-700 mt-1">
-              {realDepts.filter(d => d.code.startsWith('TT-') || d.code.startsWith('T-')).length}
-            </p>
-            <p className="text-xs text-purple-400 mt-0.5">Trung tâm chuyên sâu</p>
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-            <span className="text-sm font-semibold text-gray-700">Cơ cấu tổ chức</span>
-          </div>
-          {isLoading ? (
-            <div className="py-12 text-center text-sm text-gray-400">Đang tải...</div>
-          ) : (
-            <div className="py-2">
-              {tree.map(node => (
-                <DeptNode key={node.id} node={node} empCountMap={empCountMap} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // ── HR / Admin: trang quản lý đầy đủ ────────────────────────
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Quản lý phòng ban</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          {realDepts.length} phòng ban / khoa / tổ
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Khối phòng ban</p>
-          <p className="text-3xl font-bold text-blue-800 mt-1">
-            {realDepts.filter(d => d.code.startsWith('P-')).length}
+    <div className="p-6 max-w-5xl mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Sơ đồ tổ chức</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {stats.total} phòng ban / khoa · {stats.withHead} có người đứng đầu · {stats.withDuty} có SĐT trực
           </p>
-          <p className="text-xs text-blue-400 mt-0.5">Phòng hành chính</p>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">Khoa lâm sàng</p>
-          <p className="text-3xl font-bold text-green-800 mt-1">
-            {realDepts.filter(d => d.code.startsWith('K-')).length}
-          </p>
-          <p className="text-xs text-green-400 mt-0.5">Khoa điều trị</p>
-        </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-          <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Trung tâm & Tổ</p>
-          <p className="text-3xl font-bold text-purple-800 mt-1">
-            {realDepts.filter(d => d.code.startsWith('TT-') || d.code.startsWith('T-')).length}
-          </p>
-          <p className="text-xs text-purple-400 mt-0.5">Trung tâm chuyên sâu</p>
+        <div className="relative">
+          <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Tìm phòng ban, khoa, người đứng đầu..."
+            className="w-64 pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <span className="text-sm font-semibold text-gray-700">Sơ đồ tổ chức</span>
+      {/* Bảng cây */}
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        {/* Header cột (chỉ md+) */}
+        <div className="hidden md:flex items-center gap-3 px-3 py-2.5 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+          <span className="w-4"/>
+          <span className="flex-1">Phòng ban / Khoa</span>
+          <span className="w-48 flex-shrink-0">Người đứng đầu</span>
+          <span className="hidden lg:block w-32 flex-shrink-0">SĐT liên hệ</span>
+          <span className="hidden lg:block w-32 flex-shrink-0">SĐT trực</span>
+          {isHR && <span className="w-5"/>}
         </div>
+
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Đang tải...</div>
+          <div className="py-16 text-center text-sm text-gray-400">Đang tải sơ đồ tổ chức...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center text-sm text-gray-400">Không tìm thấy phòng ban phù hợp</div>
         ) : (
-          <div className="py-2">
-            {tree.map(node => (
-              <DeptNode key={node.id} node={node} empCountMap={empCountMap} />
-            ))}
-          </div>
+          filtered.map(node => (
+            <DeptRow key={node.id} node={node} level={0} onEdit={setEditing} canEdit={isHR} />
+          ))
         )}
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <span className="text-sm font-semibold text-gray-700">Danh sách phòng ban thực tế</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[400px]">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-2 text-left">Mã</th>
-                <th className="px-4 py-2 text-left">Tên phòng ban</th>
-                <th className="px-4 py-2 text-right">Nhân viên</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {realDepts.sort((a, b) => a.name.localeCompare(b.name, 'vi')).map(d => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-mono text-xs text-blue-600 whitespace-nowrap">{d.code}</td>
-                  <td className="px-4 py-2 text-gray-800">{d.name}</td>
-                  <td className="px-4 py-2 text-right text-gray-500 whitespace-nowrap">
-                    {empCountMap.get(d.id) ?? 0}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {editing && <EditModal dept={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }

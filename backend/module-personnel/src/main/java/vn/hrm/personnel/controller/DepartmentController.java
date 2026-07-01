@@ -37,4 +37,16 @@ public class DepartmentController {
     public ResponseEntity<ApiResponse<DepartmentResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(departmentService.findById(id)));
     }
+
+    /** Cập nhật người đứng đầu + SĐT liên hệ + SĐT trực (HR/Admin). */
+    @PatchMapping("/{id}/contact")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public ResponseEntity<ApiResponse<DepartmentResponse>> updateContact(
+            @PathVariable UUID id,
+            @RequestBody UpdateContactRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                departmentService.updateContact(id, req.managerId(), req.contactPhone(), req.dutyPhone())));
+    }
+
+    public record UpdateContactRequest(UUID managerId, String contactPhone, String dutyPhone) {}
 }

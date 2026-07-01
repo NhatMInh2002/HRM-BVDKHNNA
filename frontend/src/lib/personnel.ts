@@ -94,6 +94,11 @@ export interface Department {
   code: string
   name: string
   parentId: string | null
+  managerId?: string | null
+  managerName?: string | null
+  managerPhone?: string | null
+  contactPhone?: string | null
+  dutyPhone?: string | null
   children?: Department[]
 }
 
@@ -103,6 +108,16 @@ export function getDepartments() {
 
 export function getDepartmentsTree() {
   return apiFetch<Department[]>('/personnel/departments/tree')
+}
+
+export function updateDepartmentContact(
+  id: string,
+  body: { managerId?: string | null; contactPhone?: string | null; dutyPhone?: string | null }
+) {
+  return apiFetch<Department>(`/personnel/departments/${id}/contact`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
 }
 
 export function searchEmployees(params: {
