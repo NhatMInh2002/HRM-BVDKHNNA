@@ -45,18 +45,18 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: 'overview',
     items: [
-      { href: '/dashboard',             label: 'Tổng quan',           icon: Icons.dashboard, exact: true },
-      { href: '/dashboard/profile',     label: 'Hồ sơ cá nhân',       icon: Icons.profile, exact: true },
-      { href: '/dashboard/settings/otp', label: 'Xác thực 2 lớp (2FA)', icon: Icons.otp },
+      { href: '/dashboard',         label: 'Tổng quan',     icon: Icons.dashboard, exact: true },
+      { href: '/dashboard/profile', label: 'Hồ sơ cá nhân', icon: Icons.profile, exact: true },
     ],
   },
   {
     key: 'hr', label: 'NHÂN SỰ',
     items: [
       { href: '/dashboard/personnel',   label: 'Cán bộ nhân viên', icon: Icons.personnel, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
+      { href: '/dashboard/departments', label: 'Phòng ban / Khoa', icon: Icons.department },
       { href: '/dashboard/contracts',   label: 'Hợp đồng',         icon: Icons.recruit,   roles: ['ADMIN','HR_MANAGER'] },
-      { href: '/dashboard/departments', label: 'Phòng ban / Khoa',  icon: Icons.department },
-      { href: '/dashboard/categories',  label: 'Danh mục',          icon: Icons.category, roles: ['ADMIN','HR_MANAGER'] },
+      { href: '/dashboard/recruitment', label: 'Tuyển dụng',       icon: Icons.recruit, roles: ['ADMIN','HR_MANAGER'] },
+      { href: '/dashboard/onboarding',  label: 'Onboarding',       icon: Icons.check,   roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
     ],
   },
   {
@@ -75,23 +75,18 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    key: 'recruit', label: 'TUYỂN DỤNG & NHÂN SỰ',
+    key: 'analytics', label: 'ĐÁNH GIÁ & BÁO CÁO',
     items: [
-      { href: '/dashboard/recruitment', label: 'Tuyển dụng', icon: Icons.recruit, roles: ['ADMIN','HR_MANAGER'] },
-      { href: '/dashboard/onboarding',  label: 'Onboarding',  icon: Icons.check,   roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
-      { href: '/dashboard/kpi',         label: 'KPI & Đánh giá', icon: Icons.star, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
-    ],
-  },
-  {
-    key: 'analytics', label: 'BÁO CÁO',
-    items: [
+      { href: '/dashboard/kpi',     label: 'KPI & Đánh giá',    icon: Icons.star,  roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
       { href: '/dashboard/reports', label: 'Báo cáo & Thống kê', icon: Icons.chart, roles: ['ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','DEPT_HEAD'] },
     ],
   },
 ]
 
-// Menu con Cài đặt hệ thống
+// Menu con Cài đặt & Hệ thống (hiện nếu có ít nhất 1 mục xem được — 2FA cho mọi người)
 const SETTINGS_CHILDREN: NavItem[] = [
+  { href: '/dashboard/settings/otp',       label: 'Xác thực 2 lớp (2FA)', icon: Icons.otp },
+  { href: '/dashboard/categories',         label: 'Danh mục',          icon: Icons.category, roles: ['ADMIN','HR_MANAGER'] },
   { href: '/dashboard/settings',           label: 'Phân quyền',        icon: Icons.shield, roles: ['ADMIN'], exact: true },
   { href: '/dashboard/settings/audit-log', label: 'Nhật ký kiểm toán', icon: Icons.check, roles: ['ADMIN'] },
 ]
@@ -111,8 +106,9 @@ export function SideNav({ roles }: { roles: string[] }) {
   const canSee = (required?: AppRole[]) =>
     !required || required.length === 0 || required.some(r => roles.includes(r))
 
-  const settingsActive = pathname.startsWith('/dashboard/settings')
-  const isAdmin = roles.includes('ADMIN')
+  const settingsActive = pathname.startsWith('/dashboard/settings') || pathname.startsWith('/dashboard/categories')
+  const visibleSettings = SETTINGS_CHILDREN.filter(item => canSee(item.roles))
+  const hasSettings = visibleSettings.length > 0
 
   return (
     <aside
@@ -139,23 +135,23 @@ export function SideNav({ roles }: { roles: string[] }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-1.5">
         {NAV_GROUPS.map(group => {
           const visibleItems = group.items.filter(item => canSee(item.roles))
           if (visibleItems.length === 0) return null
           return (
-          <div key={group.key} className={group.label ? 'mt-1' : ''}>
+          <div key={group.key} className={group.label ? 'mt-0.5' : ''}>
             <div className={`overflow-hidden transition-all duration-150
-                             ${expanded ? 'max-h-8 opacity-100' : 'max-h-0 opacity-0'}`}>
+                             ${expanded ? 'max-h-6 opacity-100' : 'max-h-0 opacity-0'}`}>
               {group.label && (
                 <p className="text-[10px] font-semibold text-blue-400/60 tracking-widest
-                              px-4 pt-3 pb-1 uppercase whitespace-nowrap">
+                              px-4 pt-2 pb-0.5 uppercase whitespace-nowrap">
                   {group.label}
                 </p>
               )}
             </div>
             {group.label && !expanded && (
-              <div className="mx-3 mt-2 mb-1 border-t border-[#243556]" />
+              <div className="mx-3 mt-1.5 mb-0.5 border-t border-[#243556]" />
             )}
 
             {visibleItems.map(item => {
@@ -165,7 +161,7 @@ export function SideNav({ roles }: { roles: string[] }) {
                   key={item.href}
                   href={item.href}
                   title={!expanded ? item.label : undefined}
-                  className={`relative flex items-center mx-2 px-2 py-2 rounded text-[13px]
+                  className={`relative flex items-center mx-2 px-2 py-1.5 rounded text-[13px]
                     font-medium transition-colors duration-100
                     ${active
                       ? 'bg-blue-600 text-white'
@@ -190,14 +186,14 @@ export function SideNav({ roles }: { roles: string[] }) {
         })}
       </nav>
 
-      {/* Bottom — Cài đặt hệ thống (chỉ Admin) */}
-      {isAdmin && (
-        <div className="border-t border-[#243556] py-2 px-2 flex-shrink-0">
+      {/* Bottom — Cài đặt & Hệ thống */}
+      {hasSettings && (
+        <div className="border-t border-[#243556] py-1.5 px-2 flex-shrink-0">
           {/* Toggle button */}
           <button
             onClick={() => expanded && setSettingsOpen(o => !o)}
-            title={!expanded ? 'Cài đặt hệ thống' : undefined}
-            className={`w-full flex items-center px-2 py-2 rounded text-[13px] font-medium
+            title={!expanded ? 'Cài đặt & Hệ thống' : undefined}
+            className={`w-full flex items-center px-2 py-1.5 rounded text-[13px] font-medium
               transition-colors duration-100
               ${settingsActive
                 ? 'bg-blue-600/30 text-white'
@@ -209,7 +205,7 @@ export function SideNav({ roles }: { roles: string[] }) {
             </span>
             <span className={`ml-3 flex-1 text-left whitespace-nowrap transition-opacity duration-150
               ${expanded ? 'opacity-100' : 'opacity-0'}`}>
-              Cài đặt hệ thống
+              Cài đặt & Hệ thống
             </span>
             {expanded && (
               <span className={`transition-transform duration-200 text-blue-400
@@ -221,8 +217,8 @@ export function SideNav({ roles }: { roles: string[] }) {
 
           {/* Submenu */}
           <div className={`overflow-hidden transition-all duration-200
-            ${expanded && settingsOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
-            {SETTINGS_CHILDREN.filter(item => canSee(item.roles)).map(item => {
+            ${expanded && settingsOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}>
+            {visibleSettings.map(item => {
               const active = isActive(item.href, pathname, item.exact)
               return (
                 <Link
@@ -250,11 +246,11 @@ export function SideNav({ roles }: { roles: string[] }) {
       )}
 
       {/* Đăng xuất */}
-      <div className={`${isAdmin ? '' : 'border-t border-[#243556]'} pb-2 px-2 flex-shrink-0`}>
+      <div className={`${hasSettings ? '' : 'border-t border-[#243556]'} pb-2 px-2 flex-shrink-0`}>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           title={!expanded ? 'Đăng xuất' : undefined}
-          className="w-full flex items-center px-2 py-2 rounded text-[13px] font-medium
+          className="w-full flex items-center px-2 py-1.5 rounded text-[13px] font-medium
                      text-blue-200 hover:bg-red-700/80 hover:text-white transition-colors"
         >
           <span className="flex-shrink-0 w-5 flex items-center justify-center text-blue-400">
