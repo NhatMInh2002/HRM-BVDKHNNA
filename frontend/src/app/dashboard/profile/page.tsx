@@ -7,6 +7,7 @@ import { CONTRACT_TYPE_LABELS, STATUS_LABELS } from '@/lib/personnel'
 import { apiFetch } from '@/lib/api'
 import { getEmployeeContracts, CONTRACT_TYPE_LABELS as C_LABELS, CONTRACT_STATUS_LABELS } from '@/lib/contracts'
 import { Badge } from '@/components/ui/badge'
+import { AuthImage } from '@/components/auth-image'
 
 const GENDER_LABELS: Record<string, string> = {
   MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác',
@@ -78,17 +79,20 @@ function SignatureUploader({ currentUrl }: { currentUrl?: string }) {
         className="relative group cursor-pointer w-32 h-16 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:border-blue-400 transition-colors bg-gray-50"
         onClick={() => inputRef.current?.click()}
       >
-        {displayUrl ? (
-          <img src={displayUrl} alt="Chữ ký" className="w-full h-full object-contain p-1" />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-            </svg>
-            <span className="text-[10px] mt-1">Chưa có</span>
-          </div>
-        )}
+        <AuthImage
+          src={displayUrl}
+          alt="Chữ ký"
+          className="w-full h-full object-contain p-1"
+          fallback={
+            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+              </svg>
+              <span className="text-[10px] mt-1">Chưa có</span>
+            </div>
+          }
+        />
         {loading && (
           <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
             <svg className="w-5 h-5 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -166,13 +170,16 @@ function AvatarUploader({ name, currentUrl }: { name: string; currentUrl?: strin
       <div className="relative group cursor-pointer" onClick={() => inputRef.current?.click()}>
         {/* Avatar */}
         <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md">
-          {displayUrl ? (
-            <img src={displayUrl} alt={name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-3xl font-bold select-none">
-              {initials}
-            </div>
-          )}
+          <AuthImage
+            src={displayUrl}
+            alt={name}
+            className="w-full h-full object-cover"
+            fallback={
+              <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-3xl font-bold select-none">
+                {initials}
+              </div>
+            }
+          />
         </div>
 
         {/* Overlay khi hover */}
