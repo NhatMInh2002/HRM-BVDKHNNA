@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +14,9 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     List<Notification> findByRecipientIdOrderByCreatedAtDesc(UUID recipientId);
 
     long countByRecipientIdAndIsReadFalse(UUID recipientId);
+
+    /** Đếm thông báo cùng tiêu đề đã tạo trong khoảng thời gian — để tránh gửi trùng khi chạy bù. */
+    long countByTitleAndCreatedAtBetween(String title, OffsetDateTime from, OffsetDateTime to);
 
     @Modifying
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.id = :id AND n.recipientId = :recipientId")
