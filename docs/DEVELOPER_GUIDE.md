@@ -46,7 +46,10 @@ cd HRM-BVDKHNNA
 HRM/
 ├── backend/              ← Spring Boot 3 (Java 21), Modular Monolith
 │   ├── app/              ← entry point (SecurityConfig, AuthService, application.yml)
-│   ├── module-personnel/ ← nhân sự, phòng ban, hợp đồng, KPI, onboarding
+│   │                       + các feature service gọn: auth/2FA, admin, audit,
+│   │                         leave approval, notification, onboarding, KPI,
+│   │                         recruitment, report, storage
+│   ├── module-personnel/ ← nhân sự, phòng ban, hợp đồng
 │   ├── module-attendance/← chấm công, nghỉ phép
 │   ├── module-payroll/   ← lương
 │   └── shared-kernel/    ← entity cha, exception, audit log
@@ -90,6 +93,8 @@ JWT_SECRET=<chuỗi random tối thiểu 32 ký tự>
 NEXTAUTH_SECRET=<chuỗi random bất kỳ, ví dụ: openssl rand -base64 32>
 MINIO_ROOT_PASSWORD=hrm_minio_dev
 ```
+
+> ⚠️ **`.env` chỉ được `docker-compose` đọc.** Spring Boot **không** tự nạp file này — khi chạy backend bằng `mvn spring-boot:run` (mục 6, ngoài Docker) mà không export biến môi trường tương ứng, app sẽ dùng default cứng trong `application.yml` (vd. MinIO secret-key mặc định là `hrm_minio_pass`, khác với `MINIO_ROOT_PASSWORD` bạn đặt trong `.env` cho container MinIO) → tính năng upload avatar/chữ ký/file đính kèm sẽ lỗi 403/500 mà không rõ nguyên nhân. Xem cách export ở mục 6.
 
 ### Frontend — tạo file `frontend/.env.local`
 
@@ -174,9 +179,13 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/personnel/emplo
 
 ## 6. Chạy backend local (hot-reload)
 
+Nếu `.env` ở bước 3 dùng giá trị khác default trong `application.yml` (đặc biệt `MINIO_ROOT_PASSWORD`), export cùng giá trị đó trước khi chạy — nếu không, upload file sẽ auth-fail với MinIO trong Docker:
+
 ```bash
 cd backend
+export MINIO_ROOT_PASSWORD=hrm_minio_dev   # PowerShell: $env:MINIO_ROOT_PASSWORD = "hrm_minio_dev"
 mvn spring-boot:run -pl app
+# hoặc dùng wrapper nếu chưa cài Maven hệ thống: ./mvnw spring-boot:run -pl app (Windows: mvnw.cmd)
 ```
 
 Backend chạy tại http://localhost:8080, context path `/api`. Health check: http://localhost:8080/api/actuator/health
@@ -262,6 +271,14 @@ docker compose down
 docker compose down -v
 ```
 
+**Cổng khi chạy qua Docker (khác với hot-reload ở mục 6–7):**
+
+| Service | Cổng host | Ghi chú |
+|---|---|---|
+| Backend | `8080` | giống hot-reload |
+| Frontend | **`4000`** → http://localhost:4000 | container map `4000:3000` — **không phải 3000** như mục 7 |
+| Nginx (nếu bật) | `80` / `443` → https://localhost | reverse proxy trỏ vào frontend/backend ở trên |
+
 Đẩy code mới lên container đang chạy mà không rebuild image (nhanh hơn nhiều, xem thêm trong memory `feedback-deploy-workflow`):
 
 ```bash
@@ -317,15 +334,17 @@ PR phải pass tất cả CI checks trước khi merge.
 
 ## 12. CI/CD
 
-Mỗi PR chạy 3 workflow tự động:
+Mỗi PR chạy 3 workflow tự động, tổng cộng 9 check độc lập:
 
-| Workflow | File | Kiểm tra |
+| Workflow | File | Check |
 |---|---|---|
-| Backend CI | `.github/workflows/ci-backend.yml` | Build Maven, unit test, JaCoCo coverage |
-| Frontend CI | `.github/workflows/ci-frontend.yml` | TypeScript check, lint, Vitest |
-| Security Scan | `.github/workflows/security-scan.yml` | OWASP dependency check, npm audit |
+| Backend CI | `.github/workflows/ci-backend.yml` | `Build & Test` (Maven + unit test), `Coverage Gate (≥ 70%)` (JaCoCo) |
+| Frontend CI | `.github/workflows/ci-frontend.yml` | `Lint, Type-check & Test` (ESLint + tsc + Vitest, `--passWithNoTests`), `Build` (Next.js) |
+| Security Scan | `.github/workflows/security-scan.yml` | `OWASP Dependency Check (Backend)`, `NPM Audit (Frontend)`, `SAST — CodeQL` (java + javascript), `Secret Scan (Gitleaks)` |
 
 > **Lưu ý:** Security scan cần secret `NVD_API_KEY` trong repo Settings → Secrets. Không có key vẫn chạy được nhưng chậm hơn.
+>
+> **Lưu ý:** Frontend hiện **chưa có test file nào** (`frontend/src/**/*.{test,spec}.*`) — bước Vitest chạy với `--passWithNoTests` nên luôn xanh dù không test gì. Coverage Gate 70% chỉ áp dụng cho backend (JaCoCo).
 
 ---
 
@@ -355,6 +374,13 @@ taskkill /PID <pid> /F
 ### pgAdmin cứ load mãi không vào được (crash-loop)
 
 Email trong `PGADMIN_DEFAULT_EMAIL` (docker-compose.yml) không hợp lệ — tránh các TLD dành riêng như `.local`, `.test`, `.localhost`. Dùng domain thật (ví dụ `dba@bvnghean.vn`).
+
+### `./mvnw` lỗi `no main manifest attribute, in .mvn/wrapper/maven-wrapper.jar`
+
+`.mvn/wrapper/maven-wrapper.jar` bị gitignore (chỉ commit `maven-wrapper.properties`) nên mỗi máy tự tải — nếu file cục bộ bị tải dở/hỏng, script `mvnw` (Unix) không tự sửa mà chỉ fallback sang `mvn` hệ thống (thường chưa cài).
+
+- **Windows:** dùng `mvnw.cmd` thay vì `mvnw` — nó tự tải nguyên bộ Maven 3.9.6 về `%USERPROFILE%\.m2\wrapper\`, không phụ thuộc file jar này.
+- **macOS/Linux:** xoá `backend/.mvn/wrapper/maven-wrapper.jar` rồi chạy lại `./mvnw` (script sẽ tự tải lại) hoặc cài Maven hệ thống (`brew install maven`).
 
 ### Reset toàn bộ database
 
