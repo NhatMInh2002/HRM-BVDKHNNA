@@ -19,7 +19,7 @@ def norm(s):
     return re.sub(r'\s+', ' ', str(s).strip())
 
 # ── Read XLS ──────────────────────────────────────────────────────────────────
-wb = xlrd.open_workbook(r'C:\Users\minhancut\Downloads\CanBo.xls')
+wb = xlrd.open_workbook(r'C:\Users\NHAT MINH\Downloads\CanBo.xls')
 ws = wb.sheet_by_index(0)
 
 # ── Find & insert missing departments ────────────────────────────────────────

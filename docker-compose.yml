@@ -63,7 +63,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: hrm-backend
     restart: unless-stopped
     environment:
@@ -116,7 +116,7 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     ports:
-      - "3000:3000"
+      - "4000:3000"
     depends_on:
       - backend
 

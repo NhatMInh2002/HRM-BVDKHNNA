@@ -11,7 +11,10 @@
       "Bash(git push *)",
       "Skill(update-config)",
       "Skill(update-config:*)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "PowerShell(docker --version; docker compose version; docker info --format '{{.OSType}}/{{.Architecture}}' 2>&1)",
+      "PowerShell(winget *)",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }

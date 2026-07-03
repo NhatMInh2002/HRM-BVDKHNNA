@@ -27,6 +27,12 @@ public class OnboardingController {
         return ResponseEntity.ok(ApiResponse.ok(svc.listTemplateTasks(id)));
     }
 
+    @PostMapping("/templates")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public ResponseEntity<?> createTemplate(@RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(ApiResponse.ok(svc.createTemplate(body)));
+    }
+
     @GetMapping("/checklists")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
     public ResponseEntity<?> listChecklists(@RequestParam(required = false) String employeeId) {

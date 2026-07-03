@@ -11,6 +11,8 @@ import java.util.UUID;
 public record AttendanceRecordResponse(
     UUID id,
     UUID employeeId,
+    String employeeCode,
+    String fullName,
     LocalDate workDate,
     OffsetDateTime checkIn,
     OffsetDateTime checkOut,
@@ -19,6 +21,10 @@ public record AttendanceRecordResponse(
     Long durationMinutes
 ) {
     public static AttendanceRecordResponse from(AttendanceRecord r) {
+        return from(r, null, null);
+    }
+
+    public static AttendanceRecordResponse from(AttendanceRecord r, String employeeCode, String fullName) {
         Long duration = null;
         if (r.getCheckIn() != null && r.getCheckOut() != null) {
             duration = ChronoUnit.MINUTES.between(r.getCheckIn(), r.getCheckOut());
@@ -26,6 +32,8 @@ public record AttendanceRecordResponse(
         return new AttendanceRecordResponse(
             r.getId(),
             r.getEmployeeId(),
+            employeeCode,
+            fullName,
             r.getWorkDate(),
             r.getCheckIn(),
             r.getCheckOut(),

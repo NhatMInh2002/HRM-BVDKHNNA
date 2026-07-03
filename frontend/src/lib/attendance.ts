@@ -129,6 +129,8 @@ export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
 export interface AttendanceRecord {
   id: string
   employeeId: string
+  employeeCode?: string
+  fullName?: string
   workDate: string
   checkIn?: string
   checkOut?: string

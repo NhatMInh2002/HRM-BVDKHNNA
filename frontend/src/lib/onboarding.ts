@@ -44,6 +44,11 @@ export const getChecklists = (employeeId?: string) => apiFetch<OnboardingCheckli
 export const getChecklist = (id: string) => apiFetch<OnboardingChecklist>(`/onboarding/checklists/${id}`)
 export const createChecklist = (body: { employeeId: string; templateId: string; startDate?: string }) =>
   apiFetch<{ id: string }>('/onboarding/checklists', { method: 'POST', body: JSON.stringify(body) })
+export interface TemplateTaskInput {
+  title: string; description?: string; category: string; dueDays: number; isRequired: boolean
+}
+export const createTemplate = (body: { name: string; description?: string; tasks: TemplateTaskInput[] }) =>
+  apiFetch<{ id: string }>('/onboarding/templates', { method: 'POST', body: JSON.stringify(body) })
 export const updateTaskStatus = (taskId: string, status: string, notes?: string) =>
   apiFetch<null>(`/onboarding/tasks/${taskId}/status?status=${status}${notes ? `&notes=${encodeURIComponent(notes)}` : ''}`, { method: 'PATCH' })
 export const getOnboardingStats = () => apiFetch<Record<string, unknown>>('/onboarding/stats')

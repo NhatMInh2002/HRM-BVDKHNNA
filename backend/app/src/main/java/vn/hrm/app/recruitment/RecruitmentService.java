@@ -33,7 +33,8 @@ public class RecruitmentService {
                    (SELECT COUNT(*) FROM recruitment.candidates c WHERE c.job_posting_id = jp.id AND c.stage NOT IN ('HIRED','REJECTED')) AS active_candidates
             FROM recruitment.job_postings jp
             LEFT JOIN personnel.departments d ON d.id = jp.department_id
-            WHERE 1=1 """ + statusFilter + """
+            WHERE 1=1
+            """ + statusFilter + """
             ORDER BY jp.created_at DESC
         """, params);
     }

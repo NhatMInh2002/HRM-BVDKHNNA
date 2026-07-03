@@ -26,8 +26,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     List<Employee> findByHrmRoleIn(List<String> roles);
 
-    /** Tìm trưởng phòng của một khoa/phòng cụ thể */
-    @Query("SELECT e FROM Employee e WHERE e.department.id = :deptId AND e.hrmRole = 'DEPT_HEAD'")
+    /** Tìm người duyệt cấp 1 của một khoa/phòng — trưởng khoa/phòng hoặc điều dưỡng trưởng */
+    @Query("SELECT e FROM Employee e WHERE e.department.id = :deptId AND e.hrmRole IN ('DEPT_HEAD','NURSE_MANAGER')")
     List<Employee> findDeptHeadByDepartmentId(@Param("deptId") UUID deptId);
 
     @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.department ORDER BY e.fullName")

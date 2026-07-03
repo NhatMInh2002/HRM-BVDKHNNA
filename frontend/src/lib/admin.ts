@@ -1,12 +1,13 @@
 import { apiFetch } from './api'
 
-export type HrmRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'DEPT_HEAD' | 'ACCOUNTANT' | 'EMPLOYEE'
+export type HrmRole = 'ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'DEPT_HEAD' | 'NURSE_MANAGER' | 'ACCOUNTANT' | 'EMPLOYEE'
 
 export const HRM_ROLE_LABELS: Record<HrmRole, string> = {
   ADMIN:              'Quản trị hệ thống',
   HR_MANAGER:         'Cán bộ TCCB (duyệt cấp 2)',
   DEPARTMENT_MANAGER: 'Quản lý khoa/phòng',
   DEPT_HEAD:          'Trưởng khoa/phòng (duyệt cấp 1)',
+  NURSE_MANAGER:      'Điều dưỡng trưởng (duyệt cấp 1)',
   ACCOUNTANT:         'Kế toán',
   EMPLOYEE:           'Nhân viên',
 }
@@ -16,6 +17,7 @@ export const HRM_ROLE_COLORS: Record<HrmRole, string> = {
   HR_MANAGER:         'bg-purple-100 text-purple-700',
   DEPARTMENT_MANAGER: 'bg-blue-100 text-blue-700',
   DEPT_HEAD:          'bg-indigo-100 text-indigo-700',
+  NURSE_MANAGER:      'bg-teal-100 text-teal-700',
   ACCOUNTANT:         'bg-yellow-100 text-yellow-700',
   EMPLOYEE:           'bg-gray-100 text-gray-600',
 }

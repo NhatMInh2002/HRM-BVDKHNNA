@@ -32,6 +32,11 @@ export interface PayrollMonthEntry {
   count: number
 }
 
+export interface RecruitmentStats {
+  postings: { open_postings: number; draft_postings: number; closed_postings: number; overdue: number }
+  candidates: { total: number; new_count: number; screening: number; interview: number; offer: number; hired: number; rejected: number }
+}
+
 export function getDashboardStats() {
   return apiFetch<DashboardStats>('/dashboard/stats')
 }
@@ -42,4 +47,8 @@ export function getAttendanceMonthlySummary() {
 
 export function getPayrollTrend() {
   return apiFetch<PayrollMonthEntry[]>('/payroll/stats/trend')
+}
+
+export function getRecruitmentStats() {
+  return apiFetch<RecruitmentStats>('/recruitment/stats')
 }

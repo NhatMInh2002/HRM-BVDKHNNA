@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
+import { getDepartments } from '@/lib/personnel'
 import { RichEditor } from '@/components/rich-editor'
 import { ModalPortal } from '@/components/modal-portal'
 import { ResizableModal } from '@/components/resizable-modal'
@@ -382,7 +383,7 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
   // Fetch danh sách phòng ban để chọn
   const { data: depts = [] } = useQuery({
     queryKey: ['departments-list'],
-    queryFn: () => apiFetch<any[]>('/departments'),
+    queryFn: getDepartments,
   })
 
   const submit = async () => {

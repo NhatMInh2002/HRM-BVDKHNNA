@@ -50,7 +50,9 @@ export default function LeavePage() {
   const qc = useQueryClient()
 
   const role = (session as any)?.role as string | undefined
-  const isDeptHead = role === 'DEPT_HEAD' || role === 'ADMIN'
+  // Duyệt cấp 1: trưởng khoa/phòng (DEPT_HEAD) hoặc điều dưỡng trưởng (NURSE_MANAGER)
+  const isDeptHead = role === 'DEPT_HEAD' || role === 'NURSE_MANAGER' || role === 'ADMIN'
+  const isNurse = role === 'NURSE_MANAGER'
   const isHr = role === 'HR_MANAGER' || role === 'ADMIN'
 
   const [tab, setTab] = useState<Tab>('my')
@@ -137,7 +139,7 @@ export default function LeavePage() {
 
   const tabs: { key: Tab; label: string; show: boolean; count?: number }[] = [
     { key: 'my', label: 'Đơn của tôi', show: true },
-    { key: 'dept', label: 'Duyệt cấp 1 (Trưởng phòng)', show: isDeptHead, count: deptRequests.length },
+    { key: 'dept', label: isNurse ? 'Duyệt cấp 1 (Điều dưỡng trưởng)' : 'Duyệt cấp 1 (Trưởng khoa/phòng)', show: isDeptHead, count: deptRequests.length },
     { key: 'hr', label: 'Duyệt cấp 2 (TCCB)', show: isHr, count: hrRequests.length },
   ]
 

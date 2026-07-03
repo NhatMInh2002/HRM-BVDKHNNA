@@ -15,8 +15,9 @@ public final class Permissions {
     public static final String ATTENDANCE_MANAGE = "ATTENDANCE_MANAGE";
 
     // ── Nghỉ phép ─────────────────────────────────────────────────────
-    public static final String LEAVE_APPROVE_DEPT = "LEAVE_APPROVE_DEPT"; // Trưởng phòng, cấp 1
-    public static final String LEAVE_APPROVE_HR   = "LEAVE_APPROVE_HR";   // TCCB, cấp 2
+    public static final String LEAVE_APPROVE_DEPT  = "LEAVE_APPROVE_DEPT";  // Trưởng khoa/phòng, cấp 1
+    public static final String LEAVE_APPROVE_NURSE = "LEAVE_APPROVE_NURSE"; // Điều dưỡng trưởng, cấp 1 (điều dưỡng trong khoa)
+    public static final String LEAVE_APPROVE_HR    = "LEAVE_APPROVE_HR";    // TCCB, cấp 2
 
     // ── Lương ─────────────────────────────────────────────────────────
     public static final String PAYROLL_VIEW   = "PAYROLL_VIEW";

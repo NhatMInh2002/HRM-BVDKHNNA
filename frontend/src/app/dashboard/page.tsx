@@ -12,15 +12,18 @@ import {
   getDashboardStats,
   getAttendanceMonthlySummary,
   getPayrollTrend,
+  getRecruitmentStats,
 } from '@/lib/dashboard'
 import {
   getMonthlyReport,
   getMyLeaveRequests,
+  getHrPendingLeave,
   LEAVE_TYPE_LABELS,
   LEAVE_STATUS_LABELS,
   AttendanceRecord,
   LeaveRequest,
 } from '@/lib/attendance'
+import { getOnboardingStats } from '@/lib/onboarding'
 import { useCurrentEmployee } from '@/hooks/useCurrentEmployee'
 
 const MONTHS = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12']
@@ -85,18 +88,74 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   )
 }
 
-const ADMIN_QUICK_LINKS = [
-  { label: 'Danh sách nhân viên', href: '/dashboard/personnel',       desc: 'Xem & thêm hồ sơ nhân viên' },
-  { label: 'Quản lý phòng ban',   href: '/dashboard/departments',     desc: 'Sơ đồ & danh sách phòng ban' },
-  { label: 'Chấm công hôm nay',   href: '/dashboard/attendance',      desc: 'Theo dõi check-in/out' },
-  { label: 'Đơn nghỉ phép',       href: '/dashboard/attendance/leave',desc: 'Duyệt đơn đang chờ' },
+function ActionCard({ label, value, href, loading }: {
+  label: string; value: number; href: string; loading?: boolean
+}) {
+  const urgent = value > 0
+  return (
+    <Link href={href}
+      className={`rounded-xl border p-4 flex items-center justify-between gap-3 transition-shadow hover:shadow-md ${
+        urgent ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-200'
+      }`}>
+      <span className={`text-sm font-medium ${urgent ? 'text-orange-800' : 'text-gray-500'}`}>{label}</span>
+      <span className={`text-2xl font-bold flex-shrink-0 ${urgent ? 'text-orange-600' : 'text-gray-300'}`}>
+        {loading ? '…' : value}
+      </span>
+    </Link>
+  )
+}
+
+const QUICK_LINK_GROUPS: { title: string; links: { label: string; href: string; desc: string }[] }[] = [
+  {
+    title: 'Nhân sự',
+    links: [
+      { label: 'Cán bộ nhân viên', href: '/dashboard/personnel',   desc: 'Xem & thêm hồ sơ nhân viên' },
+      { label: 'Phòng ban / Khoa', href: '/dashboard/departments', desc: 'Sơ đồ & danh sách phòng ban' },
+      { label: 'Hợp đồng',        href: '/dashboard/contracts',    desc: 'Theo dõi hợp đồng lao động' },
+      { label: 'Tuyển dụng',      href: '/dashboard/recruitment',  desc: 'Tin tuyển dụng & ứng viên' },
+      { label: 'Onboarding',      href: '/dashboard/onboarding',   desc: 'Hội nhập nhân viên mới' },
+    ],
+  },
+  {
+    title: 'Chấm công',
+    links: [
+      { label: 'Chấm công hôm nay', href: '/dashboard/attendance',       desc: 'Theo dõi check-in/out' },
+      { label: 'Đơn nghỉ phép',     href: '/dashboard/attendance/leave', desc: 'Duyệt đơn đang chờ' },
+    ],
+  },
+  {
+    title: 'Lương',
+    links: [
+      { label: 'Bảng lương',      href: '/dashboard/payroll',        desc: 'Lương toàn viện theo kỳ' },
+      { label: 'Cấu hình lương',  href: '/dashboard/payroll/config', desc: 'Ngạch bậc & hệ số lương' },
+    ],
+  },
+  {
+    title: 'Đánh giá & Báo cáo',
+    links: [
+      { label: 'KPI & Đánh giá',    href: '/dashboard/kpi',     desc: 'Mục tiêu & đánh giá nhân viên' },
+      { label: 'Báo cáo & Thống kê', href: '/dashboard/reports', desc: 'Tổng hợp số liệu toàn viện' },
+    ],
+  },
 ]
 
 function AdminDashboard() {
   const { data: stats, isLoading } = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats, staleTime: 60_000 })
   const { data: attendance }       = useQuery({ queryKey: ['attendance-monthly-summary'], queryFn: getAttendanceMonthlySummary, staleTime: 60_000 })
   const { data: payrollTrend }     = useQuery({ queryKey: ['payroll-trend'], queryFn: getPayrollTrend, staleTime: 60_000 })
+  const { data: pendingLeave, isLoading: loadingLeave } =
+    useQuery({ queryKey: ['dashboard-hr-pending-leave'], queryFn: getHrPendingLeave, staleTime: 60_000 })
+  const { data: onboardingStats, isLoading: loadingOnboarding } =
+    useQuery({ queryKey: ['dashboard-onboarding-stats'], queryFn: getOnboardingStats, staleTime: 60_000 })
+  const { data: recruitmentStats, isLoading: loadingRecruitment } =
+    useQuery({ queryKey: ['dashboard-recruitment-stats'], queryFn: getRecruitmentStats, staleTime: 60_000 })
   const fmt = (n?: number) => isLoading ? '…' : (n ?? '—').toString()
+
+  const overdueOnboarding = Number(onboardingStats?.overdue_tasks ?? 0)
+  const openPostings      = recruitmentStats?.postings.open_postings ?? 0
+  const activeCandidates  = recruitmentStats
+    ? recruitmentStats.candidates.total - recruitmentStats.candidates.hired - recruitmentStats.candidates.rejected
+    : 0
 
   const employeeStatusData = stats ? [
     { name: 'Đang làm', value: stats.activeEmployees,     fill: '#3b82f6' },
@@ -122,6 +181,19 @@ function AdminDashboard() {
         <StatCard label="Nghỉ dài hạn"   value={fmt(stats?.onLeaveEmployees)}   color="purple" />
         <StatCard label="Đã nghỉ việc"   value={fmt(stats?.terminatedEmployees)} color="red" />
         <StatCard label="Phòng ban"       value={fmt(stats?.totalDepartments)}   href="/dashboard/departments" color="gray" />
+      </div>
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Cần xử lý</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <ActionCard label="Đơn nghỉ phép chờ duyệt" value={pendingLeave?.length ?? 0}
+            href="/dashboard/attendance/leave" loading={loadingLeave} />
+          <ActionCard label="Onboarding quá hạn" value={overdueOnboarding}
+            href="/dashboard/onboarding" loading={loadingOnboarding} />
+          <ActionCard label="Tin tuyển dụng đang mở" value={openPostings}
+            href="/dashboard/recruitment" loading={loadingRecruitment} />
+          <ActionCard label="Ứng viên đang xử lý" value={activeCandidates}
+            href="/dashboard/recruitment" loading={loadingRecruitment} />
+        </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <ChartCard title="Cơ cấu nhân viên">
@@ -165,17 +237,22 @@ function AdminDashboard() {
           ) : <div className="h-[220px] flex items-center justify-center text-sm text-gray-400">Chưa có dữ liệu</div>}
         </ChartCard>
       </div>
-      <div>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Truy cập nhanh</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {ADMIN_QUICK_LINKS.map(l => (
-            <Link key={l.href} href={l.href}
-              className="bg-white border border-gray-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all group">
-              <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-700">{l.label}</p>
-              <p className="text-xs text-gray-400 mt-1">{l.desc}</p>
-            </Link>
-          ))}
-        </div>
+      <div className="space-y-5">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Truy cập nhanh</h2>
+        {QUICK_LINK_GROUPS.map(group => (
+          <div key={group.title}>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{group.title}</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {group.links.map(l => (
+                <Link key={l.href} href={l.href}
+                  className="bg-white border border-gray-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all group">
+                  <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-700">{l.label}</p>
+                  <p className="text-xs text-gray-400 mt-1">{l.desc}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

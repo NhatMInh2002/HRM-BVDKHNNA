@@ -35,6 +35,42 @@ public class OnboardingService {
             """, templateId);
     }
 
+    @SuppressWarnings("unchecked")
+    @Transactional
+    public Map<String, Object> createTemplate(Map<String, Object> body) {
+        String name = str(body.get("name"));
+        String description = str(body.get("description"));
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Tên mẫu không được để trống");
+        }
+        var tasks = (List<Map<String, Object>>) body.getOrDefault("tasks", List.of());
+        if (tasks.isEmpty()) {
+            throw new IllegalArgumentException("Mẫu checklist cần ít nhất 1 công việc");
+        }
+
+        String templateId = UUID.randomUUID().toString();
+        jdbc.update("""
+            INSERT INTO personnel.onboarding_templates (id, name, description)
+            VALUES (?::uuid, ?, ?)
+            """, templateId, name, description);
+
+        int order = 0;
+        for (Map<String, Object> t : tasks) {
+            String title = str(t.get("title"));
+            if (title == null || title.isBlank()) continue;
+            jdbc.update("""
+                INSERT INTO personnel.onboarding_template_tasks
+                  (template_id, title, description, category, due_days, sort_order, is_required)
+                VALUES (?::uuid, ?, ?, ?, ?, ?, ?)
+                """,
+                templateId, title, str(t.get("description")),
+                str(t.getOrDefault("category", "GENERAL")),
+                intVal(t.get("dueDays"), 3), order++,
+                t.get("isRequired") == null || Boolean.TRUE.equals(t.get("isRequired")));
+        }
+        return Map.of("id", templateId);
+    }
+
     // ── Checklists ─────────────────────────────────────────────────
     public List<Map<String, Object>> listChecklists(String employeeId) {
         String sql = """

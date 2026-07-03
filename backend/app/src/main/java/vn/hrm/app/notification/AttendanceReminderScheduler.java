@@ -19,10 +19,19 @@ import java.util.List;
 /**
  * Nhắc nhở chấm công: 7:45 check-in, 15:45 check-out — chỉ T2-T6.
  *
- * Ngoài cron chạy đúng giờ, còn CHẠY BÙ khi backend khởi động: nếu hôm nay là ngày
- * làm việc, đã qua giờ nhắc mà chưa gửi (vì backend bị restart/redeploy vắt qua khung
- * giờ đó), thì gửi bù ngay. Tránh tình trạng job buổi sáng bị bỏ lỡ vĩnh viễn khi
- * container không tình cờ sống đúng khoảnh khắc 7:45:00.
+ * THIẾT KẾ BỀN VỚI VIỆC HOST NGỦ / RESTART:
+ * Backend thường chạy trên máy có thể ngủ/hibernate hoặc bị restart qua đêm (Docker
+ * Desktop trên laptop). Cron chạy đúng 1 thời điểm (7:45:00) sẽ bị lỡ nếu tiến trình
+ * không tình cờ sống đúng khoảnh khắc đó. Vì vậy KHÔNG dùng cron điểm, mà dùng 2 cơ chế
+ * idempotent (guard chống trùng theo ngày qua {@link #sendOnce}):
+ *  1. POLL mỗi 5 phút trong giờ hành chính — gửi ngay khi tới giờ và backend còn sống
+ *     (kể cả khi máy vừa thức dậy lúc 8:20 mà không cần restart).
+ *  2. CHẠY BÙ khi khởi động (ApplicationReadyEvent) — gửi ngay khi redeploy/restart
+ *     nếu đã qua giờ nhắc mà hôm nay chưa gửi.
+ *
+ * Lưu ý: không cơ chế nào cứu được trường hợp host TẮT/NGỦ suốt khung giờ nhắc — khi đó
+ * reminder chỉ đến khi máy thức dậy (poll) hoặc backend restart (catch-up). Để nhắc
+ * đúng 7:45 tuyệt đối, backend phải chạy trên máy luôn bật (server on-premises thật).
  */
 @Component
 @RequiredArgsConstructor
@@ -43,16 +52,16 @@ public class AttendanceReminderScheduler {
     private final NotificationRepository notificationRepository;
     private final EmployeeRepository employeeRepository;
 
-    /** 7:45 T2-T6 — nhắc check-in */
-    @Scheduled(cron = "0 45 7 * * MON-FRI", zone = "Asia/Ho_Chi_Minh")
-    public void remindCheckIn() {
-        sendOnce(CHECKIN_TITLE, CHECKIN_BODY);
-    }
-
-    /** 15:45 T2-T6 — nhắc check-out */
-    @Scheduled(cron = "0 45 15 * * MON-FRI", zone = "Asia/Ho_Chi_Minh")
-    public void remindCheckOut() {
-        sendOnce(CHECKOUT_TITLE, CHECKOUT_BODY);
+    /**
+     * Poll mỗi 5 phút trong giờ hành chính (T2-T6). Gửi thông báo nhắc chấm công NGAY khi
+     * đã tới giờ và hôm nay chưa gửi — không phụ thuộc tiến trình phải sống đúng 7:45:00.
+     * {@link #sendOnce} đảm bảo mỗi ca chỉ nhắc đúng 1 lần/ngày dù poll chạy 144 lần/ngày.
+     */
+    @Scheduled(cron = "0 */5 7-19 * * MON-FRI", zone = "Asia/Ho_Chi_Minh")
+    public void pollDueReminders() {
+        LocalTime now = ZonedDateTime.now(VN_ZONE).toLocalTime();
+        if (!now.isBefore(CHECKIN_TIME))  sendOnce(CHECKIN_TITLE,  CHECKIN_BODY);
+        if (!now.isBefore(CHECKOUT_TIME)) sendOnce(CHECKOUT_TITLE, CHECKOUT_BODY);
     }
 
     /**

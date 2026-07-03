@@ -23,7 +23,7 @@ if ($Recreate) {
     docker run -d `
       --name hrm-frontend `
       --network hrm_default `
-      -p 3000:3000 `
+      -p 4000:3000 `
       -e BACKEND_URL=http://hrm-backend:8080 `
       -e NEXTAUTH_URL=$url `
       -e NEXTAUTH_SECRET=$secret `

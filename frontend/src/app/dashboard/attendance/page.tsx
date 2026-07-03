@@ -383,7 +383,10 @@ function AdminAttendance() {
             )}
             {data?.content?.map(r => (
               <tr key={r.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-xs text-gray-500 font-mono">{r.employeeId}</td>
+                <td className="px-4 py-3">
+                  <span className="font-medium text-gray-700">{r.fullName ?? '—'}</span>
+                  {r.employeeCode && <span className="text-gray-400 ml-2 text-xs font-mono">{r.employeeCode}</span>}
+                </td>
                 <td className="px-4 py-3 font-medium text-gray-700">{fmtTime(r.checkIn)}</td>
                 <td className="px-4 py-3 text-gray-600">{fmtTime(r.checkOut)}</td>
                 <td className="px-4 py-3 text-gray-600">{fmtDur(r)}</td>

@@ -47,17 +47,17 @@ export function RichEditor({ value, onChange, placeholder = 'Nhập nội dung..
     }
   }, [value])
 
-  const exec = useCallback((cmd: string, val?: string) => {
-    document.execCommand(cmd, false, val)
-    editorRef.current?.focus()
-    emitChange()
-  }, [])
-
   const emitChange = useCallback(() => {
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML)
     }
   }, [onChange])
+
+  const exec = useCallback((cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val)
+    editorRef.current?.focus()
+    emitChange()
+  }, [emitChange])
 
   const isActive = (cmd: string, val?: string) => {
     try { return document.queryCommandState(cmd) } catch { return false }

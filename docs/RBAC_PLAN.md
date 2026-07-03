@@ -12,10 +12,13 @@
 | Role | Mã | Mô tả | Đối tượng |
 |---|---|---|---|
 | **Quản trị hệ thống** | `ADMIN` | Toàn quyền mọi chức năng | IT / Ban Giám đốc |
-| **Quản lý nhân sự** | `HR_MANAGER` | Quản lý nhân viên, lương, chấm công toàn viện | Phòng Tổ chức cán bộ |
-| **Trưởng khoa/phòng** | `DEPARTMENT_MANAGER` | Xem và quản lý nhân viên trong khoa/phòng mình | Trưởng khoa, Trưởng phòng |
+| **Quản lý nhân sự** | `HR_MANAGER` | Quản lý nhân viên, lương, chấm công toàn viện; duyệt nghỉ phép cấp 2 | Phòng Tổ chức cán bộ |
+| **Trưởng khoa/phòng** | `DEPT_HEAD` | Xem nhân sự khoa/phòng mình; duyệt nghỉ phép cấp 1 | Trưởng khoa, Trưởng phòng |
+| **Điều dưỡng trưởng** | `NURSE_MANAGER` | Xem nhân sự khoa mình; duyệt nghỉ phép cấp 1 cho điều dưỡng trong khoa | Điều dưỡng trưởng, Nữ hộ sinh trưởng |
 | **Nhân viên** | `EMPLOYEE` | Xem thông tin cá nhân, xin nghỉ phép, xem lương bản thân | Toàn bộ cán bộ |
 | **Kế toán** | `ACCOUNTANT` | Xem và xuất bảng lương, không sửa | Phòng Tài chính kế toán |
+
+> **Lưu ý:** Role được **suy ra từ quyền** (`PermissionController.deriveRole`), không gán trực tiếp: `SYSTEM_ADMIN`→ADMIN, `LEAVE_APPROVE_HR`→HR_MANAGER, `LEAVE_APPROVE_DEPT`→DEPT_HEAD, `LEAVE_APPROVE_NURSE`→NURSE_MANAGER, `PAYROLL_MANAGE`→ACCOUNTANT. `DEPARTMENT_MANAGER` là role cũ, vẫn còn trong nhiều `@PreAuthorize` nhưng không còn suy ra được từ quyền.
 
 ---
 

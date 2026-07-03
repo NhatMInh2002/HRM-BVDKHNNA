@@ -3,10 +3,11 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getTemplates, getChecklists, getChecklist, createChecklist, updateTaskStatus,
-  getOnboardingStats, CATEGORY_LABELS, CATEGORY_COLORS,
-  type OnboardingChecklist, type OnboardingTask,
+  getOnboardingStats, createTemplate, CATEGORY_LABELS, CATEGORY_COLORS,
+  type OnboardingChecklist, type OnboardingTask, type TemplateTaskInput,
 } from '@/lib/onboarding'
 import { getDepartments } from '@/lib/departments'
+import { searchEmployees, type Employee } from '@/lib/personnel'
 import { ResizableModal } from '@/components/resizable-modal'
 
 // ── Stats card ──────────────────────────────────────────────────
@@ -133,15 +134,20 @@ function ChecklistModal({ id, onClose }: { id: string; onClose: () => void }) {
 function NewChecklistModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const { data: templates = [] } = useQuery({ queryKey: ['ob-templates'], queryFn: getTemplates })
-  const [employeeId, setEmployeeId] = useState('')
-  const [templateId, setTemplateId] = useState('')
-  const [startDate, setStartDate]   = useState(new Date().toISOString().slice(0,10))
-  const [empSearch, setEmpSearch]   = useState('')
+  const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null)
+  const [empSearch, setEmpSearch]     = useState('')
+  const [showList, setShowList]       = useState(false)
+  const [templateId, setTemplateId]   = useState('')
+  const [startDate, setStartDate]     = useState(new Date().toISOString().slice(0,10))
 
-  const { data: allChecklists = [] } = useQuery({ queryKey: ['checklists'], queryFn: () => getChecklists() })
+  const { data: empResults } = useQuery({
+    queryKey: ['ob-employee-search', empSearch],
+    queryFn: () => searchEmployees({ keyword: empSearch, page: 0, size: 20 }),
+    enabled: empSearch.length >= 2,
+  })
 
   const mut = useMutation({
-    mutationFn: () => createChecklist({ employeeId, templateId, startDate }),
+    mutationFn: () => createChecklist({ employeeId: selectedEmp!.id, templateId, startDate }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['checklists'] }); onClose() },
   })
 
@@ -154,10 +160,39 @@ function NewChecklistModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Mã nhân viên (UUID) *</label>
-            <input value={employeeId} onChange={e => setEmployeeId(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="ID nhân viên..." />
+            <label className="block text-xs font-medium text-gray-600 mb-1">Nhân viên *</label>
+            {selectedEmp ? (
+              <div className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2 bg-blue-50">
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-gray-800">{selectedEmp.fullName}</span>
+                  <span className="text-blue-500 ml-2 text-xs font-mono">{selectedEmp.employeeCode}</span>
+                </div>
+                <button onClick={() => setSelectedEmp(null)}
+                  className="flex-shrink-0 text-gray-400 hover:text-gray-600 text-lg leading-none ml-2">×</button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input value={empSearch}
+                  onChange={e => { setEmpSearch(e.target.value); setShowList(true) }}
+                  onFocus={() => setShowList(true)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tìm theo tên hoặc mã nhân viên (ít nhất 2 ký tự)…" />
+                {showList && empResults?.content?.length ? (
+                  <div className="absolute z-20 w-full mt-1 border border-gray-200 rounded-xl shadow-xl bg-white
+                                  max-h-52 overflow-y-auto">
+                    {empResults.content.map(emp => (
+                      <div key={emp.id}
+                        onClick={() => { setSelectedEmp(emp); setEmpSearch(''); setShowList(false) }}
+                        className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0">
+                        <span className="text-sm font-medium text-gray-800">{emp.fullName}</span>
+                        <span className="text-blue-500 ml-2 text-xs font-mono">{emp.employeeCode}</span>
+                        {emp.position && <span className="text-gray-400 ml-2 text-xs">· {emp.position}</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Mẫu checklist *</label>
@@ -177,9 +212,109 @@ function NewChecklistModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex-shrink-0 flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Hủy</button>
-          <button onClick={() => mut.mutate()} disabled={!employeeId || !templateId || mut.isPending}
+          <button onClick={() => mut.mutate()} disabled={!selectedEmp || !templateId || mut.isPending}
             className="px-5 py-2 text-sm font-medium bg-blue-700 text-white rounded-lg hover:bg-blue-800 disabled:opacity-50">
             {mut.isPending ? 'Đang tạo...' : 'Tạo checklist'}
+          </button>
+        </div>
+      </div>
+    </ResizableModal>
+  )
+}
+
+// ── New template modal ───────────────────────────────────────────
+function emptyTask(): TemplateTaskInput {
+  return { title: '', description: '', category: 'GENERAL', dueDays: 3, isRequired: true }
+}
+
+function NewTemplateModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [tasks, setTasks] = useState<TemplateTaskInput[]>([emptyTask()])
+
+  const updateTask = (i: number, patch: Partial<TemplateTaskInput>) =>
+    setTasks(ts => ts.map((t, idx) => idx === i ? { ...t, ...patch } : t))
+  const removeTask = (i: number) => setTasks(ts => ts.filter((_, idx) => idx !== i))
+  const addTask = () => setTasks(ts => [...ts, emptyTask()])
+
+  const validTasks = tasks.filter(t => t.title.trim().length > 0)
+  const canSubmit = name.trim().length > 0 && validTasks.length > 0
+
+  const mut = useMutation({
+    mutationFn: () => createTemplate({ name, description, tasks: validTasks }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ob-templates'] }); onClose() },
+  })
+
+  return (
+    <ResizableModal onClose={onClose} defaultWidth={640} defaultHeight={640}>
+      <div className="flex flex-col h-full">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-800">Tạo mẫu checklist onboarding</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tên mẫu *</label>
+            <input value={name} onChange={e => setName(e.target.value)}
+              placeholder="Ví dụ: Quy trình tiếp nhận bác sĩ mới"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Mô tả</label>
+            <input value={description} onChange={e => setDescription(e.target.value)}
+              placeholder="Mô tả ngắn gọn về mẫu checklist này"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-medium text-gray-600">Danh sách công việc *</label>
+              <button onClick={addTask}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800">+ Thêm việc</button>
+            </div>
+            <div className="space-y-3">
+              {tasks.map((t, i) => (
+                <div key={i} className="border border-gray-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold text-gray-400 mt-2 w-4 flex-shrink-0">{i + 1}.</span>
+                    <input value={t.title} onChange={e => updateTask(i, { title: e.target.value })}
+                      placeholder="Tên công việc..."
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button onClick={() => removeTask(i)} disabled={tasks.length === 1}
+                      className="flex-shrink-0 text-gray-300 hover:text-red-500 disabled:opacity-30 disabled:hover:text-gray-300 text-lg leading-none px-1">×</button>
+                  </div>
+                  <div className="flex items-center gap-2 pl-6">
+                    <select value={t.category} onChange={e => updateTask(i, { category: e.target.value })}
+                      className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
+                        <option key={k} value={k}>{label}</option>
+                      ))}
+                    </select>
+                    <label className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+                      Hạn:
+                      <input type="number" min={0} value={t.dueDays}
+                        onChange={e => updateTask(i, { dueDays: parseInt(e.target.value) || 0 })}
+                        className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      ngày
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-gray-500 ml-auto flex-shrink-0">
+                      <input type="checkbox" checked={t.isRequired}
+                        onChange={e => updateTask(i, { isRequired: e.target.checked })}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600" />
+                      Bắt buộc
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex-shrink-0 flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Hủy</button>
+          <button onClick={() => mut.mutate()} disabled={!canSubmit || mut.isPending}
+            className="px-5 py-2 text-sm font-medium bg-blue-700 text-white rounded-lg hover:bg-blue-800 disabled:opacity-50">
+            {mut.isPending ? 'Đang tạo...' : 'Tạo mẫu'}
           </button>
         </div>
       </div>
@@ -191,6 +326,7 @@ function NewChecklistModal({ onClose }: { onClose: () => void }) {
 export default function OnboardingPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showNew, setShowNew]        = useState(false)
+  const [showNewTemplate, setShowNewTemplate] = useState(false)
   const [search, setSearch]          = useState('')
 
   const { data: stats } = useQuery({ queryKey: ['ob-stats'], queryFn: getOnboardingStats })
@@ -210,10 +346,16 @@ export default function OnboardingPage() {
           <h1 className="text-2xl font-bold text-gray-900">Onboarding</h1>
           <p className="text-sm text-gray-500 mt-0.5">Theo dõi quy trình tiếp nhận nhân viên mới</p>
         </div>
-        <button onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-medium rounded-xl hover:bg-blue-800">
-          <span className="text-lg leading-none">+</span> Tạo checklist
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowNewTemplate(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50">
+            <span className="text-lg leading-none">+</span> Tạo mẫu checklist
+          </button>
+          <button onClick={() => setShowNew(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-medium rounded-xl hover:bg-blue-800">
+            <span className="text-lg leading-none">+</span> Tạo checklist
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -308,6 +450,7 @@ export default function OnboardingPage() {
 
       {selectedId && <ChecklistModal id={selectedId} onClose={() => setSelectedId(null)} />}
       {showNew && <NewChecklistModal onClose={() => setShowNew(false)} />}
+      {showNewTemplate && <NewTemplateModal onClose={() => setShowNewTemplate(false)} />}
     </div>
   )
 }

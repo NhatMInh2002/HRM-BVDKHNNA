@@ -52,7 +52,7 @@ public class LeaveApprovalService {
         leave.setDeptApprovedAt(OffsetDateTime.now());
 
         LeaveRequestResponse result = toResponse(leaveRepo.save(leave));
-        auditLog.record(null, approverEmail, "DEPT_HEAD", "APPROVE", "LEAVE_REQUEST", leaveId.toString(),
+        auditLog.record(null, approverEmail, approver.getHrmRole(), "APPROVE", "LEAVE_REQUEST", leaveId.toString(),
             Map.of("status", "PENDING"), Map.of("status", "DEPT_APPROVED"));
         return result;
     }
@@ -73,7 +73,7 @@ public class LeaveApprovalService {
         leave.setDeptRejectNote(note);
 
         LeaveRequestResponse result = toResponse(leaveRepo.save(leave));
-        auditLog.record(null, approverEmail, "DEPT_HEAD", "REJECT", "LEAVE_REQUEST", leaveId.toString(),
+        auditLog.record(null, approverEmail, approver.getHrmRole(), "REJECT", "LEAVE_REQUEST", leaveId.toString(),
             Map.of("status", "PENDING"), Map.of("status", "REJECTED", "note", note == null ? "" : note));
         return result;
     }
@@ -197,10 +197,12 @@ public class LeaveApprovalService {
     }
 
     private void validateDeptHead(Employee approver, Employee employee) {
-        if (!"DEPT_HEAD".equals(approver.getHrmRole()) && !"ADMIN".equals(approver.getHrmRole())) {
-            throw HrmException.badRequest("NOT_DEPT_HEAD", "Bạn không có quyền duyệt đơn nghỉ phép (cần role DEPT_HEAD)");
+        String role = approver.getHrmRole();
+        // Duyệt cấp 1: trưởng khoa/phòng (DEPT_HEAD) hoặc điều dưỡng trưởng (NURSE_MANAGER)
+        if (!"DEPT_HEAD".equals(role) && !"NURSE_MANAGER".equals(role) && !"ADMIN".equals(role)) {
+            throw HrmException.badRequest("NOT_DEPT_HEAD", "Bạn không có quyền duyệt đơn nghỉ phép cấp 1 (cần role Trưởng khoa/phòng hoặc Điều dưỡng trưởng)");
         }
-        if (!"ADMIN".equals(approver.getHrmRole())) {
+        if (!"ADMIN".equals(role)) {
             if (approver.getDepartment() == null || employee.getDepartment() == null
                     || !approver.getDepartment().getId().equals(employee.getDepartment().getId())) {
                 throw HrmException.badRequest("WRONG_DEPARTMENT", "Bạn chỉ có thể duyệt đơn của nhân viên trong phòng ban của mình");

@@ -136,6 +136,7 @@ public class PermissionController {
         if (perms.contains(Permissions.SYSTEM_ADMIN))      return "ADMIN";
         if (perms.contains(Permissions.LEAVE_APPROVE_HR))  return "HR_MANAGER";
         if (perms.contains(Permissions.LEAVE_APPROVE_DEPT)) return "DEPT_HEAD";
+        if (perms.contains(Permissions.LEAVE_APPROVE_NURSE)) return "NURSE_MANAGER";
         if (perms.contains(Permissions.PAYROLL_MANAGE))    return "ACCOUNTANT";
         return "EMPLOYEE";
     }
@@ -163,8 +164,9 @@ public class PermissionController {
             new PermItem(Permissions.ATTENDANCE_MANAGE, "Quản lý chấm công")
         )),
         new PermGroup("Nghỉ phép", List.of(
-            new PermItem(Permissions.LEAVE_APPROVE_DEPT, "Duyệt cấp 1 (Trưởng khoa/phòng)"),
-            new PermItem(Permissions.LEAVE_APPROVE_HR,   "Duyệt cấp 2 (Phòng TCCB)")
+            new PermItem(Permissions.LEAVE_APPROVE_DEPT,  "Duyệt cấp 1 (Trưởng khoa/phòng)"),
+            new PermItem(Permissions.LEAVE_APPROVE_NURSE, "Duyệt cấp 1 (Điều dưỡng trưởng)"),
+            new PermItem(Permissions.LEAVE_APPROVE_HR,    "Duyệt cấp 2 (Phòng TCCB)")
         )),
         new PermGroup("Lương", List.of(
             new PermItem(Permissions.PAYROLL_VIEW,   "Xem bảng lương"),

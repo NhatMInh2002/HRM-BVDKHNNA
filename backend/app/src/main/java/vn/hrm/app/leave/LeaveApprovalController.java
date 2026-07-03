@@ -20,7 +20,7 @@ public class LeaveApprovalController {
 
     /** Trưởng phòng: lấy đơn chờ duyệt của phòng mình */
     @GetMapping("/dept-pending")
-    @PreAuthorize("hasAnyRole('DEPT_HEAD','ADMIN')")
+    @PreAuthorize("hasAnyRole('DEPT_HEAD','NURSE_MANAGER','ADMIN')")
     public ResponseEntity<ApiResponse<List<LeaveRequestResponse>>> getDeptPending(Authentication auth) {
         String email = (String) auth.getPrincipal();
         return ResponseEntity.ok(ApiResponse.ok(approvalService.getPendingForDeptHead(email)));
@@ -35,7 +35,7 @@ public class LeaveApprovalController {
 
     /** Trưởng phòng duyệt */
     @PostMapping("/{id}/dept-approve")
-    @PreAuthorize("hasAnyRole('DEPT_HEAD','ADMIN')")
+    @PreAuthorize("hasAnyRole('DEPT_HEAD','NURSE_MANAGER','ADMIN')")
     public ResponseEntity<ApiResponse<LeaveRequestResponse>> deptApprove(
             @PathVariable UUID id, Authentication auth) {
         String email = (String) auth.getPrincipal();
@@ -44,7 +44,7 @@ public class LeaveApprovalController {
 
     /** Trưởng phòng từ chối */
     @PostMapping("/{id}/dept-reject")
-    @PreAuthorize("hasAnyRole('DEPT_HEAD','ADMIN')")
+    @PreAuthorize("hasAnyRole('DEPT_HEAD','NURSE_MANAGER','ADMIN')")
     public ResponseEntity<ApiResponse<LeaveRequestResponse>> deptReject(
             @PathVariable UUID id,
             @RequestBody(required = false) RejectRequest body,
