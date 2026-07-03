@@ -104,7 +104,7 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 **Flyway migrations:**
 - `V1__create_personnel_schema.sql` — bảng employees, departments, audit log
-- `V2__seed_departments.sql` — 64 phòng ban BVĐK Hà Nội NA
+- `V2__seed_departments.sql` — 64 phòng ban HNĐK Nghệ An
 - `V3__create_attendance_schema.sql` — bảng attendance_records, leave_requests
 - `V4__create_payroll_schema.sql` — bảng payroll_records, salary_configs
 - `V5__seed_employees.sql` — 10 nhân viên test (ON CONFLICT DO NOTHING)

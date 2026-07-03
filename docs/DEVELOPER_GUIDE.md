@@ -1,4 +1,4 @@
-# Developer Guide — HRM BVĐK Nghệ An
+# Developer Guide — HRM HNĐK Nghệ An
 
 Hướng dẫn này giúp developer mới chạy được project trong vòng **15 phút**.
 

@@ -1,4 +1,4 @@
--- Seed danh sách phòng ban BVĐK Hà Nội NA
+-- Seed danh sách phòng ban HNĐK Nghệ An
 -- Cấu trúc phân cấp: nhóm cha → đơn vị thực tế
 
 -- ── Nhóm cha ─────────────────────────────────────────────────────────────────

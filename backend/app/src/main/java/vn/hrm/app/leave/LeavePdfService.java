@@ -129,7 +129,7 @@ public class LeavePdfService {
         doc.add(Chunk.NEWLINE);
 
         // ── Thông tin nhân viên ───────────────────────────────────────
-        doc.add(para("Kính gửi: Ban Giám đốc Bệnh viện Hữu nghị Đa khoa Nghệ An", fontNormal));
+        doc.add(para("Kính gửi: Ban Giám đốc Bệnh viện Hữu Nghị Đa Khoa Nghệ An", fontNormal));
         doc.add(Chunk.NEWLINE);
 
         doc.add(infoLine("Họ và tên:", employeeName, fontNormal, fontBold));
