@@ -321,11 +321,11 @@ public class PayrollService {
     private BigDecimal getOtHours(UUID empId, int year, int month) {
         try {
             BigDecimal hours = jdbc.queryForObject(
-                    "SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (check_out_time - check_in_time))/3600 - 8), 0) " +
+                    "SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (check_out - check_in))/3600 - 8), 0) " +
                     "FROM attendance.attendance_records " +
                     "WHERE employee_id = ? AND EXTRACT(YEAR FROM work_date) = ? " +
-                    "AND EXTRACT(MONTH FROM work_date) = ? AND check_out_time IS NOT NULL " +
-                    "AND (EXTRACT(EPOCH FROM (check_out_time - check_in_time))/3600) > 8",
+                    "AND EXTRACT(MONTH FROM work_date) = ? AND check_out IS NOT NULL " +
+                    "AND (EXTRACT(EPOCH FROM (check_out - check_in))/3600) > 8",
                     BigDecimal.class, empId, year, month);
             return hours != null ? hours.max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP)
                                  : BigDecimal.ZERO;
