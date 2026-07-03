@@ -1,20 +1,25 @@
 # Developer Guide — HRM HNĐK Nghệ An
 
-Hướng dẫn này giúp developer mới chạy được project trong vòng **15 phút**.
+Hướng dẫn này giúp developer mới **clone code và chạy được project trên máy local** trong khoảng **15 phút**. Làm theo đúng thứ tự mục 1 → 7 là chạy được; các mục 8 trở đi là tài liệu tham khảo thêm (test account chi tiết, gọi API, chạy bằng Docker, quy trình Git, CI/CD, troubleshooting).
 
 ---
 
 ## Mục lục
 
+**Bắt đầu nhanh — clone đến khi chạy được:**
+
 1. [Yêu cầu hệ thống](#1-yêu-cầu-hệ-thống)
 2. [Clone & cấu trúc project](#2-clone--cấu-trúc-project)
-3. [Biến môi trường](#3-biến-môi-trường)
-4. [Khởi động môi trường dev](#4-khởi-động-môi-trường-dev)
-5. [Tài khoản test](#5-tài-khoản-test)
-6. [Chạy backend local (hot-reload)](#6-chạy-backend-local-hot-reload)
-7. [Chạy frontend local (hot-reload)](#7-chạy-frontend-local-hot-reload)
-8. [Kiểm tra nhanh hệ thống](#8-kiểm-tra-nhanh-hệ-thống)
-9. [Gọi API với JWT](#9-gọi-api-với-jwt)
+3. [Cấu hình biến môi trường](#3-cấu-hình-biến-môi-trường)
+4. [Khởi động hạ tầng (Docker: PostgreSQL, Redis, MinIO)](#4-khởi-động-hạ-tầng-docker-postgresql-redis-minio)
+5. [Chạy backend (hot-reload)](#5-chạy-backend-hot-reload)
+6. [Chạy frontend (hot-reload)](#6-chạy-frontend-hot-reload)
+7. [Đăng nhập & kiểm tra nhanh](#7-đăng-nhập--kiểm-tra-nhanh)
+
+**Tham khảo thêm:**
+
+8. [Tài khoản test & phân quyền](#8-tài-khoản-test--phân-quyền)
+9. [Gọi API trực tiếp bằng JWT](#9-gọi-api-trực-tiếp-bằng-jwt)
 10. [Chạy full stack bằng Docker](#10-chạy-full-stack-bằng-docker)
 11. [Quy trình làm việc với Git](#11-quy-trình-làm-việc-với-git)
 12. [CI/CD](#12-cicd)
@@ -27,7 +32,7 @@ Hướng dẫn này giúp developer mới chạy được project trong vòng **
 | Công cụ | Phiên bản tối thiểu | Ghi chú |
 |---|---|---|
 | Java (JDK) | 21 | Eclipse Temurin khuyến nghị |
-| Maven | 3.9+ | hoặc dùng `./mvnw` trong thư mục `backend/` |
+| Maven | 3.9+ | không bắt buộc — dùng `mvnw`/`mvnw.cmd` trong `backend/` nếu chưa cài |
 | Node.js | 20 LTS | |
 | npm | 10+ | đi kèm Node.js 20 |
 | Docker Desktop | 4.x | cần bật WSL2 trên Windows |
@@ -66,11 +71,36 @@ HRM/
 
 ---
 
-## 3. Biến môi trường
+## 3. Cấu hình biến môi trường
 
-### Backend — `backend/app/src/main/resources/application.yml`
+### 3.1 Root — file `.env` (copy từ `.env.example`)
 
-Không cần file `.env` riêng. Các biến quan trọng có giá trị mặc định cho dev:
+```bash
+cp .env.example .env
+```
+
+Điền giá trị thật vào `.env`:
+
+```env
+POSTGRES_PASSWORD=hrm_dev_pass
+JWT_SECRET=<chuỗi random tối thiểu 32 ký tự>
+NEXTAUTH_SECRET=<chuỗi random bất kỳ, ví dụ: openssl rand -base64 32>
+MINIO_ROOT_PASSWORD=hrm_minio_dev
+```
+
+`.env` chỉ dùng cho `docker compose` (mục 4) — chạy `docker compose up postgres redis minio -d` sẽ đọc các giá trị này để khởi tạo container.
+
+### 3.2 Frontend — tạo file `frontend/.env.local`
+
+```env
+BACKEND_URL=http://localhost:8080
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=<giống NEXTAUTH_SECRET ở trên>
+```
+
+### 3.3 Backend — không cần file riêng, nhưng lưu ý về `.env`
+
+Backend **không** đọc `.env` — Spring Boot chỉ dùng default trong `backend/app/src/main/resources/application.yml`:
 
 ```yaml
 spring:
@@ -83,38 +113,21 @@ app:
     secret: ${JWT_SECRET:...}   # ký JWT tự quản lý — không phụ thuộc IdP ngoài
 ```
 
+> ⚠️ **Vì Spring Boot không tự nạp `.env`**, nếu bạn đổi `MINIO_ROOT_PASSWORD` ở mục 3.1 khác giá trị mặc định trong `application.yml` (`hrm_minio_pass`) mà chạy backend qua `mvn spring-boot:run` (mục 5) **không export lại biến đó**, upload avatar/chữ ký/file đính kèm sẽ lỗi 403/500 vì backend và container MinIO đang dùng mật khẩu khác nhau. Cách export đúng xem ở mục 5.
+
 Auth tự quản lý: `POST /api/auth/login` nhận `email` + `password`, so khớp BCrypt với `employees.password_hash`, trả về JWT ký bằng `JWT_SECRET`. Không có Keycloak/Azure AD nào tham gia ở giai đoạn hiện tại (xem `docs/implementation/phased-plan.md` — SSO/AD FS là việc của Phase 5, chưa triển khai).
-
-### Root — file `.env` (copy từ `.env.example`)
-
-```env
-POSTGRES_PASSWORD=hrm_dev_pass
-JWT_SECRET=<chuỗi random tối thiểu 32 ký tự>
-NEXTAUTH_SECRET=<chuỗi random bất kỳ, ví dụ: openssl rand -base64 32>
-MINIO_ROOT_PASSWORD=hrm_minio_dev
-```
-
-> ⚠️ **`.env` chỉ được `docker-compose` đọc.** Spring Boot **không** tự nạp file này — khi chạy backend bằng `mvn spring-boot:run` (mục 6, ngoài Docker) mà không export biến môi trường tương ứng, app sẽ dùng default cứng trong `application.yml` (vd. MinIO secret-key mặc định là `hrm_minio_pass`, khác với `MINIO_ROOT_PASSWORD` bạn đặt trong `.env` cho container MinIO) → tính năng upload avatar/chữ ký/file đính kèm sẽ lỗi 403/500 mà không rõ nguyên nhân. Xem cách export ở mục 6.
-
-### Frontend — tạo file `frontend/.env.local`
-
-```env
-BACKEND_URL=http://localhost:8080
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=<giống NEXTAUTH_SECRET ở trên>
-```
 
 ---
 
-## 4. Khởi động môi trường dev
+## 4. Khởi động hạ tầng (Docker: PostgreSQL, Redis, MinIO)
 
-**Bước đầu tiên luôn phải chạy infrastructure (PostgreSQL, Redis, MinIO):**
+Backend và frontend chạy hot-reload trực tiếp trên máy (không qua Docker), nhưng **PostgreSQL, Redis, MinIO luôn chạy qua Docker**:
 
 ```bash
 docker compose up postgres redis minio -d
 ```
 
-Chờ healthy:
+Chờ healthy trước khi qua bước tiếp theo:
 
 ```bash
 docker compose ps        # cột STATUS phải là "healthy"
@@ -127,18 +140,71 @@ docker compose ps        # cột STATUS phải là "healthy"
 | PostgreSQL | `localhost:5432` DB: `hrm` | `hrm` / `hrm_dev_pass` |
 | Redis | `localhost:6379` | — |
 | MinIO Console | http://localhost:9001 | `hrm_minio` / `hrm_minio_dev` |
-| pgAdmin | http://localhost:5050 | xem `.env` → `PGADMIN_DEFAULT_EMAIL` |
-| Nginx (reverse proxy, tùy chọn) | https://localhost | TLS tự ký, dùng cho test production-like |
+| pgAdmin (tùy chọn, `docker compose up pgadmin -d`) | http://localhost:5050 | xem `.env` → `PGADMIN_DEFAULT_EMAIL` |
+| Nginx (tùy chọn, xem mục 10) | https://localhost | TLS tự ký, dùng cho test production-like |
 
 > OpenSearch hiện **tắt** trong `docker-compose.yml` (tốn ~512MB RAM) — tìm kiếm nhân viên dùng `LIKE` query trong PostgreSQL.
 
 ---
 
-## 5. Tài khoản test
+## 5. Chạy backend (hot-reload)
+
+Nếu `.env` ở mục 3.1 dùng giá trị khác default trong `application.yml` (đặc biệt `MINIO_ROOT_PASSWORD`), export cùng giá trị đó trước khi chạy — nếu không, upload file sẽ auth-fail với MinIO trong Docker:
+
+```bash
+cd backend
+export MINIO_ROOT_PASSWORD=hrm_minio_dev   # PowerShell: $env:MINIO_ROOT_PASSWORD = "hrm_minio_dev"
+mvn spring-boot:run -pl app
+# hoặc dùng wrapper nếu chưa cài Maven hệ thống: ./mvnw spring-boot:run -pl app (Windows: mvnw.cmd)
+```
+
+Flyway tự chạy migration khi backend khởi động — không cần thao tác DB thủ công.
+
+Backend chạy tại http://localhost:8080, context path `/api`. Health check: http://localhost:8080/api/actuator/health
+
+---
+
+## 6. Chạy frontend (hot-reload)
+
+Mở terminal mới (giữ backend ở mục 5 đang chạy):
+
+```bash
+cd frontend
+npm install        # lần đầu hoặc sau khi pull code mới
+npm run dev
+```
+
+Mở trình duyệt: http://localhost:3000
+
+---
+
+## 7. Đăng nhập & kiểm tra nhanh
+
+Truy cập http://localhost:3000 sẽ tự động redirect sang `/login`. Đăng nhập bằng tài khoản admin mặc định (form thường, không có SSO):
+
+- **Email:** `admin@bvnghean.vn`
+- **Mật khẩu:** `Admin@2025`
+
+Sau khi đăng nhập, mở F12 → Application → Cookies → `next-auth.session-token` phải có giá trị.
+
+**Checklist xác nhận chạy đúng:**
+
+- [ ] http://localhost:8080/api/actuator/health → `{"status":"UP"}`
+- [ ] http://localhost:3000 → redirect về `/login`
+- [ ] Đăng nhập bằng `admin@bvnghean.vn` → vào `/dashboard` thành công
+- [ ] SideNav hiện đúng menu theo role (ADMIN thấy đủ tất cả mục)
+- [ ] Vào `/dashboard/personnel`, danh sách nhân viên load được (xác nhận kết nối Postgres OK)
+- [ ] Thử upload avatar ở `/dashboard/profile` (xác nhận kết nối MinIO OK — xem cảnh báo mục 3.3 nếu lỗi)
+
+Qua được hết checklist trên nghĩa là môi trường local đã chạy đầy đủ. Các mục dưới đây là tài liệu tham khảo thêm khi cần.
+
+---
+
+## 8. Tài khoản test & phân quyền
 
 Tài khoản được seed sẵn qua Flyway migration (`V14__add_password_hash.sql` và các seed khác) — không cần tạo tay.
 
-### 5.1 Tài khoản mặc định
+### 8.1 Tài khoản mặc định
 
 | Email | Mật khẩu | Role | Quyền hạn |
 |---|---|---|---|
@@ -146,7 +212,7 @@ Tài khoản được seed sẵn qua Flyway migration (`V14__add_password_hash.s
 
 Các tài khoản khác (HR_MANAGER, DEPT_HEAD, ACCOUNTANT...) được gán quyền qua giao diện **Phân quyền** (`/dashboard/settings`, chỉ ADMIN truy cập) — chọn nhân viên, tick các permission tương ứng (`SYSTEM_ADMIN`, `LEAVE_APPROVE_HR`, `LEAVE_APPROVE_DEPT`, `PAYROLL_MANAGE`...), hệ thống tự suy ra `hrmRole` từ tập quyền (xem `PermissionController.deriveRole()`).
 
-### 5.2 Roles và quyền hạn chi tiết
+### 8.2 Roles và quyền hạn chi tiết
 
 | Role | Xem DS nhân viên | Thêm/Sửa NV | Cho thôi việc | Xem lương | Duyệt nghỉ phép |
 |---|:---:|:---:|:---:|:---:|:---:|
@@ -158,7 +224,11 @@ Các tài khoản khác (HR_MANAGER, DEPT_HEAD, ACCOUNTANT...) được gán quy
 
 > `DEPT_HEAD` và `DEPARTMENT_MANAGER` là hai tên gọi tương đương cho cùng vai trò trưởng phòng — cả hai đều được công nhận ở cả frontend (`useRoles.ts`, `side-nav.tsx`) lẫn backend (`@PreAuthorize`).
 
-### 5.3 Lấy JWT token để test API (curl / Postman)
+---
+
+## 9. Gọi API trực tiếp bằng JWT
+
+Lấy token bằng curl (hoặc dùng cookie session từ bước đăng nhập UI ở mục 7):
 
 ```bash
 TOKEN=$(curl -sf -X POST http://localhost:8080/api/auth/login \
@@ -169,60 +239,7 @@ TOKEN=$(curl -sf -X POST http://localhost:8080/api/auth/login \
 echo $TOKEN   # paste vào Postman hoặc dùng trực tiếp trong curl
 ```
 
-Dùng token để gọi API:
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/personnel/employees
-```
-
----
-
-## 6. Chạy backend local (hot-reload)
-
-Nếu `.env` ở bước 3 dùng giá trị khác default trong `application.yml` (đặc biệt `MINIO_ROOT_PASSWORD`), export cùng giá trị đó trước khi chạy — nếu không, upload file sẽ auth-fail với MinIO trong Docker:
-
-```bash
-cd backend
-export MINIO_ROOT_PASSWORD=hrm_minio_dev   # PowerShell: $env:MINIO_ROOT_PASSWORD = "hrm_minio_dev"
-mvn spring-boot:run -pl app
-# hoặc dùng wrapper nếu chưa cài Maven hệ thống: ./mvnw spring-boot:run -pl app (Windows: mvnw.cmd)
-```
-
-Backend chạy tại http://localhost:8080, context path `/api`. Health check: http://localhost:8080/api/actuator/health
-
----
-
-## 7. Chạy frontend local (hot-reload)
-
-```bash
-cd frontend
-npm install        # lần đầu hoặc sau khi pull code mới
-npm run dev
-```
-
-Mở trình duyệt: http://localhost:3000
-
-- Tự động redirect sang `/login`
-- Đăng nhập bằng tài khoản test ở mục 5 (email + password — form thường, không có SSO)
-
----
-
-## 8. Kiểm tra nhanh hệ thống
-
-Sau khi đăng nhập, mở F12 → Application → Cookies → `next-auth.session-token` phải có giá trị.
-
-Checklist:
-
-- [ ] http://localhost:8080/api/actuator/health → `{"status":"UP"}`
-- [ ] http://localhost:3000 → redirect về `/login`
-- [ ] Đăng nhập → vào `/dashboard` thành công
-- [ ] SideNav hiện đúng menu theo role
-
----
-
-## 9. Gọi API với JWT
-
-> Xem [mục 5.3](#53-lấy-jwt-token-để-test-api-curl--postman) để lấy token trước.
+Ví dụ gọi API:
 
 ```bash
 # Danh sách nhân viên (có phân trang + tìm kiếm)
@@ -271,12 +288,12 @@ docker compose down
 docker compose down -v
 ```
 
-**Cổng khi chạy qua Docker (khác với hot-reload ở mục 6–7):**
+**Cổng khi chạy qua Docker (khác với hot-reload ở mục 5–6):**
 
 | Service | Cổng host | Ghi chú |
 |---|---|---|
 | Backend | `8080` | giống hot-reload |
-| Frontend | **`4000`** → http://localhost:4000 | container map `4000:3000` — **không phải 3000** như mục 7 |
+| Frontend | **`4000`** → http://localhost:4000 | container map `4000:3000` — **không phải 3000** như mục 6 |
 | Nginx (nếu bật) | `80` / `443` → https://localhost | reverse proxy trỏ vào frontend/backend ở trên |
 
 Đẩy code mới lên container đang chạy mà không rebuild image (nhanh hơn nhiều, xem thêm trong memory `feedback-deploy-workflow`):
@@ -356,7 +373,7 @@ Token hết hạn. Lấy token mới theo hướng dẫn ở mục 9.
 
 ### Upload file / xem trước file đính kèm lỗi treo hoặc 500
 
-MinIO chưa chạy hoặc bị dừng. Kiểm tra:
+MinIO chưa chạy hoặc bị dừng, hoặc mật khẩu MinIO của backend lệch với container (xem cảnh báo mục 3.3). Kiểm tra:
 
 ```bash
 docker ps --filter "name=hrm-minio"
