@@ -92,10 +92,10 @@ function LoginForm() {
         {/* Logo / tiêu đề */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white shadow-xl mb-4 overflow-hidden">
-            <img src="/logo-nentrang.png" alt="Logo Bệnh viện Hữu Nghị Đa Khoa Nghệ An" className="w-22 h-22 object-contain p-1" />
+            <img src="/logo-nentrang.png" alt="Logo Bệnh viện Hữu nghị Đa Khoa Nghệ An" className="w-22 h-22 object-contain p-1" />
           </div>
           <h1 className="text-lg font-bold text-white leading-snug">
-            Bệnh viện Hữu Nghị Đa Khoa Nghệ An
+            Bệnh viện Hữu nghị Đa Khoa Nghệ An
           </h1>
           <p className="text-green-300 text-sm mt-1 font-medium">Hệ thống quản lý nhân sự</p>
         </div>
@@ -224,7 +224,7 @@ function LoginForm() {
         </div>
 
         <p className="text-center text-blue-400/60 text-xs mt-6">
-          © 2026 Bệnh viện Hữu Nghị Đa Khoa Nghệ An
+          © 2026 Bệnh viện Hữu nghị Đa Khoa Nghệ An
         </p>
       </div>
     </div>

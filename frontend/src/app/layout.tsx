@@ -6,7 +6,7 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin', 'vietnamese'] })
 
 export const metadata: Metadata = {
-  title: 'HRM — Bệnh viện Hữu Nghị Đa Khoa Nghệ An',
+  title: 'HRM — Bệnh viện Hữu nghị Đa Khoa Nghệ An',
   description: 'Hệ thống quản lý nhân sự — bvnghean.vn',
 }
 

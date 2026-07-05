@@ -41,6 +41,15 @@ app:
     secret: ${JWT_SECRET:hrm-bvnghean-secret-key-2025-must-be-at-least-32-chars}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  # URL backend mà tool VGCASignService (chạy trên máy người ký, ngoài trình duyệt)
+  # gọi trực tiếp để tải văn bản cần ký và tải văn bản đã ký lên — PHẢI là địa chỉ
+  # thực sự truy cập được từ máy người ký (không phải localhost khi deploy thật).
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080/api}
+  vgca:
+    # TẠM TẮT — bật (true) sau khi đã đăng ký/xác thực quyền sử dụng dịch vụ ký
+    # số VGCA với Ban Cơ yếu Chính phủ. Khi tắt, VgcaSignController/Service
+    # không được đăng ký làm bean và endpoint liên quan không tồn tại.
+    enabled: ${VGCA_ENABLED:false}
 
 server:
   port: 8080

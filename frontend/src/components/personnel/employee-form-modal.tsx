@@ -12,6 +12,7 @@ import {
 import { getDepartments } from '@/lib/departments'
 import { getActiveLabels } from '@/lib/categories'
 import { generateEmail } from '@/lib/emailUtils'
+import { SearchSelect } from '@/components/search-select'
 
 const schema = z.object({
   employeeCode:   z.string().min(1, 'Bắt buộc').max(20),
@@ -52,6 +53,36 @@ const CONTRACT_ENUM_MAP: Record<string, string> = {
   'PROBATION': 'PROBATION',
 }
 
+// "Huyện Nam Đàn" → "H. Nam Đàn"; "Thị xã Cửa Lò" → "TX. Cửa Lò"; "Thành phố Vinh" → "TP. Vinh"
+// (khớp hậu tố trong ngoặc của danh mục phuong_xa, vd "X. Kim Liên (H. Nam Đàn)") — dùng để LỌC danh sách
+function huyenAbbrev(huyenLabel: string): string {
+  if (huyenLabel.startsWith('Thành phố ')) return `TP. ${huyenLabel.slice(10)}`
+  if (huyenLabel.startsWith('Thị xã '))    return `TX. ${huyenLabel.slice(7)}`
+  if (huyenLabel.startsWith('Huyện '))     return `H. ${huyenLabel.slice(6)}`
+  return huyenLabel
+}
+
+/**
+ * "X. Kim Liên (H. Nam Đàn)" → { xa: "Xã Kim Liên", huyen: "Huyện Nam Đàn" }
+ * Lấy huyện trực tiếp từ hậu tố trong ngoặc của chính mục đã chọn — không dựa vào
+ * bộ lọc "Chọn nhanh — Quận/huyện" (bộ lọc chỉ để rút gọn danh sách, có thể lệch
+ * với lựa chọn thực tế nếu người dùng đổi bộ lọc sau khi đã chọn phường/xã).
+ */
+function parsePhuongXaLabel(label: string): { xa: string; huyen: string } {
+  const m = label.match(/^(.*?)\s*\(([^)]+)\)\s*$/)
+  const rawName  = m ? m[1] : label
+  const rawHuyen = m ? m[2] : ''
+  const xa = rawName.startsWith('X. ')  ? `Xã ${rawName.slice(3)}`
+           : rawName.startsWith('P. ')  ? `Phường ${rawName.slice(3)}`
+           : rawName.startsWith('TT. ') ? `Thị trấn ${rawName.slice(4)}`
+           : rawName
+  const huyen = rawHuyen.startsWith('TP. ') ? `Thành phố ${rawHuyen.slice(4)}`
+              : rawHuyen.startsWith('TX. ') ? `Thị xã ${rawHuyen.slice(4)}`
+              : rawHuyen.startsWith('H. ')  ? `Huyện ${rawHuyen.slice(3)}`
+              : rawHuyen
+  return { xa, huyen }
+}
+
 interface Props {
   editId: string | null
   onClose: () => void
@@ -82,6 +113,8 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
   const [ethnicities, setEthnicities]= useState<string[]>([])
   const [religions, setReligions]    = useState<string[]>([])
   const [contracts, setContracts]    = useState<string[]>([])
+  const [quanHuyens, setQuanHuyens]  = useState<string[]>([])
+  const [phuongXas, setPhuongXas]    = useState<string[]>([])
 
   useEffect(() => {
     setPositions(getActiveLabels('chuc_vu'))
@@ -89,7 +122,16 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
     setEthnicities(getActiveLabels('dan_toc'))
     setReligions(getActiveLabels('ton_giao'))
     setContracts(getActiveLabels('loai_hop_dong'))
+    setQuanHuyens(getActiveLabels('quan_huyen'))
+    setPhuongXas(getActiveLabels('phuong_xa'))
   }, [])
+
+  // Chọn nhanh quận/huyện → phường/xã (chỉ lọc danh sách, không phải field submit) —
+  // dùng chung cho cả "Quê quán" và "Địa chỉ thường trú"
+  const [hometownHuyen, setHometownHuyen] = useState('')
+  const [addressHuyen,  setAddressHuyen]  = useState('')
+  const phuongXasFor = (huyen: string) =>
+    huyen ? phuongXas.filter(p => p.includes(`(${huyenAbbrev(huyen)})`)) : phuongXas
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -285,14 +327,49 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
             {/* ── Tab Địa chỉ ── */}
             {activeTab === 'dia_chi' && (
               <>
-                <Field label="Quê quán">
-                  <input {...register('hometown')} className="input"
-                    placeholder="Xã Kim Liên, Nam Đàn, Nghệ An" />
-                </Field>
-                <Field label="Địa chỉ thường trú">
-                  <input {...register('address')} className="input"
-                    placeholder="Số nhà, đường, phường/xã, quận/huyện..." />
-                </Field>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Chọn nhanh — Quận/huyện">
+                      <SearchSelect className="input" value={hometownHuyen} onChange={setHometownHuyen}
+                        options={toOptions(quanHuyens)} placeholder="— Tất cả —" />
+                    </Field>
+                    <Field label="Chọn nhanh — Phường/xã">
+                      <SearchSelect className="input" resetAfterSelect value="" placeholder="— Chọn để điền nhanh —"
+                        options={toOptions(phuongXasFor(hometownHuyen))}
+                        onChange={v => {
+                          if (!v) return
+                          const { xa, huyen } = parsePhuongXaLabel(v)
+                          setValue('hometown', `${xa}, ${huyen}, Nghệ An`, { shouldValidate: true })
+                        }} />
+                    </Field>
+                  </div>
+                  <Field label="Quê quán" hint="Chọn nhanh ở trên hoặc gõ trực tiếp — có thể sửa sau khi chọn">
+                    <input {...register('hometown')} className="input"
+                      placeholder="Xã Kim Liên, Nam Đàn, Nghệ An" />
+                  </Field>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Chọn nhanh — Quận/huyện">
+                      <SearchSelect className="input" value={addressHuyen} onChange={setAddressHuyen}
+                        options={toOptions(quanHuyens)} placeholder="— Tất cả —" />
+                    </Field>
+                    <Field label="Chọn nhanh — Phường/xã">
+                      <SearchSelect className="input" resetAfterSelect value="" placeholder="— Chọn để điền nhanh —"
+                        options={toOptions(phuongXasFor(addressHuyen))}
+                        onChange={v => {
+                          if (!v) return
+                          const { xa, huyen } = parsePhuongXaLabel(v)
+                          setValue('address', `${xa}, ${huyen}, Nghệ An`, { shouldValidate: true })
+                        }} />
+                    </Field>
+                  </div>
+                  <Field label="Địa chỉ thường trú" hint="Chọn nhanh ở trên rồi gõ thêm số nhà/đường vào đầu ô bên dưới nếu cần">
+                    <input {...register('address')} className="input"
+                      placeholder="Số nhà, đường, phường/xã, quận/huyện..." />
+                  </Field>
+                </div>
               </>
             )}
 
@@ -328,12 +405,15 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
   )
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
       {children}
+      {hint && !error && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
+
+const toOptions = (values: string[]) => values.map(v => ({ value: v, label: v }))

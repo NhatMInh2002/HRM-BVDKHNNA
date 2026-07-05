@@ -42,7 +42,7 @@ const DEFAULTS: Record<CategoryKey, string[]> = {
     'Trưởng tổ', 'Phó trưởng tổ',
     'Bác sĩ', 'Y tá', 'Hộ sinh',
     'Điều dưỡng', 'Kỹ thuật viên',
-    'Dược sĩ', 'Chuyên viên', 'Nhân viên',
+    'Dược sĩ', 'Nhân viên',
   ],
 
   // ── 54 dân tộc Việt Nam (Nghị định 05/2011/NĐ-CP) ──────────────────────────

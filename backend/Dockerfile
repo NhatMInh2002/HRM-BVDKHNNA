@@ -4,6 +4,7 @@ COPY . .
 RUN mvn -B clean package -DskipTests -q
 
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-vie
 WORKDIR /app
 COPY --from=builder /app/app/target/*.jar app.jar
 EXPOSE 8080

@@ -48,3 +48,7 @@ application-prod.yml
 *.log
 logs/
 frontend/.env.local
+backend_logs.txt
+
+# Data scripts / dumps chứa dữ liệu nhạy cảm (mật khẩu, PII) — không commit
+scripts/data/

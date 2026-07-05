@@ -31,17 +31,27 @@ public class SecurityConfig {
     @Value("${app.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
 
+    // TẠM ẨN cùng tính năng ký số VGCA — chỉ true sau khi đã đăng ký/xác thực
+    // quyền sử dụng dịch vụ ký số với Ban Cơ yếu Chính phủ. Xem VgcaSignService.
+    @Value("${app.vgca.enabled:false}")
+    private boolean vgcaEnabled;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .requestMatchers("/auth/login", "/auth/2fa/verify-login").permitAll()
-                .anyRequest().authenticated()
-            )
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
+                auth.requestMatchers("/auth/login", "/auth/2fa/verify-login").permitAll();
+                if (vgcaEnabled) {
+                    // Gọi trực tiếp bởi tool VGCASignService trên máy người ký (không có
+                    // JWT của hệ thống) — bảo mật bằng token một-lần lưu ở Redis.
+                    auth.requestMatchers("/files/vgca-source", "/files/vgca-upload").permitAll();
+                }
+                auth.anyRequest().authenticated();
+            })
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

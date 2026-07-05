@@ -129,7 +129,7 @@ public class LeavePdfService {
         doc.add(Chunk.NEWLINE);
 
         // ── Thông tin nhân viên ───────────────────────────────────────
-        doc.add(para("Kính gửi: Ban Giám đốc Bệnh viện Hữu Nghị Đa Khoa Nghệ An", fontNormal));
+        doc.add(para("Kính gửi: Ban Giám đốc Bệnh viện Hữu nghị Đa Khoa Nghệ An", fontNormal));
         doc.add(Chunk.NEWLINE);
 
         doc.add(infoLine("Họ và tên:", employeeName, fontNormal, fontBold));
@@ -167,10 +167,13 @@ public class LeavePdfService {
 
         // ── Footer ngày tháng ─────────────────────────────────────────
         doc.add(Chunk.NEWLINE);
-        String today = leave.getHrApprovedAt() != null
-            ? "Ngày " + leave.getHrApprovedAt().getDayOfMonth()
-              + " tháng " + leave.getHrApprovedAt().getMonthValue()
-              + " năm " + leave.getHrApprovedAt().getYear()
+        var signDate = leave.getHrApprovedAt() != null ? leave.getHrApprovedAt()
+            : leave.getDeptApprovedAt() != null ? leave.getDeptApprovedAt()
+            : null;
+        String today = signDate != null
+            ? "Ngày " + signDate.getDayOfMonth()
+              + " tháng " + signDate.getMonthValue()
+              + " năm " + signDate.getYear()
             : "";
         Paragraph dateLine = new Paragraph("Nghệ An, " + today, fontSmall);
         dateLine.setAlignment(Element.ALIGN_RIGHT);

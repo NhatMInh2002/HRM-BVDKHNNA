@@ -29,12 +29,6 @@ public class LeaveController {
         return ApiResponse.ok(leaveService.createLeaveRequest(dto, auth.getName()));
     }
 
-    @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
-    public ApiResponse<List<LeaveRequestResponse>> getPendingRequests() {
-        return ApiResponse.ok(leaveService.getPendingRequests());
-    }
-
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<LeaveRequestResponse>> getMyLeaveRequests(
@@ -43,21 +37,8 @@ public class LeaveController {
         return ApiResponse.ok(leaveService.getMyLeaveRequests(employeeId));
     }
 
-    @PutMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
-    public ApiResponse<LeaveRequestResponse> approveLeave(
-        @PathVariable UUID id,
-        Authentication auth
-    ) {
-        return ApiResponse.ok(leaveService.approveLeave(id, auth.getName()));
-    }
-
-    @PutMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
-    public ApiResponse<LeaveRequestResponse> rejectLeave(
-        @PathVariable UUID id,
-        Authentication auth
-    ) {
-        return ApiResponse.ok(leaveService.rejectLeave(id, auth.getName()));
-    }
+    // Duyệt/từ chối đơn nghỉ phép: xem LeaveApprovalController (2 cấp — trưởng
+    // khoa/phòng rồi TCCB, đúng quy trình "Giấy xin phép" trên iOffice). Các
+    // endpoint duyệt 1 bước từng có ở đây đã bị xoá vì cho phép bỏ qua bước
+    // lãnh đạo khoa/phòng ký duyệt.
 }

@@ -1,0 +1,12 @@
+.git
+*.log
+.DS_Store
+# Giữ lại *.jar (Dockerfile.local copy thẳng jar đã build sẵn) — chỉ loại phần
+# lớn/không cần thiết trong target (class file, báo cáo test...).
+**/target/classes
+**/target/test-classes
+**/target/generated-sources
+**/target/generated-test-sources
+**/target/maven-archiver
+**/target/maven-status
+**/target/surefire-reports

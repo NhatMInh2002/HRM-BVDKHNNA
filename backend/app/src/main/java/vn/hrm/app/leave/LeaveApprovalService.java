@@ -50,8 +50,18 @@ public class LeaveApprovalService {
         leave.setStatus(LeaveStatus.DEPT_APPROVED);
         leave.setDeptApprovedBy(approverEmail);
         leave.setDeptApprovedAt(OffsetDateTime.now());
+        leaveRepo.save(leave);
 
-        LeaveRequestResponse result = toResponse(leaveRepo.save(leave));
+        // Sinh PDF với chữ ký trưởng phòng đặt đúng vị trí ngay khi duyệt —
+        // trước đây PDF chỉ được sinh ở bước TCCB, trưởng phòng không thấy được
+        // chữ ký của mình đã đặt vào văn bản lúc duyệt.
+        try {
+            generatePdf(leave, approverEmail, null);
+        } catch (Exception e) {
+            log.error("Lỗi sinh PDF cho đơn {}: {}", leaveId, e.getMessage());
+        }
+
+        LeaveRequestResponse result = toResponse(leaveRepo.findById(leaveId).orElseThrow());
         auditLog.record(null, approverEmail, approver.getHrmRole(), "APPROVE", "LEAVE_REQUEST", leaveId.toString(),
             Map.of("status", "PENDING"), Map.of("status", "DEPT_APPROVED"));
         return result;
@@ -94,9 +104,9 @@ public class LeaveApprovalService {
 
         leaveRepo.save(leave);
 
-        // Sinh PDF async (không chặn response)
+        // Sinh lại PDF, bổ sung chữ ký TCCB vào văn bản đã có chữ ký trưởng phòng
         try {
-            generatePdf(leave, approverEmail);
+            generatePdf(leave, leave.getDeptApprovedBy(), approverEmail);
         } catch (Exception e) {
             log.error("Lỗi sinh PDF cho đơn {}: {}", leaveId, e.getMessage());
             // Không throw — PDF lỗi không chặn việc duyệt
@@ -129,6 +139,12 @@ public class LeaveApprovalService {
     @Transactional(readOnly = true)
     public List<LeaveRequestResponse> getPendingForDeptHead(String deptHeadEmail) {
         Employee head = findEmployee(deptHeadEmail);
+        // ADMIN duyệt được mọi phòng ban (khớp validateDeptHead) — không giới hạn
+        // theo department của chính tài khoản ADMIN (thường không gán phòng ban).
+        if ("ADMIN".equals(head.getHrmRole())) {
+            return leaveRepo.findByStatusOrderByCreatedAtDesc(LeaveStatus.PENDING)
+                    .stream().map(this::toResponse).toList();
+        }
         if (head.getDepartment() == null) return List.of();
         List<UUID> empIds = employeeRepo.findIdsByDepartmentId(head.getDepartment().getId());
         if (empIds.isEmpty()) return List.of();
@@ -145,25 +161,39 @@ public class LeaveApprovalService {
 
     // ── Private helpers ───────────────────────────────────────────────
 
-    private void generatePdf(LeaveRequest leave, String hrEmail) {
-        Employee employee   = findEmployeeById(leave.getEmployeeId());
-        Employee hrOfficer  = findEmployee(hrEmail);
+    /**
+     * Sinh (hoặc sinh lại) PDF đơn nghỉ phép, đặt chữ ký vào đúng vị trí của
+     * từng cấp đã duyệt. Gọi lại ở mỗi cấp duyệt (deptApprove, hrApprove) —
+     * không chỉ ở bước cuối — để mỗi người duyệt thấy chữ ký của mình đã được
+     * đặt vào văn bản ngay khi họ duyệt, thay vì chỉ xuất hiện sau cùng.
+     *
+     * @param deptHeadEmail email trưởng phòng đã duyệt, null nếu chưa tới cấp này
+     * @param hrEmail       email TCCB đã duyệt, null nếu chưa tới cấp này
+     */
+    private void generatePdf(LeaveRequest leave, String deptHeadEmail, String hrEmail) {
+        Employee employee = findEmployeeById(leave.getEmployeeId());
+        byte[] empSig = loadSignature(employee.getSignatureUrl());
+        String deptName = employee.getDepartment() != null ? employee.getDepartment().getName() : null;
 
-        // Tìm trưởng phòng đã duyệt (từ field deptApprovedBy)
-        String deptHeadName = leave.getDeptApprovedBy();
+        String deptHeadName = null;
         byte[] deptSig = null;
-        if (deptHeadName != null) {
+        if (deptHeadEmail != null) {
             try {
-                Employee deptHead = findEmployee(deptHeadName);
+                Employee deptHead = findEmployee(deptHeadEmail);
                 deptHeadName = deptHead.getFullName();
                 deptSig = loadSignature(deptHead.getSignatureUrl());
             } catch (Exception ignored) {}
         }
 
-        byte[] empSig = loadSignature(employee.getSignatureUrl());
-        byte[] hrSig  = loadSignature(hrOfficer.getSignatureUrl());
-
-        String deptName = employee.getDepartment() != null ? employee.getDepartment().getName() : null;
+        String hrName = null;
+        byte[] hrSig = null;
+        if (hrEmail != null) {
+            try {
+                Employee hrOfficer = findEmployee(hrEmail);
+                hrName = hrOfficer.getFullName();
+                hrSig = loadSignature(hrOfficer.getSignatureUrl());
+            } catch (Exception ignored) {}
+        }
 
         String pdfKey = leavePdfService.generateAndStore(
             leave,
@@ -172,7 +202,7 @@ public class LeaveApprovalService {
             deptName,
             employee.getPosition(),
             deptHeadName,
-            hrOfficer.getFullName(),
+            hrName,
             empSig,
             deptSig,
             hrSig

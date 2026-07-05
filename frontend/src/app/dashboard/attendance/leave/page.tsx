@@ -88,24 +88,34 @@ export default function LeavePage() {
     enabled: tab === 'hr' && isHr,
   })
 
+  // Duyệt/từ chối ở 1 cấp đều làm thay đổi danh sách hiển thị ở CẢ HAI cấp
+  // (vd: duyệt cấp 1 xong thì đơn đó phải xuất hiện ngay ở danh sách cấp 2) —
+  // và ảnh hưởng widget "đơn chờ duyệt" trên dashboard. staleTime mặc định 30s
+  // (providers.tsx) khiến cache cũ vẫn hiển thị nếu không invalidate đủ key.
+  const invalidateLeaveQueries = () => {
+    qc.invalidateQueries({ queryKey: ['dept-leave'] })
+    qc.invalidateQueries({ queryKey: ['hr-leave'] })
+    qc.invalidateQueries({ queryKey: ['dashboard-hr-pending-leave'] })
+  }
+
   // Mutations — trưởng phòng
   const deptApproveMut = useMutation({
     mutationFn: deptApproveLeave,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['dept-leave'] }),
+    onSuccess: invalidateLeaveQueries,
   })
   const deptRejectMut = useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) => deptRejectLeave(id, note),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['dept-leave'] }); setRejectTarget(null) },
+    onSuccess: () => { invalidateLeaveQueries(); setRejectTarget(null) },
   })
 
   // Mutations — TCCB
   const hrApproveMut = useMutation({
     mutationFn: hrApproveLeave,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr-leave'] }),
+    onSuccess: invalidateLeaveQueries,
   })
   const hrRejectMut = useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) => hrRejectLeave(id, note),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['hr-leave'] }); setRejectTarget(null) },
+    onSuccess: () => { invalidateLeaveQueries(); setRejectTarget(null) },
   })
 
   const rows = tab === 'my' ? myRequests : tab === 'dept' ? deptRequests : hrRequests

@@ -206,16 +206,7 @@ export const createLeaveRequest = (data: CreateLeaveDto) =>
 export const getMyLeaveRequests = (employeeId: string) =>
   apiFetch<LeaveRequest[]>(`/attendance/leave/my?employeeId=${employeeId}`)
 
-export const getPendingLeaveRequests = () =>
-  apiFetch<LeaveRequest[]>('/attendance/leave/pending')
-
-export const approveLeave = (id: string) =>
-  apiFetch<LeaveRequest>(`/attendance/leave/${id}/approve`, { method: 'PUT' })
-
-export const rejectLeave = (id: string) =>
-  apiFetch<LeaveRequest>(`/attendance/leave/${id}/reject`, { method: 'PUT' })
-
-// Luồng duyệt 2 cấp
+// Luồng duyệt 2 cấp — trưởng khoa/phòng rồi TCCB (khớp quy trình "Giấy xin phép" trên iOffice)
 export const getDeptPendingLeave = () =>
   apiFetch<LeaveRequest[]>('/attendance/leave/dept-pending')
 

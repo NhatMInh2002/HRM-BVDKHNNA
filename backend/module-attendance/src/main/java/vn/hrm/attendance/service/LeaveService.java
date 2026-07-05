@@ -9,13 +9,10 @@ import vn.hrm.attendance.domain.enums.LeaveStatus;
 import vn.hrm.attendance.dto.LeaveRequestDto;
 import vn.hrm.attendance.dto.LeaveRequestResponse;
 import vn.hrm.attendance.repository.LeaveRequestRepository;
-import vn.hrm.shared.event.LeaveStatusChangedEvent;
 import vn.hrm.shared.event.LeaveSubmittedEvent;
 import vn.hrm.shared.exception.HrmException;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -58,59 +55,11 @@ public class LeaveService {
         return LeaveRequestResponse.from(saved);
     }
 
-    @Transactional
-    public LeaveRequestResponse approveLeave(UUID id, String approvedBy) {
-        LeaveRequest request = findById(id);
-        if (request.getStatus() != LeaveStatus.PENDING) {
-            throw HrmException.badRequest("LEAVE_NOT_PENDING",
-                "Đơn nghỉ phép không ở trạng thái chờ duyệt");
-        }
-        request.setStatus(LeaveStatus.APPROVED);
-        request.setApprovedBy(approvedBy);
-        request.setApprovedAt(OffsetDateTime.now());
-        LeaveRequest saved = leaveRequestRepository.save(request);
-        eventPublisher.publishEvent(new LeaveStatusChangedEvent(
-            saved.getId(), saved.getEmployeeId(), saved.getLeaveType().name(), "APPROVED", approvedBy
-        ));
-        return LeaveRequestResponse.from(saved);
-    }
-
-    @Transactional
-    public LeaveRequestResponse rejectLeave(UUID id, String approvedBy) {
-        LeaveRequest request = findById(id);
-        if (request.getStatus() != LeaveStatus.PENDING) {
-            throw HrmException.badRequest("LEAVE_NOT_PENDING",
-                "Đơn nghỉ phép không ở trạng thái chờ duyệt");
-        }
-        request.setStatus(LeaveStatus.REJECTED);
-        request.setApprovedBy(approvedBy);
-        request.setApprovedAt(OffsetDateTime.now());
-        LeaveRequest saved = leaveRequestRepository.save(request);
-        eventPublisher.publishEvent(new LeaveStatusChangedEvent(
-            saved.getId(), saved.getEmployeeId(), saved.getLeaveType().name(), "REJECTED", approvedBy
-        ));
-        return LeaveRequestResponse.from(saved);
-    }
-
-    public List<LeaveRequestResponse> getPendingRequests() {
-        return leaveRequestRepository
-            .findByStatusOrderByCreatedAtDesc(LeaveStatus.PENDING)
-            .stream()
-            .map(LeaveRequestResponse::from)
-            .toList();
-    }
-
     public List<LeaveRequestResponse> getMyLeaveRequests(UUID employeeId) {
         return leaveRequestRepository
             .findByEmployeeIdOrderByCreatedAtDesc(employeeId)
             .stream()
             .map(LeaveRequestResponse::from)
             .toList();
-    }
-
-    private LeaveRequest findById(UUID id) {
-        return leaveRequestRepository.findById(id)
-            .orElseThrow(() -> HrmException.notFound("LEAVE_NOT_FOUND",
-                "Không tìm thấy đơn nghỉ phép: " + id));
     }
 }

@@ -143,6 +143,97 @@ export async function downloadPayslipPdf(id: string) {
   URL.revokeObjectURL(url)
 }
 
+// ── Lương tăng thêm (TNTT) ──────────────────────────────────────────────────
+
+export type QualificationAdjustment = 'NONE' | 'MISSING_LICENSE' | 'BRIDGE_DEGREE'
+
+export interface SalaryIncrementConfig {
+  id: string
+  employeeId: string
+  responsibilityCoefficient: number
+  responsibilitySecondaryCoefficient: number
+  responsibilityCoefficientTotal: number
+  qualificationCoefficient: number
+  qualificationAdjustment: QualificationAdjustment
+  specialtyMultiplierPercent: number
+  qualificationCoefficientAdjusted: number
+  concurrentUnionCoefficient: number
+  concurrentDeptBonusPercent: number
+  concurrentDeptTimePercent: number
+  concurrentDeptCoefficient: number
+  totalCoefficient: number
+  ratingCode: string | null
+  ratingPercentage: number
+  workdaysActual: number
+  workdaysStandard: number
+  paymentMultiplier: number
+  incrementAmount: number
+  effectiveFrom: string
+  effectiveTo: string | null
+}
+
+export interface SaveSalaryIncrementConfigDto {
+  employeeId: string
+  responsibilityCoefficient?: number
+  responsibilitySecondaryCoefficient?: number
+  qualificationCoefficient?: number
+  qualificationAdjustment?: QualificationAdjustment
+  concurrentUnionCoefficient?: number
+  specialtyMultiplierPercent?: number
+  concurrentDeptBonusPercent?: number
+  concurrentDeptTimePercent?: number
+  ratingCode?: string
+  ratingPercentage?: number
+  workdaysActual?: number
+  workdaysStandard?: number
+  paymentMultiplier?: number
+  effectiveFrom: string
+}
+
+export interface CoefficientOption {
+  id: number
+  label: string
+  coefficient: number
+}
+
+export interface RatingOption {
+  code: string
+  label: string
+  percentage: number
+}
+
+export interface IncrementCoefficientOptions {
+  responsibilityOptions: CoefficientOption[]
+  qualificationOptions: CoefficientOption[]
+  concurrentUnionOptions: CoefficientOption[]
+  ratingOptions: RatingOption[]
+}
+
+export const QUALIFICATION_ADJUSTMENT_LABELS: Record<QualificationAdjustment, string> = {
+  NONE: 'Đủ điều kiện (100%)',
+  MISSING_LICENSE: 'Chưa có CCHN (85%)',
+  BRIDGE_DEGREE: 'Đại học liên thông (95%)',
+}
+
+export function getIncrementCoefficientOptions() {
+  return apiFetch<IncrementCoefficientOptions>('/payroll/salary-increment/coefficients')
+}
+
+export function saveSalaryIncrementConfig(dto: SaveSalaryIncrementConfigDto) {
+  return apiFetch<SalaryIncrementConfig>('/payroll/salary-increment', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+export function getSalaryIncrementHistory(employeeId: string) {
+  return apiFetch<SalaryIncrementConfig[]>(`/payroll/salary-increment/${employeeId}`)
+}
+
+export function getCurrentSalaryIncrement(employeeId: string) {
+  return apiFetch<SalaryIncrementConfig>(`/payroll/salary-increment/${employeeId}/current`)
+}
+
 export async function exportPayrollExcel(year: number, month: number) {
   const { getSession } = await import('next-auth/react')
   const session = await getSession()

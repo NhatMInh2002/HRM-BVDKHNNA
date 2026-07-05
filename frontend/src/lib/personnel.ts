@@ -157,3 +157,115 @@ export function updateEmployee(id: string, data: EmployeeFormDto) {
 export function terminateEmployee(id: string) {
   return apiFetch<void>(`/personnel/employees/${id}/terminate`, { method: 'DELETE' })
 }
+
+// ── Kiêm nhiệm khoa/phòng khác ───────────────────────────────────────────────
+
+export type ConcurrentRoleType = 'BS_DS' | 'DD_KTV'
+
+export interface EmployeeConcurrentAssignment {
+  id: string
+  employeeId: string
+  departmentId: string
+  departmentName: string
+  roleType: ConcurrentRoleType
+  bonusPercent: number     // 10 (BS_DS) hoặc 5 (DD_KTV)
+  timePercent: number
+  decisionNumber?: string
+  effectiveFrom: string
+  effectiveTo: string | null
+  note?: string
+}
+
+export interface SaveConcurrentAssignmentDto {
+  employeeId: string
+  departmentId: string
+  roleType: ConcurrentRoleType
+  timePercent: number
+  decisionNumber?: string
+  effectiveFrom: string
+  effectiveTo?: string
+  note?: string
+}
+
+export const CONCURRENT_ROLE_LABELS: Record<ConcurrentRoleType, string> = {
+  BS_DS: 'Bác sĩ / Dược sĩ (+10%)',
+  DD_KTV: 'Điều dưỡng / KTV (+5%)',
+}
+
+export function getConcurrentAssignments(employeeId: string) {
+  return apiFetch<EmployeeConcurrentAssignment[]>(`/personnel/concurrent-assignments/employee/${employeeId}`)
+}
+
+export function getCurrentConcurrentAssignment(employeeId: string) {
+  return apiFetch<EmployeeConcurrentAssignment | null>(`/personnel/concurrent-assignments/employee/${employeeId}/current`)
+}
+
+export function createConcurrentAssignment(dto: SaveConcurrentAssignmentDto) {
+  return apiFetch<EmployeeConcurrentAssignment>('/personnel/concurrent-assignments', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+export function endConcurrentAssignment(id: string) {
+  return apiFetch<void>(`/personnel/concurrent-assignments/${id}/end`, { method: 'PATCH' })
+}
+
+// ── Hồ sơ nhân viên (upload TCCB) + gợi ý OCR ────────────────────────────────
+
+export type DocumentType =
+  | 'APPOINTMENT_DECISION' | 'DEGREE_CERTIFICATE' | 'PRACTICE_LICENSE'
+  | 'CONCURRENT_DECISION' | 'LABOR_CONTRACT' | 'MERIT_RATING' | 'TIMESHEET'
+
+export type OcrStatus = 'PENDING' | 'DONE' | 'FAILED' | 'SKIPPED'
+
+export interface EmployeeDocument {
+  id: string
+  employeeId: string
+  docType: DocumentType
+  fileUrl: string
+  fileName?: string
+  ocrStatus: OcrStatus
+  extractedText?: string
+  matchedLabel?: string
+  matchedCoefficient?: number
+  matchedDepartmentId?: string
+  matchedRoleType?: 'BS_DS' | 'DD_KTV'
+  matchedTimePercent?: number
+  matchConfidence?: 'HIGH' | 'LOW'
+  verified: boolean
+  uploadedBy: string
+  createdAt: string
+}
+
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  APPOINTMENT_DECISION: 'Quyết định bổ nhiệm/phân công chức vụ',
+  DEGREE_CERTIFICATE: 'Bằng cấp / học hàm-vị',
+  PRACTICE_LICENSE: 'Chứng chỉ hành nghề (CCHN)',
+  CONCURRENT_DECISION: 'Quyết định kiêm nhiệm/điều động',
+  LABOR_CONTRACT: 'Hợp đồng làm việc/lao động',
+  MERIT_RATING: 'Kết quả xếp loại thi đua',
+  TIMESHEET: 'Bảng chấm công',
+}
+
+export async function uploadRawFile(file: File, folder: string) {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('folder', folder)
+  return apiFetch<{ url: string; name: string }>('/files/upload', { method: 'POST', body: fd })
+}
+
+export function registerEmployeeDocument(dto: { employeeId: string; docType: DocumentType; fileUrl: string; fileName?: string }) {
+  return apiFetch<EmployeeDocument>('/personnel/employee-documents', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+export function getEmployeeDocuments(employeeId: string) {
+  return apiFetch<EmployeeDocument[]>(`/personnel/employee-documents/employee/${employeeId}`)
+}
+
+export function verifyEmployeeDocument(id: string) {
+  return apiFetch<EmployeeDocument>(`/personnel/employee-documents/${id}/verify`, { method: 'PATCH' })
+}

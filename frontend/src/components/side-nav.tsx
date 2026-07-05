@@ -128,7 +128,7 @@ export function SideNav({ roles }: { roles: string[] }) {
         {/* Expanded: tên bệnh viện */}
         <div className={`ml-2.5 overflow-hidden transition-opacity duration-150
                          ${expanded ? 'opacity-100' : 'opacity-0'}`}>
-          <p className="text-[11px] font-bold text-green-300 leading-tight whitespace-nowrap uppercase tracking-wide">Bệnh viện Hữu Nghị</p>
+          <p className="text-[11px] font-bold text-green-300 leading-tight whitespace-nowrap uppercase tracking-wide">Bệnh viện Hữu nghị</p>
           <p className="text-sm font-bold text-white leading-tight whitespace-nowrap">Đa Khoa Nghệ An</p>
           <p className="text-[10px] text-blue-300 leading-tight whitespace-nowrap">Hệ thống quản lý nhân sự</p>
         </div>

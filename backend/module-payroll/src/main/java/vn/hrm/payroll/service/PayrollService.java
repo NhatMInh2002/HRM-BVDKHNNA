@@ -8,10 +8,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.hrm.payroll.domain.PayrollRecord;
 import vn.hrm.payroll.domain.SalaryConfig;
+import vn.hrm.payroll.domain.SalaryIncrementConfig;
 import vn.hrm.payroll.domain.enums.PayrollStatus;
+import vn.hrm.payroll.domain.enums.QualificationAdjustment;
 import vn.hrm.payroll.dto.*;
+import vn.hrm.payroll.dto.IncrementCoefficientOptionsResponse.CoefficientOption;
+import vn.hrm.payroll.dto.IncrementCoefficientOptionsResponse.RatingOption;
 import vn.hrm.payroll.repository.PayrollRecordRepository;
 import vn.hrm.payroll.repository.SalaryConfigRepository;
+import vn.hrm.payroll.repository.SalaryIncrementConfigRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -65,6 +70,7 @@ public class PayrollService {
     private static final BigDecimal FOOD_TAX_EXEMPT_LIMIT = new BigDecimal("730000");
 
     private final SalaryConfigRepository salaryConfigRepo;
+    private final SalaryIncrementConfigRepository salaryIncrementConfigRepo;
     private final PayrollRecordRepository payrollRecordRepo;
     private final JdbcTemplate jdbc;
 
@@ -103,6 +109,66 @@ public class PayrollService {
                         employeeId, LocalDate.now())
                 .map(SalaryConfigResponse::from)
                 .orElseThrow(() -> new IllegalStateException("Chưa cấu hình lương cho nhân viên này"));
+    }
+
+    // ── SalaryIncrementConfig (lương tăng thêm — Điều 34/35) ────────────────────
+
+    @Transactional
+    public SalaryIncrementConfigResponse saveSalaryIncrementConfig(SalaryIncrementConfigRequest req, String actor) {
+        SalaryIncrementConfig cfg = SalaryIncrementConfig.builder()
+                .employeeId(req.employeeId())
+                .responsibilityCoefficient(orZero(req.responsibilityCoefficient()))
+                .responsibilitySecondaryCoefficient(orZero(req.responsibilitySecondaryCoefficient()))
+                .qualificationCoefficient(orZero(req.qualificationCoefficient()))
+                .qualificationAdjustment(req.qualificationAdjustment() != null
+                        ? req.qualificationAdjustment() : QualificationAdjustment.NONE)
+                .concurrentUnionCoefficient(orZero(req.concurrentUnionCoefficient()))
+                .specialtyMultiplierPercent(req.specialtyMultiplierPercent() != null
+                        ? req.specialtyMultiplierPercent() : new BigDecimal("100"))
+                .concurrentDeptBonusPercent(orZero(req.concurrentDeptBonusPercent()))
+                .concurrentDeptTimePercent(orZero(req.concurrentDeptTimePercent()))
+                .ratingCode(req.ratingCode())
+                .ratingPercentage(req.ratingPercentage() != null ? req.ratingPercentage() : new BigDecimal("100"))
+                .workdaysActual(req.workdaysActual() != null ? req.workdaysActual() : (short) 22)
+                .workdaysStandard(req.workdaysStandard() != null ? req.workdaysStandard() : (short) 22)
+                .paymentMultiplier(req.paymentMultiplier() != null ? req.paymentMultiplier() : BigDecimal.ONE)
+                .effectiveFrom(req.effectiveFrom())
+                .createdBy(actor)
+                .build();
+        return SalaryIncrementConfigResponse.from(salaryIncrementConfigRepo.save(cfg));
+    }
+
+    public List<SalaryIncrementConfigResponse> getSalaryIncrementHistory(UUID employeeId) {
+        return salaryIncrementConfigRepo.findByEmployeeIdOrderByEffectiveFromDesc(employeeId)
+                .stream().map(SalaryIncrementConfigResponse::from).toList();
+    }
+
+    public SalaryIncrementConfigResponse getCurrentSalaryIncrement(UUID employeeId) {
+        return salaryIncrementConfigRepo
+                .findTopByEmployeeIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                        employeeId, LocalDate.now())
+                .map(SalaryIncrementConfigResponse::from)
+                .orElseThrow(() -> new IllegalStateException("Chưa cấu hình lương tăng thêm cho nhân viên này"));
+    }
+
+    public IncrementCoefficientOptionsResponse getIncrementCoefficientOptions() {
+        List<CoefficientOption> responsibility = jdbc.query(
+                "SELECT id, position_name, coefficient FROM payroll.responsibility_coefficients ORDER BY display_order",
+                (rs, i) -> new CoefficientOption(rs.getInt("id"), rs.getString("position_name"), rs.getBigDecimal("coefficient")));
+
+        List<CoefficientOption> qualification = jdbc.query(
+                "SELECT id, qualification_name, coefficient FROM payroll.qualification_coefficients ORDER BY display_order",
+                (rs, i) -> new CoefficientOption(rs.getInt("id"), rs.getString("qualification_name"), rs.getBigDecimal("coefficient")));
+
+        List<CoefficientOption> concurrentUnion = jdbc.query(
+                "SELECT id, role_name, coefficient FROM payroll.concurrent_role_coefficients ORDER BY display_order",
+                (rs, i) -> new CoefficientOption(rs.getInt("id"), rs.getString("role_name"), rs.getBigDecimal("coefficient")));
+
+        List<RatingOption> ratings = jdbc.query(
+                "SELECT rating_code, rating_name, percentage FROM payroll.merit_rating_scale ORDER BY display_order",
+                (rs, i) -> new RatingOption(rs.getString("rating_code"), rs.getString("rating_name"), rs.getBigDecimal("percentage")));
+
+        return new IncrementCoefficientOptionsResponse(responsibility, qualification, concurrentUnion, ratings);
     }
 
     // ── Generate payroll ──────────────────────────────────────────────────────

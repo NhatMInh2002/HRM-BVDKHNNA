@@ -4,8 +4,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { searchEmployees, getDepartments, Employee } from '@/lib/personnel'
+import {
+  searchEmployees, getDepartments, Employee,
+  getCurrentConcurrentAssignment, createConcurrentAssignment, endConcurrentAssignment,
+  CONCURRENT_ROLE_LABELS, ConcurrentRoleType,
+  getEmployeeDocuments, registerEmployeeDocument, verifyEmployeeDocument, uploadRawFile,
+  DOCUMENT_TYPE_LABELS, DocumentType, EmployeeDocument,
+} from '@/lib/personnel'
 import { saveSalaryConfig, getSalaryHistory, SalaryConfig } from '@/lib/payroll'
+import { SearchSelect } from '@/components/search-select'
+import {
+  saveSalaryIncrementConfig, getSalaryIncrementHistory, getIncrementCoefficientOptions,
+  SalaryIncrementConfig, QualificationAdjustment, QUALIFICATION_ADJUSTMENT_LABELS,
+} from '@/lib/payroll'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -110,7 +121,7 @@ function calcPit(taxable: number) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 function SectionCard({ step, title, desc, children }: {
-  step: number; title: string; desc?: string; children: React.ReactNode
+  step: number | string; title: string; desc?: string; children: React.ReactNode
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
@@ -143,9 +154,9 @@ function Field({ label, note, hint, error, children }: {
   )
 }
 
-function NumInput({ register, name, placeholder, step = '1000', min = '0' }: {
-  register: ReturnType<typeof useForm<FormData>>['register']
-  name: keyof FormData; placeholder?: string; step?: string; min?: string
+function NumInput<T extends Record<string, any>>({ register, name, placeholder, step = '1000', min = '0' }: {
+  register: ReturnType<typeof useForm<T>>['register']
+  name: keyof T; placeholder?: string; step?: string; min?: string
 }) {
   return (
     <input type="number" step={step} min={min} placeholder={placeholder}
@@ -189,13 +200,74 @@ function EmpChip({ emp, onRemove }: { emp: Employee; onRemove: () => void }) {
 
 type SelectMode = 'individual' | 'department'
 
-export default function SalaryConfigPage() {
-  const qc = useQueryClient()
+// ── Page ──────────────────────────────────────────────────────────────────────
 
+const TABS = [
+  { key: 'basic' as const, label: 'Lương cơ bản', icon: '💰',
+    desc: 'Lương cơ bản, hệ số ngạch/bậc và các khoản phụ cấp' },
+  { key: 'increment' as const, label: 'Lương tăng thêm', icon: '📈',
+    desc: 'Hệ số trách nhiệm, trình độ, kiêm nhiệm và xếp loại thi đua (Điều 34/35 quy chế chi tiêu nội bộ)' },
+]
+type TabKey = typeof TABS[number]['key']
+
+export default function SalaryConfigPage() {
+  const [selectedEmps, setSelectedEmps] = useState<Employee[]>([])
+  const [activeTab, setActiveTab] = useState<TabKey>('basic')
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Cấu hình lương</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Thiết lập lương cơ bản và lương tăng thêm — áp dụng cho cá nhân hoặc cả phòng ban</p>
+      </div>
+
+      <EmployeeSelectorCard selectedEmps={selectedEmps} setSelectedEmps={setSelectedEmps} />
+
+      {selectedEmps.length === 0 ? (
+        <div className="mt-5 bg-white border border-dashed border-gray-300 rounded-xl py-14 text-center">
+          <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl">👆</span>
+          </div>
+          <p className="text-sm font-medium text-gray-600">Chọn nhân viên hoặc phòng ban ở trên để bắt đầu</p>
+          <p className="text-xs text-gray-400 mt-1">Sau khi chọn, bạn có thể cấu hình lương cơ bản và lương tăng thêm bên dưới</p>
+        </div>
+      ) : (
+        <div className="mt-5">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+            <div className="inline-flex bg-gray-100 rounded-lg p-1 gap-1">
+              {TABS.map(t => (
+                <button key={t.key} type="button" onClick={() => setActiveTab(t.key)}
+                  className={`px-4 py-2 text-sm font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                    activeTab === t.key
+                      ? 'bg-white text-blue-700 shadow-sm border border-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}>
+                  <span>{t.icon}</span>{t.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400">Áp dụng cho {selectedEmps.length} nhân viên</p>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">{TABS.find(t => t.key === activeTab)!.desc}</p>
+
+          {activeTab === 'basic'
+            ? <BasicSalaryForm selectedEmps={selectedEmps} />
+            : <SalaryIncrementSection selectedEmps={selectedEmps} />}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Đối tượng áp dụng (chọn nhân viên/phòng ban — dùng chung cho cả 2 tab) ──
+
+function EmployeeSelectorCard({ selectedEmps, setSelectedEmps }: {
+  selectedEmps: Employee[]
+  setSelectedEmps: React.Dispatch<React.SetStateAction<Employee[]>>
+}) {
   const [mode, setMode]               = useState<SelectMode>('individual')
   const [empSearch, setEmpSearch]     = useState('')
   const [showList, setShowList]       = useState(false)
-  const [selectedEmps, setSelectedEmps] = useState<Employee[]>([])
   const [deptId, setDeptId]           = useState('')
   const [checkedIds, setCheckedIds]   = useState<Set<string>>(new Set())
 
@@ -212,6 +284,159 @@ export default function SalaryConfigPage() {
     queryFn: () => searchEmployees({ departmentId: deptId, status: 'ACTIVE', page: 0, size: 100 }),
     enabled: mode === 'department' && deptId !== '',
   })
+
+  const addEmp = (emp: Employee) => {
+    if (!selectedEmps.find(e => e.id === emp.id)) setSelectedEmps(p => [...p, emp])
+  }
+  const removeEmp = (id: string) => setSelectedEmps(p => p.filter(e => e.id !== id))
+
+  const toggleDeptEmp = (emp: Employee) => {
+    const next = new Set(checkedIds)
+    next.has(emp.id) ? next.delete(emp.id) : next.add(emp.id)
+    setCheckedIds(next)
+    setSelectedEmps((deptEmployees?.content ?? []).filter(e => next.has(e.id)))
+  }
+
+  const toggleAllDept = () => {
+    const all = deptEmployees?.content ?? []
+    if (checkedIds.size === all.length) { setCheckedIds(new Set()); setSelectedEmps([]) }
+    else { setCheckedIds(new Set(all.map(e => e.id))); setSelectedEmps(all) }
+  }
+
+  return (
+    <SectionCard step="👤" title="Đối tượng áp dụng"
+      desc="Chọn nhân viên cụ thể hoặc áp dụng cùng cấu hình cho cả phòng ban">
+      <div className="space-y-3">
+        {/* Mode tabs */}
+        <div className="inline-flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+          {(['individual', 'department'] as SelectMode[]).map(m => (
+            <button key={m} type="button"
+              onClick={() => { setMode(m); setSelectedEmps([]); setCheckedIds(new Set()); setEmpSearch(''); setDeptId('') }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                mode === m
+                  ? 'bg-white text-blue-700 shadow-sm border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {m === 'individual' ? '👤 Cá nhân' : '🏢 Theo phòng ban'}
+            </button>
+          ))}
+        </div>
+
+        {/* Individual search */}
+        {mode === 'individual' && (
+          <div className="relative">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
+              </svg>
+              <input type="text"
+                placeholder="Tìm theo tên hoặc mã nhân viên (ít nhất 2 ký tự)…"
+                value={empSearch}
+                onChange={e => { setEmpSearch(e.target.value); setShowList(true) }}
+                onFocus={() => setShowList(true)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg
+                           focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            {showList && empResults?.content?.length ? (
+              <div className="absolute z-20 w-full mt-1 border border-gray-200 rounded-xl shadow-xl bg-white
+                              max-h-52 overflow-y-auto">
+                {empResults.content.map(emp => (
+                  <div key={emp.id}
+                    onClick={() => { addEmp(emp); setEmpSearch(''); setShowList(false) }}
+                    className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50
+                               last:border-0 flex items-center justify-between group">
+                    <div>
+                      <span className="text-sm font-medium text-gray-800 group-hover:text-blue-700">{emp.fullName}</span>
+                      <span className="text-blue-500 ml-2 text-xs font-mono">{emp.employeeCode}</span>
+                      {emp.position && <span className="text-gray-400 ml-2 text-xs">· {emp.position}</span>}
+                    </div>
+                    {selectedEmps.find(e => e.id === emp.id) && (
+                      <span className="text-green-500 text-xs font-medium">✓</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* Department picker */}
+        {mode === 'department' && (
+          <div className="space-y-3">
+            <SearchSelect
+              value={deptId}
+              onChange={v => { setDeptId(v); setCheckedIds(new Set()); setSelectedEmps([]) }}
+              options={(departments ?? []).filter(d => !d.code.startsWith('GRP-')).map(d => ({ value: d.id, label: d.name }))}
+              placeholder="-- Chọn phòng ban --"
+            />
+
+            {deptEmployees?.content && deptEmployees.content.length > 0 && (
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-200">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox"
+                      checked={checkedIds.size === deptEmployees.content.length}
+                      onChange={toggleAllDept}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                    <span className="text-xs font-semibold text-gray-700">
+                      Chọn tất cả ({deptEmployees.content.length} nhân viên)
+                    </span>
+                  </label>
+                  {checkedIds.size > 0 && (
+                    <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">
+                      Đã chọn {checkedIds.size}
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-52 overflow-y-auto divide-y divide-gray-50">
+                  {deptEmployees.content.map(emp => (
+                    <label key={emp.id}
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer">
+                      <input type="checkbox"
+                        checked={checkedIds.has(emp.id)}
+                        onChange={() => toggleDeptEmp(emp)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0" />
+                      <span className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-800">{emp.fullName}</span>
+                        <span className="text-blue-500 ml-2 text-xs font-mono">{emp.employeeCode}</span>
+                      </span>
+                      {emp.position && <span className="text-xs text-gray-400">{emp.position}</span>}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {deptId && deptEmployees?.content?.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">Phòng ban này chưa có nhân viên</p>
+            )}
+          </div>
+        )}
+
+        {/* Selected chips */}
+        {selectedEmps.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+            <p className="text-xs font-semibold text-blue-700 w-full">
+              {selectedEmps.length} nhân viên được áp dụng:
+            </p>
+            {selectedEmps.map(emp => (
+              <EmpChip key={emp.id} emp={emp} onRemove={() => {
+                removeEmp(emp.id)
+                if (mode === 'department') {
+                  const next = new Set(checkedIds); next.delete(emp.id); setCheckedIds(next)
+                }
+              }} />
+            ))}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  )
+}
+
+// ── Tab: Lương cơ bản & phụ cấp ──────────────────────────────────────────────
+
+function BasicSalaryForm({ selectedEmps }: { selectedEmps: Employee[] }) {
+  const qc = useQueryClient()
 
   const firstEmpId = selectedEmps[0]?.id ?? null
   const { data: history } = useQuery({
@@ -247,24 +472,6 @@ export default function SalaryConfigPage() {
     if (ok > 0) qc.invalidateQueries({ queryKey: ['salary-history'] })
   }
 
-  const addEmp = (emp: Employee) => {
-    if (!selectedEmps.find(e => e.id === emp.id)) setSelectedEmps(p => [...p, emp])
-  }
-  const removeEmp = (id: string) => setSelectedEmps(p => p.filter(e => e.id !== id))
-
-  const toggleDeptEmp = (emp: Employee) => {
-    const next = new Set(checkedIds)
-    next.has(emp.id) ? next.delete(emp.id) : next.add(emp.id)
-    setCheckedIds(next)
-    setSelectedEmps((deptEmployees?.content ?? []).filter(e => next.has(e.id)))
-  }
-
-  const toggleAllDept = () => {
-    const all = deptEmployees?.content ?? []
-    if (checkedIds.size === all.length) { setCheckedIds(new Set()); setSelectedEmps([]) }
-    else { setCheckedIds(new Set(all.map(e => e.id))); setSelectedEmps(all) }
-  }
-
   // Live salary calculations — dùng Number() để tránh string concatenation
   const w           = watch()
   const n           = (v: unknown) => Number(v) || 0
@@ -297,12 +504,6 @@ export default function SalaryConfigPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Cấu hình lương</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Thiết lập lương cơ bản, hệ số và phụ cấp — áp dụng cho cá nhân hoặc cả phòng ban</p>
-      </div>
-
       {batchResult && (
         <div className={`mb-5 rounded-xl px-4 py-3 text-sm border flex items-center gap-2 ${
           batchResult.fail === 0
@@ -322,138 +523,8 @@ export default function SalaryConfigPage() {
           {/* ── LEFT COLUMN — Form sections ── */}
           <div className="space-y-4">
 
-            {/* Step 1 — Chọn đối tượng */}
-            <SectionCard step={1} title="Đối tượng áp dụng"
-              desc="Chọn nhân viên cụ thể hoặc áp dụng cùng cấu hình cho cả phòng ban">
-              <div className="space-y-3">
-                {/* Mode tabs */}
-                <div className="inline-flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-                  {(['individual', 'department'] as SelectMode[]).map(m => (
-                    <button key={m} type="button"
-                      onClick={() => { setMode(m); setSelectedEmps([]); setCheckedIds(new Set()); setEmpSearch(''); setDeptId('') }}
-                      className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                        mode === m
-                          ? 'bg-white text-blue-700 shadow-sm border border-gray-200'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}>
-                      {m === 'individual' ? '👤 Cá nhân' : '🏢 Theo phòng ban'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Individual search */}
-                {mode === 'individual' && (
-                  <div className="relative">
-                    <div className="relative">
-                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
-                      </svg>
-                      <input type="text"
-                        placeholder="Tìm theo tên hoặc mã nhân viên (ít nhất 2 ký tự)…"
-                        value={empSearch}
-                        onChange={e => { setEmpSearch(e.target.value); setShowList(true) }}
-                        onFocus={() => setShowList(true)}
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg
-                                   focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                    </div>
-                    {showList && empResults?.content?.length ? (
-                      <div className="absolute z-20 w-full mt-1 border border-gray-200 rounded-xl shadow-xl bg-white
-                                      max-h-52 overflow-y-auto">
-                        {empResults.content.map(emp => (
-                          <div key={emp.id}
-                            onClick={() => { addEmp(emp); setEmpSearch(''); setShowList(false) }}
-                            className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50
-                                       last:border-0 flex items-center justify-between group">
-                            <div>
-                              <span className="text-sm font-medium text-gray-800 group-hover:text-blue-700">{emp.fullName}</span>
-                              <span className="text-blue-500 ml-2 text-xs font-mono">{emp.employeeCode}</span>
-                              {emp.position && <span className="text-gray-400 ml-2 text-xs">· {emp.position}</span>}
-                            </div>
-                            {selectedEmps.find(e => e.id === emp.id) && (
-                              <span className="text-green-500 text-xs font-medium">✓</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-
-                {/* Department picker */}
-                {mode === 'department' && (
-                  <div className="space-y-3">
-                    <select value={deptId} onChange={e => { setDeptId(e.target.value); setCheckedIds(new Set()); setSelectedEmps([]) }}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
-                                 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                      <option value="">-- Chọn phòng ban --</option>
-                      {departments?.filter(d => !d.code.startsWith('GRP-')).map(d => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </select>
-
-                    {deptEmployees?.content && deptEmployees.content.length > 0 && (
-                      <div className="border border-gray-200 rounded-xl overflow-hidden">
-                        <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-200">
-                          <label className="flex items-center gap-2.5 cursor-pointer">
-                            <input type="checkbox"
-                              checked={checkedIds.size === deptEmployees.content.length}
-                              onChange={toggleAllDept}
-                              className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                            <span className="text-xs font-semibold text-gray-700">
-                              Chọn tất cả ({deptEmployees.content.length} nhân viên)
-                            </span>
-                          </label>
-                          {checkedIds.size > 0 && (
-                            <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">
-                              Đã chọn {checkedIds.size}
-                            </span>
-                          )}
-                        </div>
-                        <div className="max-h-52 overflow-y-auto divide-y divide-gray-50">
-                          {deptEmployees.content.map(emp => (
-                            <label key={emp.id}
-                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer">
-                              <input type="checkbox"
-                                checked={checkedIds.has(emp.id)}
-                                onChange={() => toggleDeptEmp(emp)}
-                                className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0" />
-                              <span className="flex-1 min-w-0">
-                                <span className="text-sm font-medium text-gray-800">{emp.fullName}</span>
-                                <span className="text-blue-500 ml-2 text-xs font-mono">{emp.employeeCode}</span>
-                              </span>
-                              {emp.position && <span className="text-xs text-gray-400">{emp.position}</span>}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {deptId && deptEmployees?.content?.length === 0 && (
-                      <p className="text-sm text-gray-400 text-center py-4">Phòng ban này chưa có nhân viên</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Selected chips */}
-                {selectedEmps.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                    <p className="text-xs font-semibold text-blue-700 w-full">
-                      {selectedEmps.length} nhân viên được áp dụng:
-                    </p>
-                    {selectedEmps.map(emp => (
-                      <EmpChip key={emp.id} emp={emp} onRemove={() => {
-                        removeEmp(emp.id)
-                        if (mode === 'department') {
-                          const next = new Set(checkedIds); next.delete(emp.id); setCheckedIds(next)
-                        }
-                      }} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </SectionCard>
-
-            {/* Step 2 — Lương & Hệ số */}
-            <SectionCard step={2} title="Lương cơ bản & Hệ số"
+            {/* Bước 1 — Lương & Hệ số */}
+            <SectionCard step={1} title="Lương cơ bản & Hệ số"
               desc="Lương thực tế = Lương cơ bản × Hệ số. Đây là cơ sở tính BHXH/BHYT (trần 46.8 triệu)">
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Lương cơ bản (VND)"
@@ -508,8 +579,8 @@ export default function SalaryConfigPage() {
               </div>
             </SectionCard>
 
-            {/* Step 3 — Phụ cấp chịu thuế */}
-            <SectionCard step={3} title="Phụ cấp chịu thuế"
+            {/* Bước 2 — Phụ cấp chịu thuế */}
+            <SectionCard step={2} title="Phụ cấp chịu thuế"
               desc="Tính vào thu nhập chịu thuế TNCN. Để 0 nếu không áp dụng">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <Field label="Chức vụ" hint="Phó phòng ~500K–2M" error={errors.allowancePosition?.message}>
@@ -527,8 +598,8 @@ export default function SalaryConfigPage() {
               </div>
             </SectionCard>
 
-            {/* Step 4 — Phụ cấp đặc biệt */}
-            <SectionCard step={4} title="Phụ cấp đặc biệt"
+            {/* Bước 3 — Phụ cấp đặc biệt */}
+            <SectionCard step={3} title="Phụ cấp đặc biệt"
               desc="Miễn hoặc giảm thuế theo quy định pháp luật">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <Field label="Ăn ca"
@@ -552,8 +623,8 @@ export default function SalaryConfigPage() {
               </div>
             </SectionCard>
 
-            {/* Step 5 — Thuế & BHXH */}
-            <SectionCard step={5} title="Giảm trừ thuế TNCN & Bảo hiểm">
+            {/* Bước 4 — Thuế & BHXH */}
+            <SectionCard step={4} title="Giảm trừ thuế TNCN & Bảo hiểm">
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Số người phụ thuộc"
                   note="(giảm 4.4 triệu/người/tháng)"
@@ -582,35 +653,14 @@ export default function SalaryConfigPage() {
               </div>
             </SectionCard>
 
-            {/* Step 6 — Ngày áp dụng + Submit */}
-            <SectionCard step={6} title="Ngày áp dụng & Xác nhận">
-              <div className="flex items-end gap-4 flex-wrap">
-                <Field label="Ngày bắt đầu áp dụng"
-                  hint="Hệ thống dùng bản mới nhất khi tính lương hàng tháng"
-                  error={errors.effectiveFrom?.message}>
-                  <input type="date" {...register('effectiveFrom')}
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                </Field>
-                <div className="flex items-center gap-3 pb-[2px]">
-                  <button type="submit"
-                    disabled={saving || selectedEmps.length === 0}
-                    className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold
-                               px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors shadow-sm">
-                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293z"/>
-                    </svg>
-                    {saving
-                      ? `Đang lưu…`
-                      : selectedEmps.length > 1
-                        ? `Lưu cho ${selectedEmps.length} nhân viên`
-                        : 'Lưu cấu hình'}
-                  </button>
-                  {selectedEmps.length === 0 && (
-                    <p className="text-xs text-gray-400">Chọn nhân viên để kích hoạt</p>
-                  )}
-                </div>
-              </div>
+            {/* Bước 5 — Ngày áp dụng */}
+            <SectionCard step={5} title="Ngày áp dụng"
+              desc="Hệ thống dùng bản mới nhất khi tính lương hàng tháng">
+              <Field label="Ngày bắt đầu áp dụng" error={errors.effectiveFrom?.message}>
+                <input type="date" {...register('effectiveFrom')}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </Field>
             </SectionCard>
           </div>
 
@@ -717,7 +767,574 @@ export default function SalaryConfigPage() {
           </div>
 
         </div>
+
+        {/* Xác nhận & lưu — nằm ngoài các bước, tách biệt khỏi form nhập liệu */}
+        <div className="mt-5 pt-4 border-t border-gray-200 flex items-center gap-3">
+          <button type="submit"
+            disabled={saving || selectedEmps.length === 0}
+            className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold
+                       px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors shadow-sm">
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293z"/>
+            </svg>
+            {saving
+              ? `Đang lưu…`
+              : selectedEmps.length > 1
+                ? `Lưu cho ${selectedEmps.length} nhân viên`
+                : 'Lưu cấu hình'}
+          </button>
+          {selectedEmps.length === 0 && (
+            <p className="text-xs text-gray-400">Chọn nhân viên để kích hoạt</p>
+          )}
+        </div>
       </form>
+    </div>
+  )
+}
+
+// ── Tab: Lương tăng thêm (TNTT) — Điều 34/35 ────────────────────────────────
+
+const incrementSchema = z.object({
+  responsibilityCoefficient:          z.coerce.number().min(0).default(0),
+  responsibilitySecondaryCoefficient: z.coerce.number().min(0).default(0),
+  qualificationCoefficient:           z.coerce.number().min(0).default(0),
+  qualificationAdjustment:            z.enum(['NONE', 'MISSING_LICENSE', 'BRIDGE_DEGREE']).default('NONE'),
+  specialtyMultiplierPercent:         z.coerce.number().min(0).default(100),
+  concurrentUnionCoefficient:         z.coerce.number().min(0).default(0),
+  concurrentDeptBonusPercent:         z.coerce.number().min(0).max(100).default(0),
+  concurrentDeptTimePercent:          z.coerce.number().min(0).max(100).default(0),
+  ratingCode:                         z.string().optional(),
+  ratingPercentage:                  z.coerce.number().min(0).max(100).default(100),
+  workdaysActual:                    z.coerce.number().min(0).max(31).default(22),
+  workdaysStandard:                  z.coerce.number().min(1).max(31).default(22),
+  paymentMultiplier:                 z.coerce.number().min(0).default(1),
+  effectiveFrom:                     z.string().min(1, 'Chọn ngày áp dụng'),
+})
+type IncrementFormData = z.infer<typeof incrementSchema>
+
+function SalaryIncrementSection({ selectedEmps }: { selectedEmps: Employee[] }) {
+  const qc = useQueryClient()
+  const { data: options } = useQuery({ queryKey: ['increment-coefficients'], queryFn: getIncrementCoefficientOptions })
+
+  const firstEmpId = selectedEmps[0]?.id ?? null
+  const { data: history } = useQuery({
+    queryKey: ['increment-history', firstEmpId],
+    queryFn: () => getSalaryIncrementHistory(firstEmpId!),
+    enabled: !!firstEmpId && selectedEmps.length === 1,
+  })
+
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<IncrementFormData>({
+    resolver: zodResolver(incrementSchema),
+    defaultValues: {
+      responsibilityCoefficient: 0, responsibilitySecondaryCoefficient: 0,
+      qualificationCoefficient: 0, qualificationAdjustment: 'NONE', specialtyMultiplierPercent: 100,
+      concurrentUnionCoefficient: 0, concurrentDeptBonusPercent: 0, concurrentDeptTimePercent: 0,
+      ratingPercentage: 100, workdaysActual: 22, workdaysStandard: 22, paymentMultiplier: 1,
+    },
+  })
+
+  const [saving, setSaving] = useState(false)
+  const [batchResult, setBatchResult] = useState<{ ok: number; fail: number } | null>(null)
+
+  const onSubmit = async (data: IncrementFormData) => {
+    if (selectedEmps.length === 0) return
+    setSaving(true); setBatchResult(null)
+    let ok = 0, fail = 0
+    await Promise.allSettled(
+      selectedEmps.map(emp =>
+        saveSalaryIncrementConfig({ ...data, employeeId: emp.id } as any).then(() => ok++).catch(() => fail++)
+      )
+    )
+    setSaving(false); setBatchResult({ ok, fail })
+    if (ok > 0) qc.invalidateQueries({ queryKey: ['increment-history'] })
+  }
+
+  // Live preview — công thức khớp SalaryIncrementConfigResponse.from() phía backend
+  const w = watch()
+  const n = (v: unknown) => Number(v) || 0
+  const LUONG_CO_SO = 2_530_000
+  const responsibilityTotal = n(w.responsibilityCoefficient) + n(w.responsibilitySecondaryCoefficient) * 0.25
+  const adjFactor = w.qualificationAdjustment === 'MISSING_LICENSE' ? 0.85
+                  : w.qualificationAdjustment === 'BRIDGE_DEGREE' ? 0.95 : 1
+  const qualAdjusted = n(w.qualificationCoefficient) * adjFactor * (n(w.specialtyMultiplierPercent) / 100)
+  const concurrentDeptCoeff = qualAdjusted * (n(w.concurrentDeptBonusPercent) / 100) * (n(w.concurrentDeptTimePercent) / 100)
+  const totalCoeff = responsibilityTotal + qualAdjusted + n(w.concurrentUnionCoefficient) + concurrentDeptCoeff
+  const standard = n(w.workdaysStandard) || 22
+  const incrementAmount = LUONG_CO_SO * totalCoeff * (n(w.ratingPercentage) / 100)
+                         * (n(w.workdaysActual) / standard) * (n(w.paymentMultiplier) || 1)
+  const hasPreview = totalCoeff > 0
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {batchResult && (
+        <div className={`mb-4 rounded-xl px-4 py-3 text-sm border flex items-center gap-2 ${
+          batchResult.fail === 0
+            ? 'bg-green-50 border-green-200 text-green-700'
+            : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+        }`}>
+          {batchResult.fail === 0
+            ? `✓ Đã lưu lương tăng thêm cho ${batchResult.ok} nhân viên`
+            : `Lưu ${batchResult.ok} thành công, ${batchResult.fail} thất bại`}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
+        <div className="space-y-4">
+
+          {selectedEmps.length === 1 && (
+            <SectionCard step={1} title="Hồ sơ đính kèm & gợi ý tự động"
+              desc="Upload quyết định/bằng cấp — hệ thống OCR và gợi ý hệ số tương ứng, bạn xác nhận trước khi áp dụng">
+              <EmployeeDocumentsWidget
+                employeeId={selectedEmps[0].id}
+                onApplyResponsibility={coeff => setValue('responsibilityCoefficient', coeff)}
+                onApplyQualification={coeff => setValue('qualificationCoefficient', coeff)}
+                onApplyConcurrentDept={(bonusPercent, timePercent) => {
+                  setValue('concurrentDeptBonusPercent', bonusPercent)
+                  setValue('concurrentDeptTimePercent', timePercent)
+                }}
+              />
+            </SectionCard>
+          )}
+
+          <SectionCard step={2} title="Hệ số trách nhiệm / chức vụ"
+            desc="Chọn chức vụ chính; nếu kiêm nhiệm chức vụ quản lý thứ 2, chọn thêm — hệ số phụ được tính 25%">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Chức vụ chính">
+                <select onChange={e => setValue('responsibilityCoefficient', parseFloat(e.target.value) || 0)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="0">-- Không giữ chức vụ --</option>
+                  {options?.responsibilityOptions.map(o => (
+                    <option key={o.id} value={o.coefficient}>{o.label} — {o.coefficient.toFixed(2)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Kiêm nhiệm chức vụ thứ 2" hint="Hưởng 25% hệ số vị trí này">
+                <select onChange={e => setValue('responsibilitySecondaryCoefficient', parseFloat(e.target.value) || 0)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="0">-- Không kiêm nhiệm --</option>
+                  {options?.responsibilityOptions.map(o => (
+                    <option key={o.id} value={o.coefficient}>{o.label} — {o.coefficient.toFixed(2)}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard step={3} title="Hệ số trình độ chuyên môn"
+            desc="Thiếu CCHN hưởng 85%, bằng liên thông hưởng 95% trên hệ số trình độ (không áp lên toàn bộ hệ số TNTT)">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Trình độ">
+                <select onChange={e => setValue('qualificationCoefficient', parseFloat(e.target.value) || 0)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="0">-- Chọn trình độ --</option>
+                  {options?.qualificationOptions.map(o => (
+                    <option key={o.id} value={o.coefficient}>{o.label} — {o.coefficient.toFixed(2)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Điều chỉnh">
+                <select {...register('qualificationAdjustment')}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  {(Object.keys(QUALIFICATION_ADJUSTMENT_LABELS) as QualificationAdjustment[]).map(k => (
+                    <option key={k} value={k}>{QUALIFICATION_ADJUSTMENT_LABELS[k]}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Hệ số đặc thù khoa/phòng"
+                hint="100% = bình thường. 110-135% cho khoa cấp cứu/hồi sức/ghép tạng — xác nhận với TCCB trước khi dùng"
+                error={errors.specialtyMultiplierPercent?.message}>
+                <NumInput register={register} name="specialtyMultiplierPercent" placeholder="100" step="1" />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard step={4} title="Kiêm nhiệm đoàn thể & khoa/phòng"
+            desc="Đoàn thể: chỉ chọn 1 vai trò cao nhất nếu kiêm nhiệm nhiều vai trò">
+            {selectedEmps.length === 1 && (
+              <ConcurrentAssignmentWidget
+                employeeId={selectedEmps[0].id}
+                onApply={(bonusPercent, timePercent) => {
+                  setValue('concurrentDeptBonusPercent', bonusPercent)
+                  setValue('concurrentDeptTimePercent', timePercent)
+                }}
+              />
+            )}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Field label="Kiêm nhiệm đoàn thể">
+                <select onChange={e => setValue('concurrentUnionCoefficient', parseFloat(e.target.value) || 0)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="0">-- Không kiêm nhiệm --</option>
+                  {options?.concurrentUnionOptions.map(o => (
+                    <option key={o.id} value={o.coefficient}>{o.label} — {o.coefficient.toFixed(2)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Kiêm nhiệm khoa/phòng khác" hint="BS/DS +10%, ĐD/KTV +5%">
+                <select onChange={e => setValue('concurrentDeptBonusPercent', parseFloat(e.target.value) || 0)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="0">-- Không kiêm nhiệm --</option>
+                  <option value="10">BS/DS — 10%</option>
+                  <option value="5">Điều dưỡng/KTV — 5%</option>
+                </select>
+              </Field>
+              <Field label="% thời gian kiêm nhiệm" error={errors.concurrentDeptTimePercent?.message}>
+                <NumInput register={register} name="concurrentDeptTimePercent" placeholder="0" step="5" />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard step={5} title="Xếp loại thi đua & ngày công"
+            desc="Xếp loại đã được Hội đồng thi đua duyệt theo phân loại khoa/phòng (dồn toa) — mục này chỉ ghi nhận kết quả">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Field label="Xếp loại thi đua">
+                <select onChange={e => {
+                  const opt = options?.ratingOptions.find(r => r.code === e.target.value)
+                  setValue('ratingCode', e.target.value)
+                  setValue('ratingPercentage', opt?.percentage ?? 100)
+                }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="">-- Chọn xếp loại --</option>
+                  {options?.ratingOptions.map(r => (
+                    <option key={r.code} value={r.code}>{r.code} — {r.percentage}%</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Ngày công thực tế" error={errors.workdaysActual?.message}>
+                <NumInput register={register} name="workdaysActual" placeholder="22" step="1" />
+              </Field>
+              <Field label="Ngày công chuẩn" error={errors.workdaysStandard?.message}>
+                <NumInput register={register} name="workdaysStandard" placeholder="22" step="1" />
+              </Field>
+              <Field label="Số lần chi trả" error={errors.paymentMultiplier?.message}>
+                <NumInput register={register} name="paymentMultiplier" placeholder="1" step="0.1" />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard step={6} title="Ngày áp dụng">
+            <Field label="Ngày bắt đầu áp dụng" error={errors.effectiveFrom?.message}>
+              <input type="date" {...register('effectiveFrom')}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </Field>
+          </SectionCard>
+        </div>
+
+        <div className="xl:sticky xl:top-6 space-y-3">
+          <div className={`rounded-xl border overflow-hidden transition-all ${
+            hasPreview ? 'border-blue-200 shadow-md shadow-blue-50' : 'border-gray-200'
+          }`}>
+            <div className={`px-4 py-3 border-b ${hasPreview ? 'bg-blue-600 border-blue-600' : 'bg-gray-50 border-gray-200'}`}>
+              <p className={`text-sm font-semibold ${hasPreview ? 'text-white' : 'text-gray-500'}`}>Dự kiến TNTT</p>
+            </div>
+            <div className="bg-white px-4 py-4 space-y-2">
+              <PreviewRow label="Hệ số trách nhiệm" value={responsibilityTotal.toFixed(3)} />
+              <PreviewRow label="Hệ số trình độ (đã điều chỉnh)" value={qualAdjusted.toFixed(3)} />
+              <PreviewRow label="Hệ số kiêm nhiệm khoa/phòng" value={concurrentDeptCoeff.toFixed(3)} />
+              <PreviewRow label="Hệ số kiêm nhiệm đoàn thể" value={n(w.concurrentUnionCoefficient).toFixed(3)} />
+              <PreviewRow label="Tổng hệ số điều chỉnh" value={totalCoeff.toFixed(3)} bold divider />
+              <PreviewRow label="% xếp loại thi đua" value={`${n(w.ratingPercentage)}%`} />
+              <PreviewRow label="Ngày công" value={`${n(w.workdaysActual)}/${standard}`} />
+              <div className="rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 px-4 py-3 text-white mt-2">
+                <p className="text-xs text-blue-200 font-medium">Lương tăng thêm dự kiến</p>
+                <p className="text-xl font-bold mt-0.5">{fmt(incrementAmount)} ₫</p>
+              </div>
+            </div>
+          </div>
+
+          {history && history.length > 0 && selectedEmps.length === 1 && (
+            <div className="rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                <p className="text-xs font-semibold text-gray-600">Lịch sử TNTT — {selectedEmps[0].fullName}</p>
+              </div>
+              <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                {history.map((c: SalaryIncrementConfig) => (
+                  <div key={c.id} className="px-4 py-3 hover:bg-gray-50">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-gray-700">{c.effectiveFrom}</span>
+                      <span className="text-xs font-bold text-blue-700 tabular-nums">{fmt(c.incrementAmount)} ₫</span>
+                    </div>
+                    <div className="text-[11px] text-gray-400 flex gap-3">
+                      <span>Hệ số: {c.totalCoefficient.toFixed(2)}</span>
+                      <span>Xếp loại: {c.ratingCode ?? '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Xác nhận & lưu — nằm ngoài các bước, tách biệt khỏi form nhập liệu */}
+      <div className="mt-5 pt-4 border-t border-gray-200 flex items-center gap-3">
+        <button type="submit" disabled={saving}
+          className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold
+                     px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors shadow-sm">
+          {saving
+            ? 'Đang lưu…'
+            : selectedEmps.length > 1
+              ? `Lưu cho ${selectedEmps.length} nhân viên`
+              : 'Lưu lương tăng thêm'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ── Widget: kiêm nhiệm khoa/phòng (hồ sơ gốc — auto-fill hệ số kiêm nhiệm) ──
+
+function ConcurrentAssignmentWidget({ employeeId, onApply }: {
+  employeeId: string
+  onApply: (bonusPercent: number, timePercent: number) => void
+}) {
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [departmentId, setDepartmentId] = useState('')
+  const [roleType, setRoleType] = useState<ConcurrentRoleType>('BS_DS')
+  const [timePercent, setTimePercent] = useState(30)
+  const [effectiveFrom, setEffectiveFrom] = useState(() => new Date().toISOString().slice(0, 10))
+  const [decisionNumber, setDecisionNumber] = useState('')
+
+  const { data: departments } = useQuery({ queryKey: ['departments'], queryFn: getDepartments })
+  const { data: current, isLoading } = useQuery({
+    queryKey: ['concurrent-assignment-current', employeeId],
+    queryFn: () => getCurrentConcurrentAssignment(employeeId),
+  })
+
+  const createMut = useMutation({
+    mutationFn: () => createConcurrentAssignment({
+      employeeId, departmentId, roleType, timePercent, effectiveFrom,
+      decisionNumber: decisionNumber || undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['concurrent-assignment-current', employeeId] })
+      setShowForm(false); setDepartmentId(''); setDecisionNumber('')
+    },
+  })
+
+  const endMut = useMutation({
+    mutationFn: (id: string) => endConcurrentAssignment(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['concurrent-assignment-current', employeeId] }),
+  })
+
+  if (isLoading) return null
+
+  return (
+    <div className="mb-4 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-3">
+      {current ? (
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="text-xs text-gray-700">
+            <span className="font-semibold">Đang kiêm nhiệm:</span> {current.departmentName} — {CONCURRENT_ROLE_LABELS[current.roleType]} · {current.timePercent}% thời gian
+            {current.decisionNumber && <span className="text-gray-400"> (QĐ {current.decisionNumber})</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button"
+              onClick={() => onApply(current.bonusPercent, current.timePercent)}
+              className="text-xs font-medium bg-blue-600 text-white px-2.5 py-1 rounded-md hover:bg-blue-700">
+              Áp dụng vào lương tăng thêm
+            </button>
+            <button type="button"
+              onClick={() => endMut.mutate(current.id)}
+              className="text-xs text-red-500 hover:underline">
+              Kết thúc
+            </button>
+          </div>
+        </div>
+      ) : !showForm ? (
+        <button type="button" onClick={() => setShowForm(true)}
+          className="text-xs font-medium text-blue-600 hover:underline">
+          + Ghi nhận kiêm nhiệm khoa/phòng (theo quyết định điều động)
+        </button>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 items-end">
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">Khoa/phòng kiêm nhiệm</label>
+            <SearchSelect
+              value={departmentId}
+              onChange={setDepartmentId}
+              options={(departments ?? []).filter(d => !d.code.startsWith('GRP-')).map(d => ({ value: d.id, label: d.name }))}
+              placeholder="-- Chọn --"
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">Vai trò</label>
+            <select value={roleType} onChange={e => setRoleType(e.target.value as ConcurrentRoleType)}
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white">
+              {(Object.keys(CONCURRENT_ROLE_LABELS) as ConcurrentRoleType[]).map(k => (
+                <option key={k} value={k}>{CONCURRENT_ROLE_LABELS[k]}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">% thời gian</label>
+            <input type="number" min={0} max={100} value={timePercent}
+              onChange={e => setTimePercent(Number(e.target.value))}
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs" />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">Ngày hiệu lực</label>
+            <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)}
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs" />
+          </div>
+          <div className="flex gap-1.5">
+            <button type="button" disabled={!departmentId || createMut.isPending}
+              onClick={() => createMut.mutate()}
+              className="flex-1 text-xs font-medium bg-blue-600 text-white px-2 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-40">
+              Lưu
+            </button>
+            <button type="button" onClick={() => setShowForm(false)}
+              className="text-xs text-gray-500 px-2 py-1.5 hover:text-gray-700">
+              Hủy
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Widget: hồ sơ đính kèm + gợi ý OCR (upload TCCB) ─────────────────────────
+
+const DOC_STATUS_LABELS: Record<EmployeeDocument['ocrStatus'], string> = {
+  PENDING: 'Đang xử lý OCR…',
+  DONE: 'Đã đọc xong',
+  FAILED: 'OCR thất bại',
+  SKIPPED: 'Bỏ qua (định dạng chưa hỗ trợ)',
+}
+
+const DOC_STATUS_COLORS: Record<EmployeeDocument['ocrStatus'], string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  DONE: 'bg-green-100 text-green-700',
+  FAILED: 'bg-red-100 text-red-700',
+  SKIPPED: 'bg-gray-100 text-gray-500',
+}
+
+function suggestionText(doc: EmployeeDocument): string | null {
+  if (doc.docType === 'APPOINTMENT_DECISION' && doc.matchedLabel) {
+    return `Gợi ý chức vụ: ${doc.matchedLabel} — hệ số ${doc.matchedCoefficient?.toFixed(2)}`
+  }
+  if ((doc.docType === 'DEGREE_CERTIFICATE' || doc.docType === 'PRACTICE_LICENSE') && doc.matchedLabel) {
+    return `Gợi ý trình độ: ${doc.matchedLabel} — hệ số ${doc.matchedCoefficient?.toFixed(2)}`
+  }
+  if (doc.docType === 'CONCURRENT_DECISION' && (doc.matchedDepartmentId || doc.matchedRoleType)) {
+    return `Gợi ý kiêm nhiệm: ${doc.matchedLabel ?? '—'} · ${doc.matchedRoleType ?? '—'} · ${doc.matchedTimePercent ?? '?'}%`
+  }
+  return null
+}
+
+function EmployeeDocumentsWidget({ employeeId, onApplyResponsibility, onApplyQualification, onApplyConcurrentDept }: {
+  employeeId: string
+  onApplyResponsibility: (coeff: number) => void
+  onApplyQualification: (coeff: number) => void
+  onApplyConcurrentDept: (bonusPercent: number, timePercent: number) => void
+}) {
+  const qc = useQueryClient()
+  const [docType, setDocType] = useState<DocumentType>('APPOINTMENT_DECISION')
+  const [uploading, setUploading] = useState(false)
+
+  const { data: documents = [] } = useQuery({
+    queryKey: ['employee-documents', employeeId],
+    queryFn: () => getEmployeeDocuments(employeeId),
+    refetchInterval: q => (q.state.data ?? []).some(d => d.ocrStatus === 'PENDING') ? 3000 : false,
+  })
+
+  const verifyMut = useMutation({
+    mutationFn: (id: string) => verifyEmployeeDocument(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employee-documents', employeeId] }),
+  })
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return
+    setUploading(true)
+    try {
+      const uploaded = await uploadRawFile(file, 'employee-documents')
+      await registerEmployeeDocument({ employeeId, docType, fileUrl: uploaded.url, fileName: uploaded.name })
+      qc.invalidateQueries({ queryKey: ['employee-documents', employeeId] })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const apply = (doc: EmployeeDocument) => {
+    if ((doc.docType === 'APPOINTMENT_DECISION') && doc.matchedCoefficient != null) {
+      onApplyResponsibility(doc.matchedCoefficient)
+    } else if ((doc.docType === 'DEGREE_CERTIFICATE' || doc.docType === 'PRACTICE_LICENSE') && doc.matchedCoefficient != null) {
+      onApplyQualification(doc.matchedCoefficient)
+    } else if (doc.docType === 'CONCURRENT_DECISION' && doc.matchedRoleType) {
+      onApplyConcurrentDept(doc.matchedRoleType === 'BS_DS' ? 10 : 5, doc.matchedTimePercent ?? 0)
+    }
+    verifyMut.mutate(doc.id)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <label className="block text-[11px] font-medium text-gray-600 mb-1">Loại hồ sơ</label>
+          <select value={docType} onChange={e => setDocType(e.target.value as DocumentType)}
+            className="border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white">
+            {(Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(k => (
+              <option key={k} value={k}>{DOCUMENT_TYPE_LABELS[k]}</option>
+            ))}
+          </select>
+        </div>
+        <label className={`text-xs font-medium px-3 py-1.5 rounded-md cursor-pointer ${
+          uploading ? 'bg-gray-100 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700'
+        }`}>
+          {uploading ? 'Đang tải lên…' : '+ Upload ảnh (JPG/PNG)'}
+          <input type="file" accept="image/*" className="hidden" disabled={uploading}
+            onChange={e => handleFile(e.target.files?.[0])} />
+        </label>
+        <span className="text-[11px] text-gray-400">Chỉ hỗ trợ OCR trên ảnh — PDF cần chuyển sang ảnh trước</span>
+      </div>
+
+      {documents.length > 0 && (
+        <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+          {documents.map(doc => {
+            const suggestion = suggestionText(doc)
+            return (
+              <div key={doc.id} className="px-3 py-2.5 flex items-center justify-between gap-3 bg-white">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-700">{DOCUMENT_TYPE_LABELS[doc.docType]}</span>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${DOC_STATUS_COLORS[doc.ocrStatus]}`}>
+                      {DOC_STATUS_LABELS[doc.ocrStatus]}
+                    </span>
+                    {doc.verified && <span className="text-[10px] text-green-600">✓ Đã áp dụng</span>}
+                  </div>
+                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:underline">
+                    {doc.fileName ?? 'Xem file'}
+                  </a>
+                  {suggestion && (
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      {suggestion}
+                      {doc.matchConfidence === 'LOW' && <span className="text-amber-500"> — kiểm tra lại trước khi dùng</span>}
+                    </p>
+                  )}
+                  {doc.ocrStatus === 'FAILED' && (
+                    <p className="text-[11px] text-red-400 mt-0.5">{doc.extractedText}</p>
+                  )}
+                </div>
+                {suggestion && !doc.verified && (
+                  <button type="button" onClick={() => apply(doc)}
+                    className="flex-shrink-0 text-xs font-medium bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md hover:bg-blue-100">
+                    Áp dụng
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
