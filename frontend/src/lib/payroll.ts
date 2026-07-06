@@ -129,8 +129,7 @@ export function myPayroll(employeeId: string) {
 export async function downloadPayslipPdf(id: string) {
   const { getSession } = await import('next-auth/react')
   const session = await getSession()
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api'
-  const res = await fetch(`${base}/payroll/${id}/payslip.pdf`, {
+  const res = await fetch(`/api/payroll/${id}/payslip.pdf`, {
     headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
   })
   if (!res.ok) throw new Error('Không thể tải phiếu lương')
@@ -237,8 +236,7 @@ export function getCurrentSalaryIncrement(employeeId: string) {
 export async function exportPayrollExcel(year: number, month: number) {
   const { getSession } = await import('next-auth/react')
   const session = await getSession()
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api'
-  const res = await fetch(`${base}/payroll/export.xlsx?year=${year}&month=${month}`, {
+  const res = await fetch(`/api/payroll/export.xlsx?year=${year}&month=${month}`, {
     headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
   })
   if (!res.ok) throw new Error('Không thể xuất Excel')

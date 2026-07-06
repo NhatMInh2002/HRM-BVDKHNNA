@@ -1,9 +1,11 @@
 package vn.hrm.app.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -16,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import vn.hrm.app.auth.JwtAuthFilter;
+import vn.hrm.shared.dto.ApiResponse;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,6 +30,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
@@ -42,6 +46,11 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) ->
+                    writeJsonError(response, 401, "UNAUTHORIZED", "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại"))
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                    writeJsonError(response, 403, "FORBIDDEN", "Bạn không có quyền thực hiện thao tác này")))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
                 auth.requestMatchers("/auth/login", "/auth/2fa/verify-login").permitAll();
@@ -54,6 +63,13 @@ public class SecurityConfig {
             })
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    private void writeJsonError(jakarta.servlet.http.HttpServletResponse response,
+                                 int status, String errorCode, String message) throws java.io.IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.error(errorCode, message)));
     }
 
     @Bean

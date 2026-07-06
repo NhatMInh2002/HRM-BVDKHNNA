@@ -32,6 +32,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   const json = await res.json().catch(() => ({ message: res.statusText }))
 
+  if (res.status === 401 && typeof window !== 'undefined') {
+    const { signOut } = await import('next-auth/react')
+    await signOut({ callbackUrl: '/login' })
+    throw new Error(json.message ?? 'Phiên đăng nhập đã hết hạn')
+  }
+
   if (!res.ok) {
     throw new Error(json.message ?? `HTTP ${res.status}`)
   }
