@@ -158,6 +158,30 @@ export function terminateEmployee(id: string) {
   return apiFetch<void>(`/personnel/employees/${id}/terminate`, { method: 'DELETE' })
 }
 
+export async function exportEmployeesExcel(params: {
+  keyword?: string
+  status?: EmployeeStatus | ''
+  departmentId?: string
+}) {
+  const { getSession } = await import('next-auth/react')
+  const session = await getSession()
+  const q = new URLSearchParams()
+  if (params.keyword) q.set('keyword', params.keyword)
+  if (params.status) q.set('status', params.status)
+  if (params.departmentId) q.set('departmentId', params.departmentId)
+  const res = await fetch(`/api/personnel/employees/export.xlsx?${q}`, {
+    headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
+  })
+  if (!res.ok) throw new Error('Không thể xuất Excel')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'danh-sach-nhan-vien.xlsx'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ── Kiêm nhiệm khoa/phòng khác ───────────────────────────────────────────────
 
 export type ConcurrentRoleType = 'BS_DS' | 'DD_KTV'

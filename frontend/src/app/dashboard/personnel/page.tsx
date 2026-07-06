@@ -5,6 +5,7 @@ import {
   searchEmployees,
   getDepartments,
   terminateEmployee,
+  exportEmployeesExcel,
   STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
   type EmployeeStatus,
@@ -34,6 +35,18 @@ export default function PersonnelPage() {
   const [page, setPage] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await exportEmployeesExcel({ keyword, status, departmentId })
+    } catch (e) {
+      alert((e as Error).message)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
@@ -102,8 +115,12 @@ export default function PersonnelPage() {
             >
               + Thêm
             </button>
-            <button className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded transition-colors opacity-50 cursor-not-allowed" disabled>
-              ↓ Xuất Excel
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {exporting ? 'Đang xuất...' : '↓ Xuất Excel'}
             </button>
           </div>
         )}
