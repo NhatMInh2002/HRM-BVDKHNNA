@@ -1,34 +1,50 @@
 # HRM Testing Strategy — BVHN Đa khoa Nghệ An
 
-> Tài liệu này định nghĩa chiến lược kiểm thử toàn hệ thống HRM.  
-> Cập nhật lần cuối: 2026-06-24
+> Tài liệu này định nghĩa chiến lược kiểm thử toàn hệ thống HRM.
+> Cập nhật lần cuối: 2026-07-06
 
 ---
 
-## 1. Tổng quan
+## 📊 Nhìn nhanh (Dashboard)
 
-### Mức độ ưu tiên
-| Module | Mức độ rủi ro | Ưu tiên test |
-|---|---|---|
-| Auth / Phân quyền | Cao (bảo mật) | P0 |
-| Nhân sự — CRUD | Cao (dữ liệu gốc) | P0 |
-| Bảng lương — Tính toán | Cao (tài chính) | P0 |
-| Chấm công | Trung bình | P1 |
-| Phòng ban / Danh mục | Thấp | P2 |
-| UI / Dashboard | Thấp | P2 |
+| Module | Rủi ro | Ưu tiên | Unit | Integration | Frontend | E2E | Coverage hiện tại |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|---|
+| 🔐 Auth / Phân quyền | 🔴 Cao | **P0** | 4 case | 4 case | — | 1 case | `░░░░░░░░░░` 0% |
+| 👤 Nhân sự — CRUD | 🔴 Cao | **P0** | 9 case | 9 case | 7 case | 2 case | `░░░░░░░░░░` 0% |
+| 💰 Bảng lương | 🔴 Cao | **P0** | 10 case | 5 case | — | 1 case | `░░░░░░░░░░` 0% |
+| 🕐 Chấm công / Nghỉ phép | 🟡 T.bình | P1 | 11 case | — | — | 1 case | `░░░░░░░░░░` 0% |
+| 🏢 Phòng ban / Danh mục | 🟢 Thấp | P2 | — | 4 case | — | — | `░░░░░░░░░░` 0% |
+| 🛡️ Bảo mật | 🔴 Cao | P1 | — | 6 case | — | — | `░░░░░░░░░░` 0% |
+
+> Toàn bộ test case bên dưới **chưa được viết** — bảng trên phản ánh kế hoạch, không phải trạng thái đã hoàn thành. Xem [§8 Coverage Targets](#8-coverage-targets) để biết mục tiêu cụ thể.
 
 ### Kim tự tháp kiểm thử
+
+```mermaid
+pie showData
+    title Tỷ lệ test theo tầng (mục tiêu)
+    "Unit — logic nghiệp vụ độc lập" : 60
+    "Integration — API + DB thực tế" : 30
+    "E2E — luồng nghiệp vụ quan trọng" : 10
 ```
-         /   E2E (Playwright)   \      ~10% — luồng nghiệp vụ quan trọng
-        /   Integration Tests    \     ~30% — API + DB thực tế
-       /     Unit Tests           \    ~60% — logic nghiệp vụ độc lập
+
+```mermaid
+flowchart TD
+    E2E["🎭 E2E — Playwright<br/>~10% · chậm, đắt, ít nhất"]
+    INT["🔗 Integration — API + DB thật<br/>~30% · vừa phải"]
+    UNIT["⚙️ Unit — logic độc lập<br/>~60% · nhanh, rẻ, nhiều nhất"]
+    E2E --> INT --> UNIT
+    style E2E fill:#fca5a5,stroke:#b91c1c,color:#7f1d1d
+    style INT fill:#fde68a,stroke:#b45309,color:#78350f
+    style UNIT fill:#bbf7d0,stroke:#15803d,color:#14532d
 ```
 
 ---
 
-## 2. Module Auth (P0)
+## 🔐 1. Module Auth (P0)
 
-### 2.1 Unit Tests — `auth.ts` (NextAuth credentials callback)
+<details>
+<summary><b>1.1 Unit Tests</b> — <code>auth.ts</code> (NextAuth credentials callback) — 4 case</summary>
 
 > Hệ thống dùng JWT tự quản lý (`POST /api/auth/login` email+password → JwtService ký token), không có IdP ngoài hay refresh-token flow.
 
@@ -37,9 +53,12 @@
 | AUTH-U01 | Parse role từ response login | Backend trả `role: "ADMIN"` | `session.roles = ["ADMIN"]` |
 | AUTH-U02 | Fallback khi login thất bại | Backend trả lỗi (sai mật khẩu) | `session = null`, hiện lỗi ở form |
 | AUTH-U03 | Token còn hạn | JWT chưa hết hạn | `apiFetch` dùng token hiện tại |
-| AUTH-U04 | Token hết hạn | JWT hết hạn (mặc định theo `JwtService`) | API trả 401, frontend buộc đăng nhập lại (không có auto-refresh) |
+| AUTH-U04 | Token hết hạn | JWT hết hạn (mặc định theo `JwtService`) | API trả 401, frontend tự `signOut` + redirect `/login` |
 
-### 2.2 Integration Tests — Login flow (JWT nội bộ)
+</details>
+
+<details>
+<summary><b>1.2 Integration Tests</b> — Login flow (JWT nội bộ) — 4 case</summary>
 
 | ID | Test case | Steps | Expected |
 |---|---|---|---|
@@ -48,11 +67,14 @@
 | AUTH-I03 | Sai mật khẩu | Submit sai password | Hiện lỗi "Mật khẩu không đúng", không tạo session |
 | AUTH-I04 | Đăng xuất | Click "Đăng xuất" (`signOut`) | Session bị xóa, redirect `/login` |
 
+</details>
+
 ---
 
-## 3. Module Nhân sự (P0)
+## 👤 2. Module Nhân sự (P0)
 
-### 3.1 Unit Tests — `EmployeeService.java`
+<details open>
+<summary><b>2.1 Unit Tests</b> — <code>EmployeeService.java</code> — 9 case</summary>
 
 | ID | Test case | Input | Expected |
 |---|---|---|---|
@@ -66,7 +88,10 @@
 | EMP-U08 | Phân trang | page=0, size=20 | Trả đúng 20 record, totalPages chính xác |
 | EMP-U09 | Filter status TERMINATED | status=TERMINATED | Chỉ trả nhân viên đã nghỉ |
 
-### 3.2 Integration Tests — REST API `/api/personnel/employees`
+</details>
+
+<details>
+<summary><b>2.2 Integration Tests</b> — REST API <code>/api/personnel/employees</code> — 9 case</summary>
 
 | ID | Test case | Request | Expected |
 |---|---|---|---|
@@ -80,7 +105,10 @@
 | EMP-I08 | DELETE (soft) | ID nhân viên ACTIVE | 200, status=TERMINATED |
 | EMP-I09 | Tìm kiếm full-text | `keyword=Nguyen` | 200, kết quả phù hợp |
 
-### 3.3 Frontend Component Tests
+</details>
+
+<details>
+<summary><b>2.3 Frontend Component Tests</b> — 7 case</summary>
 
 | ID | Test case | Expected |
 |---|---|---|
@@ -92,11 +120,14 @@
 | EMP-F06 | Filter theo phòng ban | Dropdown chọn phòng → gọi API với `departmentId` |
 | EMP-F07 | Nút "Nghỉ việc" hiện confirm | Confirm dialog xuất hiện trước khi gọi API |
 
+</details>
+
 ---
 
-## 4. Module Chấm công (P1)
+## 🕐 3. Module Chấm công & Nghỉ phép (P1)
 
-### 4.1 Unit Tests — `AttendanceService.java`
+<details>
+<summary><b>3.1 Unit Tests</b> — <code>AttendanceService.java</code> — 6 case</summary>
 
 | ID | Test case | Input | Expected |
 |---|---|---|---|
@@ -107,7 +138,10 @@
 | ATT-U05 | Tính workingMinutes chính xác | checkIn=08:00, checkOut=17:00 | `workingMinutes = 540` |
 | ATT-U06 | Lấy lịch sử theo tháng | employeeId, month=2026-06 | Trả đúng records của tháng |
 
-### 4.2 Unit Tests — `LeaveService.java`
+</details>
+
+<details>
+<summary><b>3.2 Unit Tests</b> — <code>LeaveService.java</code> — 5 case</summary>
 
 | ID | Test case | Input | Expected |
 |---|---|---|---|
@@ -117,11 +151,14 @@
 | LEA-U04 | Từ chối đơn nghỉ | PENDING → REJECTED | status=REJECTED, lý do lưu lại |
 | LEA-U05 | Duyệt đơn không phải PENDING | status=APPROVED | Throw exception |
 
+</details>
+
 ---
 
-## 5. Module Bảng lương (P0)
+## 💰 4. Module Bảng lương (P0 — quan trọng nhất)
 
-### 5.1 Unit Tests — `PayrollService.java` — **Quan trọng nhất**
+<details open>
+<summary><b>4.1 Unit Tests</b> — <code>PayrollService.java</code> — 10 case ⭐</summary>
 
 | ID | Test case | Input | Expected |
 |---|---|---|---|
@@ -136,7 +173,10 @@
 | PAY-U09 | Tạo payroll khi đã tồn tại tháng đó | Tháng/nhân viên đã có record | Throw "Đã tồn tại bảng lương" |
 | PAY-U10 | Generate batch cho cả phòng | departmentId, month | Tạo record cho tất cả nhân viên ACTIVE |
 
-### 5.2 Integration Tests — REST API `/api/payroll`
+</details>
+
+<details>
+<summary><b>4.2 Integration Tests</b> — REST API <code>/api/payroll</code> — 5 case</summary>
 
 | ID | Test case | Request | Expected |
 |---|---|---|---|
@@ -146,9 +186,14 @@
 | PAY-I04 | Lương tháng chưa có dữ liệu chấm công | month=2099-01 | 200 nhưng workingDays=0 hoặc báo warning |
 | PAY-I05 | Truy cập không có quyền | Token role=VIEWER | 403 |
 
+</details>
+
 ---
 
-## 6. Module Phòng ban / Danh mục (P2)
+## 🏢 5. Module Phòng ban / Danh mục (P2)
+
+<details>
+<summary><b>5.1 Integration Tests</b> — 4 case</summary>
 
 | ID | Test case | Expected |
 |---|---|---|
@@ -157,11 +202,20 @@
 | DEPT-I03 | GRP nodes có children | GRP-KHOA chứa các K- departments |
 | DEPT-I04 | DV-001/002/003 đúng parent | DV-001.parentId = GRP-TRUNGTAM |
 
+</details>
+
 ---
 
-## 7. E2E Tests — Playwright (P1)
+## 🎭 6. E2E Tests — Playwright (P1)
 
-### Luồng nghiệp vụ quan trọng
+```mermaid
+flowchart LR
+    A[🔑 Login] --> B[👤 Thêm nhân viên]
+    A --> C[🔍 Tìm kiếm]
+    A --> D[🕐 Chấm công → 💰 Tính lương]
+    A --> E[🚪 Đăng xuất]
+    A --> F[⏳ Token hết hạn]
+```
 
 | ID | Scenario | Steps | Expected |
 |---|---|---|---|
@@ -169,37 +223,39 @@
 | E2E-02 | Tìm kiếm nhân viên | Nhập tên vào ô tìm → Bấm Tìm | Kết quả lọc đúng |
 | E2E-03 | Chấm công → Tính lương | Check-in/out → Generate payroll tháng | Lương phản ánh ngày công đúng |
 | E2E-04 | Đăng xuất | Bấm Đăng xuất | Redirect `/login`, session xóa |
-| E2E-05 | Token hết hạn mid-session | Giả lập token expire | Tự refresh, không bị logout |
+| E2E-05 | Token hết hạn mid-session | Giả lập token expire | 401 → tự `signOut` + redirect `/login` (không auto-refresh) |
 
 ---
 
-## 8. Bảo mật (Security Tests)
+## 🛡️ 7. Bảo mật (Security Tests) — P1
 
-| ID | Test case | Expected |
-|---|---|---|
-| SEC-01 | API không có token | 401 mọi endpoint trừ `/actuator/health` |
-| SEC-02 | Token giả mạo | 401 |
-| SEC-03 | CORS — origin không hợp lệ | Blocked |
-| SEC-04 | SQL injection trong search | Input `'; DROP TABLE--` | 400 hoặc empty result, không lỗi DB |
+| ID | Test case | Input | Expected |
+|---|---|---|---|
+| SEC-01 | API không có token | — | 401 mọi endpoint trừ `/actuator/health` |
+| SEC-02 | Token giả mạo | — | 401 |
+| SEC-03 | CORS — origin không hợp lệ | — | Blocked |
+| SEC-04 | SQL injection trong search | `'; DROP TABLE--` | 400 hoặc empty result, không lỗi DB |
 | SEC-05 | XSS trong fullName | `<script>alert(1)</script>` | Escaped khi hiển thị trên UI |
-| SEC-06 | Truy cập dữ liệu nhân viên khác phòng | DEPARTMENT_MANAGER phòng A đọc phòng B | 403 (Phase 2) |
+| SEC-06 | Truy cập dữ liệu nhân viên khác phòng | DEPARTMENT_MANAGER phòng A đọc phòng B | 403 |
 
 ---
 
-## 9. Coverage Targets
+## 8. Coverage Targets
 
-| Layer | Target | Hiện tại |
-|---|---|---|
-| Backend Unit (JUnit) | ≥ 70% line coverage | 0% — chưa có |
-| Backend Integration | P0 endpoints 100% | 0% — chưa có |
-| Frontend Component | P0 components ≥ 60% | 0% — chưa có |
-| E2E | 5 luồng chính | 0% — chưa có |
+| Layer | Target | Hiện tại | |
+|---|---|---|---|
+| Backend Unit (JUnit) | ≥ 70% line coverage | 0% | `░░░░░░░░░░` |
+| Backend Integration | P0 endpoints 100% | 0% | `░░░░░░░░░░` |
+| Frontend Component | P0 components ≥ 60% | 0% | `░░░░░░░░░░` |
+| E2E | 5 luồng chính | 0% | `░░░░░░░░░░` |
 
 ---
 
-## 10. Công cụ & Setup
+## 9. Công cụ & Setup
 
-### Backend
+<details>
+<summary><b>Backend</b> — JUnit + H2</summary>
+
 ```xml
 <!-- pom.xml -->
 <dependency>
@@ -215,13 +271,21 @@
 </dependency>
 ```
 
-### Frontend
+</details>
+
+<details>
+<summary><b>Frontend</b> — Vitest + Testing Library + Playwright</summary>
+
 ```bash
 npm install -D @testing-library/react @testing-library/jest-dom vitest
 npm install -D @playwright/test  # E2E
 ```
 
-### Chạy tests
+</details>
+
+<details>
+<summary><b>Chạy tests</b></summary>
+
 ```bash
 # Backend unit + integration
 cd backend && mvn test
@@ -233,11 +297,21 @@ cd frontend && npm test
 cd frontend && npx playwright test
 ```
 
+</details>
+
 ---
 
-## 11. Thứ tự ưu tiên triển khai
+## 10. Lộ trình triển khai
 
-1. **Sprint hiện tại**: `PayrollService` unit tests (PAY-U01..U10) — tài chính, rủi ro cao nhất
-2. **Sprint tiếp theo**: Auth integration tests (AUTH-I01..I04) + Employee API tests (EMP-I01..I09)
-3. **Sau đó**: E2E Playwright cho 5 luồng chính
-4. **Phase 2**: Security tests khi RBAC hoàn thiện
+```mermaid
+flowchart LR
+    S1["1️⃣ Sprint hiện tại<br/>PayrollService unit tests<br/>(PAY-U01..U10)<br/>💰 rủi ro tài chính cao nhất"]
+    S2["2️⃣ Sprint tiếp theo<br/>Auth + Employee integration<br/>(AUTH-I01..I04, EMP-I01..I09)"]
+    S3["3️⃣ Sau đó<br/>E2E Playwright<br/>5 luồng chính"]
+    S4["4️⃣ Phase 2<br/>Security tests<br/>khi RBAC hoàn thiện"]
+    S1 --> S2 --> S3 --> S4
+    style S1 fill:#fca5a5,stroke:#b91c1c,color:#7f1d1d
+    style S2 fill:#fde68a,stroke:#b45309,color:#78350f
+    style S3 fill:#bfdbfe,stroke:#1d4ed8,color:#1e3a8a
+    style S4 fill:#e5e7eb,stroke:#4b5563,color:#1f2937
+```
