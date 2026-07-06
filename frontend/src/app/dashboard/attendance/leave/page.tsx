@@ -11,6 +11,7 @@ import {
   deptRejectLeave,
   hrApproveLeave,
   hrRejectLeave,
+  demoVgcaSign,
   LEAVE_TYPE_LABELS,
   LEAVE_STATUS_LABELS,
   type LeaveRequest,
@@ -116,6 +117,13 @@ export default function LeavePage() {
   const hrRejectMut = useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) => hrRejectLeave(id, note),
     onSuccess: () => { invalidateLeaveQueries(); setRejectTarget(null) },
+  })
+
+  // Ký số VGCA — DEMO, xem ghi chú trong lib/attendance.ts (demoVgcaSign)
+  const demoSignMut = useMutation({
+    mutationFn: ({ id, stage }: { id: string; stage: 'dept' | 'hr' }) => demoVgcaSign(id, stage),
+    onSuccess: invalidateLeaveQueries,
+    onError: (e: Error) => alert(e.message),
   })
 
   const rows = tab === 'my' ? myRequests : tab === 'dept' ? deptRequests : hrRequests
@@ -271,6 +279,15 @@ export default function LeavePage() {
                         <CheckIcon /> Duyệt
                       </button>
                       <button
+                        title="Giả lập ký số VGCA để test — KHÔNG phải chữ ký số thật. Yêu cầu backend VGCA_ENABLED=true."
+                        disabled={demoSignMut.isPending}
+                        onClick={() => demoSignMut.mutate({ id: r.id, stage: tab as 'dept' | 'hr' })}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all disabled:opacity-50"
+                      >
+                        <SignIcon /> {demoSignMut.isPending ? 'Đang ký...' : 'Ký (Demo)'}
+                      </button>
+                      <button
                         onClick={() => { setRejectTarget({ id: r.id, level: tab as 'dept' | 'hr' }); setRejectNote('') }}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
                           bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-400 transition-all"
@@ -393,6 +410,15 @@ function CheckIcon() {
   return (
     <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+    </svg>
+  )
+}
+
+function SignIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M15.232 5.232l3.536 3.536M9 11l6.586-6.586a2 2 0 112.828 2.828L11.828 13.83a4 4 0 01-1.687 1.006l-2.517.71.71-2.517a4 4 0 011.006-1.687zM3 21h18"/>
     </svg>
   )
 }

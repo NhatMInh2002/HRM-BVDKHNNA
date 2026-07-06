@@ -230,3 +230,34 @@ export const hrRejectLeave = (id: string, note?: string) =>
     method: 'POST',
     body: JSON.stringify({ note }),
   })
+
+// ── Ký số VGCA — DEMO ────────────────────────────────────────────────────
+// Giả lập vai trò tool VGCASignService (chạy trên máy người ký thật, ngoài
+// trình duyệt) ngay trong trình duyệt, để test luồng ký số khi CHƯA có tool
+// ký thật. Chỉ hoạt động khi backend bật VGCA_ENABLED=true — nếu không,
+// dept-sign-init/hr-sign-init không tồn tại (404).
+// KHÔNG PHẢI CHỮ KÝ SỐ THẬT.
+export async function demoVgcaSign(id: string, stage: 'dept' | 'hr') {
+  let init: { sourceUrl: string; uploadHandler: string }
+  try {
+    init = await apiFetch<{ sourceUrl: string; uploadHandler: string }>(
+      `/attendance/leave/${id}/${stage}-sign-init`, { method: 'POST' }
+    )
+  } catch (e) {
+    throw new Error(
+      `Không khởi tạo được phiên ký — kiểm tra VGCA_ENABLED=true trên backend chưa, ` +
+      `hoặc trạng thái đơn/quyền tài khoản có đúng không. (${(e as Error).message})`
+    )
+  }
+
+  const sourceRes = await fetch(init.sourceUrl)
+  if (!sourceRes.ok) throw new Error('Không tải được văn bản nguồn để ký')
+  const blob = await sourceRes.blob()
+
+  const form = new FormData()
+  form.append('uploadfile', blob, 'don-nghi-phep.pdf')
+  const uploadRes = await fetch(init.uploadHandler, { method: 'POST', body: form })
+  const result = await uploadRes.json().catch(() => ({}))
+  if (!result.Status) throw new Error(result.Message || 'Ký thất bại')
+  return result
+}
