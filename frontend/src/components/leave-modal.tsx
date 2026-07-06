@@ -14,6 +14,7 @@ import {
 } from '@/lib/attendance'
 import { useCurrentEmployee } from '@/hooks/useCurrentEmployee'
 import { apiFetch } from '@/lib/api'
+import { DateInput } from '@/components/ui/date-input'
 
 const ALL_LEAVE_TYPES = Object.keys(LEAVE_TYPE_META) as LeaveType[]
 
@@ -173,13 +174,13 @@ export function LeaveModal({ open, onClose }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Từ ngày *</label>
-              <input {...register('startDate')} type="date"
+              <DateInput {...register('startDate')} value={watchedStart}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate.message}</p>}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Đến ngày *</label>
-              <input {...register('endDate')} type="date"
+              <DateInput {...register('endDate')} value={watchedEnd}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate.message}</p>}
             </div>
