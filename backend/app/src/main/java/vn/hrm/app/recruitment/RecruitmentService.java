@@ -21,12 +21,11 @@ public class RecruitmentService {
 
     // ── Job Postings ─────────────────────────────────────────────────────────
 
-    public List<Map<String, Object>> listPostings(String status) {
-        String statusFilter = "ALL".equalsIgnoreCase(status) ? "" : "AND jp.status = ?";
-        Object[] params = "ALL".equalsIgnoreCase(status) ? new Object[]{} : new Object[]{status};
-        return jdbc.queryForList("""
+    public List<Map<String, Object>> listPostings(String status, String recruitmentType) {
+        StringBuilder sql = new StringBuilder("""
             SELECT jp.id, jp.title, jp.position, jp.quantity, jp.salary_range,
                    jp.deadline, jp.status, jp.created_at,
+                   jp.recruitment_type, jp.work_category, jp.contract_duration_months,
                    d.name  AS dept_name,
                    d.code  AS dept_code,
                    (SELECT COUNT(*) FROM recruitment.candidates c WHERE c.job_posting_id = jp.id) AS candidate_count,
@@ -34,9 +33,18 @@ public class RecruitmentService {
             FROM recruitment.job_postings jp
             LEFT JOIN personnel.departments d ON d.id = jp.department_id
             WHERE 1=1
-            """ + statusFilter + """
-            ORDER BY jp.created_at DESC
-        """, params);
+        """);
+        List<Object> params = new java.util.ArrayList<>();
+        if (!"ALL".equalsIgnoreCase(status)) {
+            sql.append(" AND jp.status = ?");
+            params.add(status);
+        }
+        if (recruitmentType != null && !recruitmentType.isBlank() && !"ALL".equalsIgnoreCase(recruitmentType)) {
+            sql.append(" AND jp.recruitment_type = ?");
+            params.add(recruitmentType);
+        }
+        sql.append(" ORDER BY jp.created_at DESC");
+        return jdbc.queryForList(sql.toString(), params.toArray());
     }
 
     public Map<String, Object> getPosting(String id) {
@@ -51,10 +59,16 @@ public class RecruitmentService {
     public Map<String, Object> createPosting(Map<String, Object> body, String createdBy) {
         String newId = UUID.randomUUID().toString();
         String deptId = str(body.get("departmentId"));
+        String recruitmentType = str(body.getOrDefault("recruitmentType", "VIEN_CHUC"));
+        String workCategory = str(body.get("workCategory"));
+        Object durationRaw = body.get("contractDurationMonths");
+        Integer contractDurationMonths = (durationRaw == null || str(durationRaw).isBlank())
+                ? null : intVal(durationRaw, 0);
         jdbc.update("""
             INSERT INTO recruitment.job_postings
-                (id, title, department_id, quantity, position, description, requirements, benefits, salary_range, deadline, status, created_by)
-            VALUES (?::UUID, ?, ?::UUID, ?, ?, ?, ?, ?, ?, ?::DATE, ?, ?)
+                (id, title, department_id, quantity, position, description, requirements, benefits, salary_range, deadline, status,
+                 recruitment_type, work_category, contract_duration_months, created_by)
+            VALUES (?::UUID, ?, ?::UUID, ?, ?, ?, ?, ?, ?, ?::DATE, ?, ?, ?, ?, ?)
         """,
             newId,
             str(body.get("title")),
@@ -67,6 +81,9 @@ public class RecruitmentService {
             str(body.get("salaryRange")),
             str(body.get("deadline")),
             str(body.getOrDefault("status", "DRAFT")),
+            recruitmentType,
+            workCategory.isBlank() ? null : workCategory,
+            contractDurationMonths,
             createdBy
         );
         return Map.of("id", newId);

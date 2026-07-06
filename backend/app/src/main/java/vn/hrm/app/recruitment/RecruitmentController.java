@@ -23,8 +23,9 @@ public class RecruitmentController {
     @GetMapping("/postings")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listPostings(
-            @RequestParam(defaultValue = "OPEN") String status) {
-        return ResponseEntity.ok(ApiResponse.ok(svc.listPostings(status)));
+            @RequestParam(defaultValue = "OPEN") String status,
+            @RequestParam(required = false) String recruitmentType) {
+        return ResponseEntity.ok(ApiResponse.ok(svc.listPostings(status, recruitmentType)));
     }
 
     @GetMapping("/postings/{id}")

@@ -22,6 +22,9 @@ interface JobPosting {
   candidateCount: number
   activeCandidates: number
   createdAt: string
+  recruitmentType: 'VIEN_CHUC' | 'HOP_DONG'
+  workCategory: string | null
+  contractDurationMonths: number | null
 }
 
 interface Candidate {
@@ -67,10 +70,26 @@ const SOURCE_LABELS: Record<string, string> = {
   OTHER: 'Khác',
 }
 
+const RECRUITMENT_TYPE_LABELS: Record<string, string> = {
+  VIEN_CHUC: 'Viên chức',
+  HOP_DONG: 'Hợp đồng',
+}
+const RECRUITMENT_TYPE_COLORS: Record<string, string> = {
+  VIEN_CHUC: 'bg-indigo-100 text-indigo-700',
+  HOP_DONG: 'bg-orange-100 text-orange-700',
+}
+const WORK_CATEGORY_LABELS: Record<string, string> = {
+  VTVL_MANAGEMENT: 'VTVL — Quản lý',
+  VTVL_PROFESSIONAL: 'VTVL — Chuyên môn, nghiệp vụ',
+  VTVL_SUPPORT: 'VTVL — Hỗ trợ',
+  SERVICE_DRIVER_SECURITY: 'Phục vụ — Lái xe, bảo vệ',
+  SERVICE_OTHER: 'Phục vụ — Khác',
+}
+
 // ── API helpers ────────────────────────────────────────────────────────────
 
-const fetchPostings = (status: string) =>
-  apiFetch<JobPosting[]>(`/recruitment/postings?status=${status}`)
+const fetchPostings = (status: string, recruitmentType: string) =>
+  apiFetch<JobPosting[]>(`/recruitment/postings?status=${status}${recruitmentType !== 'ALL' ? `&recruitmentType=${recruitmentType}` : ''}`)
 const fetchCandidates = (postingId?: string) =>
   apiFetch<Candidate[]>(`/recruitment/candidates${postingId ? `?postingId=${postingId}` : ''}`)
 const fetchStats = () => apiFetch<Record<string, Record<string, number>>>('/recruitment/stats')
@@ -82,6 +101,7 @@ export default function RecruitmentPage() {
   const [tab, setTab] = useState<'postings' | 'pipeline'>('postings')
   const [selectedPosting, setSelectedPosting] = useState<string | null>(null)
   const [postingStatusFilter, setPostingStatusFilter] = useState('OPEN')
+  const [postingTypeFilter, setPostingTypeFilter] = useState('ALL')
   const [showNewPosting, setShowNewPosting] = useState(false)
   const [showNewCandidate, setShowNewCandidate] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
@@ -90,8 +110,8 @@ export default function RecruitmentPage() {
 
   const { data: stats } = useQuery({ queryKey: ['recruitment-stats'], queryFn: fetchStats })
   const { data: postings = [] } = useQuery({
-    queryKey: ['postings', postingStatusFilter],
-    queryFn: () => fetchPostings(postingStatusFilter),
+    queryKey: ['postings', postingStatusFilter, postingTypeFilter],
+    queryFn: () => fetchPostings(postingStatusFilter, postingTypeFilter),
   })
   const { data: candidates = [] } = useQuery({
     queryKey: ['candidates', selectedPosting],
@@ -166,7 +186,7 @@ export default function RecruitmentPage() {
       {/* ── Tab: Tin tuyển dụng ── */}
       {tab === 'postings' && (
         <div>
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             {['OPEN', 'DRAFT', 'CLOSED', 'ALL'].map(s => (
               <button
                 key={s}
@@ -178,6 +198,20 @@ export default function RecruitmentPage() {
                 }`}
               >
                 {s === 'OPEN' ? 'Đang mở' : s === 'DRAFT' ? 'Nháp' : s === 'CLOSED' ? 'Đã đóng' : 'Tất cả'}
+              </button>
+            ))}
+            <span className="w-px h-4 bg-gray-300 mx-1" />
+            {['ALL', 'VIEN_CHUC', 'HOP_DONG'].map(t => (
+              <button
+                key={t}
+                onClick={() => setPostingTypeFilter(t)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  postingTypeFilter === t
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                }`}
+              >
+                {t === 'ALL' ? 'Tất cả loại' : RECRUITMENT_TYPE_LABELS[t]}
               </button>
             ))}
           </div>
@@ -192,6 +226,9 @@ export default function RecruitmentPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <h3 className="font-semibold text-gray-900">{p.title}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${RECRUITMENT_TYPE_COLORS[p.recruitment_type] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {RECRUITMENT_TYPE_LABELS[p.recruitment_type] ?? p.recruitment_type}
+                      </span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         p.status === 'OPEN' ? 'bg-green-100 text-green-700'
                         : p.status === 'DRAFT' ? 'bg-gray-100 text-gray-600'
@@ -202,6 +239,12 @@ export default function RecruitmentPage() {
                       <span>🏢 {p.dept_name || 'Chưa phân phòng'}</span>
                       <span>👥 Cần: {p.quantity} người</span>
                       {p.salary_range && <span>💰 {p.salary_range}</span>}
+                      {p.recruitment_type === 'HOP_DONG' && p.work_category && (
+                        <span>📄 {WORK_CATEGORY_LABELS[p.work_category] ?? p.work_category}</span>
+                      )}
+                      {p.recruitment_type === 'HOP_DONG' && p.contract_duration_months && (
+                        <span>⏳ {p.contract_duration_months} tháng</span>
+                      )}
                       {p.deadline && (
                         <span className={new Date(p.deadline) < new Date() ? 'text-red-500' : ''}>
                           📅 Hạn: {new Date(p.deadline).toLocaleDateString('vi-VN')}
@@ -376,6 +419,7 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
     title: '', position: '', quantity: '1', departmentId: '',
     description: '', requirements: '', benefits: '',
     salaryRange: '', deadline: '', status: 'OPEN',
+    recruitmentType: 'VIEN_CHUC', workCategory: '', contractDurationMonths: '',
   })
   const [activeSection, setActiveSection] = useState<'description' | 'requirements' | 'benefits'>('description')
   const [loading, setLoading] = useState(false)
@@ -424,6 +468,43 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 placeholder="VD: Điều dưỡng hạng III — Khoa Ngoại"
               />
             </Field>
+
+            <Field label="Loại tuyển dụng *">
+              <select
+                value={form.recruitmentType}
+                onChange={e => setForm(f => ({ ...f, recruitmentType: e.target.value, workCategory: '', contractDurationMonths: '' }))}
+                className={inputCls}
+              >
+                <option value="VIEN_CHUC">Viên chức (thi/xét tuyển)</option>
+                <option value="HOP_DONG">Hợp đồng công việc</option>
+              </select>
+            </Field>
+
+            {form.recruitmentType === 'HOP_DONG' && (
+              <>
+                <Field label="Loại công việc (NĐ 235/2026)">
+                  <select
+                    value={form.workCategory}
+                    onChange={e => setForm(f => ({ ...f, workCategory: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="">Chưa chọn</option>
+                    {Object.entries(WORK_CATEGORY_LABELS).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Thời hạn hợp đồng (tháng)">
+                  <input
+                    type="number" min={1}
+                    value={form.contractDurationMonths}
+                    onChange={e => setForm(f => ({ ...f, contractDurationMonths: e.target.value }))}
+                    className={inputCls}
+                    placeholder="VD: 12"
+                  />
+                </Field>
+              </>
+            )}
 
             <Field label="Vị trí tuyển dụng">
               <input
@@ -489,6 +570,9 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
             {form.title && (
               <div className="mt-4 p-3 bg-white border border-blue-200 rounded-xl text-xs text-gray-600 space-y-1">
                 <div className="font-semibold text-gray-900 text-sm leading-tight">{form.title}</div>
+                <span className={`inline-block px-2 py-0.5 rounded-full font-medium ${RECRUITMENT_TYPE_COLORS[form.recruitmentType]}`}>
+                  {RECRUITMENT_TYPE_LABELS[form.recruitmentType]}
+                </span>
                 {form.position && <div>🏥 {form.position}</div>}
                 {form.quantity && <div>👥 Cần: {form.quantity} người</div>}
                 {form.salaryRange && <div>💰 {form.salaryRange}</div>}
