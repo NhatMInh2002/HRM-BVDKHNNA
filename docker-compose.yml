@@ -18,12 +18,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    mem_limit: 1g
+    mem_reservation: 512m
 
   # ── Redis ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: hrm-redis
     restart: unless-stopped
+    # maxmemory khớp với mem_limit — để Redis tự evict key cũ (LRU) thay vì bị
+    # kernel OOM-kill khi chạm giới hạn container
+    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
@@ -32,6 +37,8 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       retries: 5
+    mem_limit: 256m
+    mem_reservation: 128m
 
   # ── MinIO (Object Storage) ─────────────────────────────────
   minio:
@@ -52,6 +59,8 @@ services:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       retries: 5
+    mem_limit: 512m
+    mem_reservation: 256m
 
   # ── OpenSearch ─────────────────────────────────────────────
   # Tắt cho đến khi implement full-text search (tốn 512MB RAM)
@@ -79,13 +88,25 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
+      LOG_PATH: /app/logs
+      # true chỉ bật 2 endpoint nội bộ /files/vgca-source + /files/vgca-upload —
+      # KHÔNG gọi ra dịch vụ Ban Cơ yếu Chính phủ nào, an toàn để bật khi test/dev.
+      # Dùng scripts/fake-vgca-sign.sh để giả lập tool ký khi chưa có VGCA thật.
+      VGCA_ENABLED: ${VGCA_ENABLED:-false}
+      # Heap tính theo % bộ nhớ container (mem_limit) thay vì số cố định —
+      # JVM (Java 21) tự nhận cgroup limit, không cần đổi khi tăng/giảm mem_limit
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"
     ports:
       - "8080:8080"
+    volumes:
+      - backend_logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    mem_limit: 1g
+    mem_reservation: 512m
 
   # ── pgAdmin (SQL Management UI) ───────────────────────────
   pgadmin:
@@ -99,6 +120,8 @@ services:
       - "5050:80"
     depends_on:
       - postgres
+    mem_limit: 256m
+    mem_reservation: 128m
 
   # ── Next.js Frontend ───────────────────────────────────────
   frontend:
@@ -119,6 +142,8 @@ services:
       - "4000:3000"
     depends_on:
       - backend
+    mem_limit: 512m
+    mem_reservation: 256m
 
   # ── Nginx (reverse proxy + TLS termination) ────────────────
   nginx:
@@ -134,8 +159,11 @@ services:
       - "443:443"
     depends_on:
       - frontend
+    mem_limit: 128m
+    mem_reservation: 64m
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  backend_logs:
