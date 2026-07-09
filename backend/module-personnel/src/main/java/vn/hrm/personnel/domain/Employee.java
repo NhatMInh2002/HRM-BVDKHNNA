@@ -38,8 +38,9 @@ public class Employee {
 
     private LocalDate dateOfBirth;
 
-    // CCCD — không log, mã hóa ở tầng DB
-    @Column(length = 12)
+    // CCCD — không log; mã hóa AES-GCM khi lưu (NĐ 13/2023)
+    @Convert(converter = vn.hrm.shared.crypto.EncryptedPiiConverter.class)
+    @Column(length = 255)
     private String nationalId;
 
     private LocalDate joinDate;

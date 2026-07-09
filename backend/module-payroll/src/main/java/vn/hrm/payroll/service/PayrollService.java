@@ -32,12 +32,8 @@ import java.util.UUID;
 public class PayrollService {
 
     // ── Hằng số theo quy định hiện hành ──────────────────────────────────────
-
-    /** Lương cơ sở từ 01/07/2026 — Nghị định (dự kiến) */
-    private static final BigDecimal LUONG_CO_SO = new BigDecimal("2530000");
-
-    /** Trần đóng BHXH/BHYT = 20 × lương cơ sở */
-    private static final BigDecimal MAX_BHXH_BHYT_BASE = LUONG_CO_SO.multiply(new BigDecimal("20")); // 50,600,000
+    // Lương cơ sở KHÔNG còn hard-code — tra theo ngày từ payroll.base_salary_configs
+    // (BaseSalaryService). Trần BHXH/BHYT = 20 × lương cơ sở, tính tại thời điểm kỳ lương.
 
     /**
      * Trần đóng BHTN = 20 × lương tối thiểu vùng.
@@ -72,6 +68,7 @@ public class PayrollService {
     private final SalaryConfigRepository salaryConfigRepo;
     private final SalaryIncrementConfigRepository salaryIncrementConfigRepo;
     private final PayrollRecordRepository payrollRecordRepo;
+    private final BaseSalaryService baseSalaryService;
     private final JdbcTemplate jdbc;
 
     // ── SalaryConfig ──────────────────────────────────────────────────────────
@@ -135,19 +132,25 @@ public class PayrollService {
                 .effectiveFrom(req.effectiveFrom())
                 .createdBy(actor)
                 .build();
-        return SalaryIncrementConfigResponse.from(salaryIncrementConfigRepo.save(cfg));
+        SalaryIncrementConfig saved = salaryIncrementConfigRepo.save(cfg);
+        return SalaryIncrementConfigResponse.from(saved,
+                baseSalaryService.getBaseSalary(saved.getEffectiveFrom()));
     }
 
     public List<SalaryIncrementConfigResponse> getSalaryIncrementHistory(UUID employeeId) {
         return salaryIncrementConfigRepo.findByEmployeeIdOrderByEffectiveFromDesc(employeeId)
-                .stream().map(SalaryIncrementConfigResponse::from).toList();
+                .stream()
+                .map(c -> SalaryIncrementConfigResponse.from(c,
+                        baseSalaryService.getBaseSalary(c.getEffectiveFrom())))
+                .toList();
     }
 
     public SalaryIncrementConfigResponse getCurrentSalaryIncrement(UUID employeeId) {
         return salaryIncrementConfigRepo
                 .findTopByEmployeeIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                         employeeId, LocalDate.now())
-                .map(SalaryIncrementConfigResponse::from)
+                .map(c -> SalaryIncrementConfigResponse.from(c,
+                        baseSalaryService.getBaseSalary(LocalDate.now())))
                 .orElseThrow(() -> new IllegalStateException("Chưa cấu hình lương tăng thêm cho nhân viên này"));
     }
 
@@ -201,6 +204,10 @@ public class PayrollService {
         short actualDays  = getActualDays(empId, year, month, workingDays);
         BigDecimal otHours = getOtHours(empId, year, month);
 
+        // Lương cơ sở & trần đóng bảo hiểm tại kỳ lương
+        BigDecimal luongCoSo = baseSalaryService.getBaseSalary(LocalDate.of(year, month, 1));
+        BigDecimal maxBhxhBhytBase = luongCoSo.multiply(new BigDecimal("20"));
+
         // ── 1. Lương cơ bản theo ngày thực tế ────────────────────────────────
         BigDecimal coeff    = orZero(cfg.getCoefficient()).compareTo(BigDecimal.ZERO) > 0
                               ? cfg.getCoefficient() : BigDecimal.ONE;
@@ -242,7 +249,7 @@ public class PayrollService {
 
         // Mức đóng BHXH/BHYT: tính trên basicPro (không gồm phụ cấp, không gồm toxic)
         BigDecimal bhxhBase = bhxhExempt ? BigDecimal.ZERO
-                : basicPro.min(MAX_BHXH_BHYT_BASE);
+                : basicPro.min(maxBhxhBhytBase);
         BigDecimal bhxh = bhxhBase.multiply(BHXH_EMP_RATE).setScale(0, RoundingMode.HALF_UP);
         BigDecimal bhyt = bhxhBase.multiply(BHYT_EMP_RATE).setScale(0, RoundingMode.HALF_UP);
 
