@@ -51,7 +51,12 @@ public class PayrollRecord {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal otPay;
 
-    /** Gross = basicSalary + totalAllowance + taxExemptAllowance + bonus + otPay */
+    /** Thu nhập tăng thêm (TNTT) — chịu thuế TNCN, KHÔNG tính đóng BHXH */
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal salaryIncrement = BigDecimal.ZERO;
+
+    /** Gross = basicSalary + totalAllowance + taxExemptAllowance + bonus + otPay + salaryIncrement */
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal grossSalary;
 

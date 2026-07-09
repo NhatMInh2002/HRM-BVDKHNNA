@@ -14,7 +14,7 @@ import {
 import { saveSalaryConfig, getSalaryHistory, SalaryConfig } from '@/lib/payroll'
 import { SearchSelect } from '@/components/search-select'
 import {
-  saveSalaryIncrementConfig, getSalaryIncrementHistory, getIncrementCoefficientOptions,
+  saveSalaryIncrementConfig, getSalaryIncrementHistory, getIncrementCoefficientOptions, approveSalaryIncrement,
   SalaryIncrementConfig, QualificationAdjustment, QUALIFICATION_ADJUSTMENT_LABELS,
 } from '@/lib/payroll'
 
@@ -1058,16 +1058,34 @@ function SalaryIncrementSection({ selectedEmps }: { selectedEmps: Employee[] }) 
                 {history.map((c: SalaryIncrementConfig) => (
                   <div key={c.id} className="px-4 py-3 hover:bg-gray-50">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-gray-700">{c.effectiveFrom}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-700">{c.effectiveFrom}</span>
+                        {c.status === 'APPROVED'
+                          ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700">Đã duyệt</span>
+                          : <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Chờ duyệt</span>}
+                      </div>
                       <span className="text-xs font-bold text-blue-700 tabular-nums">{fmt(c.incrementAmount)} ₫</span>
                     </div>
-                    <div className="text-[11px] text-gray-400 flex gap-3">
+                    <div className="text-[11px] text-gray-400 flex items-center gap-3">
                       <span>Hệ số: {c.totalCoefficient.toFixed(2)}</span>
                       <span>Xếp loại: {c.ratingCode ?? '—'}</span>
+                      {c.status !== 'APPROVED' && (
+                        <button type="button"
+                          onClick={async () => {
+                            try { await approveSalaryIncrement(c.id); qc.invalidateQueries({ queryKey: ['increment-history'] }) }
+                            catch (e) { alert((e as Error).message) }
+                          }}
+                          className="ml-auto text-[11px] font-semibold text-green-700 hover:underline">
+                          Duyệt để tính lương →
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
+              <p className="px-4 py-2 text-[11px] text-gray-400 border-t border-gray-100">
+                Chỉ bản <b>Đã duyệt</b> mới được cộng vào bảng lương khi chạy tính lương kỳ.
+              </p>
             </div>
           )}
         </div>

@@ -92,6 +92,9 @@ public class PayslipPdfService {
         addRow(t, "1. Lương cơ bản (theo ngày thực tế)", fmt(rec.getBasicSalary()), bodyFont, boldFont, null);
         addRow(t, "2. Phụ cấp (ăn trưa + đi lại + điện thoại + khác)", fmt(rec.getTotalAllowance()), bodyFont, boldFont, null);
         addRow(t, "3. Lương tăng ca (OT)", fmt(rec.getOtPay()), bodyFont, boldFont, null);
+        if (rec.getSalaryIncrement() != null
+                && rec.getSalaryIncrement().compareTo(java.math.BigDecimal.ZERO) > 0)
+            addRow(t, "4. Thu nhập tăng thêm (TNTT)", fmt(rec.getSalaryIncrement()), bodyFont, boldFont, null);
         addRow(t, "TỔNG THU NHẬP (GROSS)", fmt(rec.getGrossSalary()), boldFont, boldFont,
                 Color.decode("#eff6ff"));
 
@@ -156,7 +159,7 @@ public class PayslipPdfService {
             headerStyle.setFont(headerFont);
 
             String[] headers = {
-                "STT", "Ma NV", "Ho ten", "Ky", "Luong CB", "Phu cap", "OT",
+                "STT", "Ma NV", "Ho ten", "Ky", "Luong CB", "Phu cap", "OT", "TNTT",
                 "Gross", "BHXH", "BHYT", "BHTN", "Thue TNCN", "Tong khau tru",
                 "Net (Thuc nhan)", "Ngay cong chuan", "Ngay cong thuc", "Trang thai"
             };
@@ -189,16 +192,17 @@ public class PayslipPdfService {
                 row.createCell(4).setCellValue(r.getBasicSalary().doubleValue());
                 row.createCell(5).setCellValue(r.getTotalAllowance().doubleValue());
                 row.createCell(6).setCellValue(r.getOtPay().doubleValue());
-                row.createCell(7).setCellValue(r.getGrossSalary().doubleValue());
-                row.createCell(8).setCellValue(r.getBhxhEmployee().doubleValue());
-                row.createCell(9).setCellValue(r.getBhytEmployee().doubleValue());
-                row.createCell(10).setCellValue(r.getBhtnEmployee().doubleValue());
-                row.createCell(11).setCellValue(r.getPit().doubleValue());
-                row.createCell(12).setCellValue(r.getTotalDeduction().doubleValue());
-                row.createCell(13).setCellValue(r.getNetSalary().doubleValue());
-                row.createCell(14).setCellValue(r.getWorkingDays());
-                row.createCell(15).setCellValue(r.getActualDays());
-                row.createCell(16).setCellValue(r.getStatus().name());
+                row.createCell(7).setCellValue(r.getSalaryIncrement() != null ? r.getSalaryIncrement().doubleValue() : 0);
+                row.createCell(8).setCellValue(r.getGrossSalary().doubleValue());
+                row.createCell(9).setCellValue(r.getBhxhEmployee().doubleValue());
+                row.createCell(10).setCellValue(r.getBhytEmployee().doubleValue());
+                row.createCell(11).setCellValue(r.getBhtnEmployee().doubleValue());
+                row.createCell(12).setCellValue(r.getPit().doubleValue());
+                row.createCell(13).setCellValue(r.getTotalDeduction().doubleValue());
+                row.createCell(14).setCellValue(r.getNetSalary().doubleValue());
+                row.createCell(15).setCellValue(r.getWorkingDays());
+                row.createCell(16).setCellValue(r.getActualDays());
+                row.createCell(17).setCellValue(r.getStatus().name());
             }
 
             for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);

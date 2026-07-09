@@ -85,6 +85,7 @@ export default function MyPayrollPage() {
                   <Row label="Lương cơ bản"       value={fmt(rec.basicSalary)} />
                   <Row label="Phụ cấp"             value={fmt(rec.totalAllowance)} />
                   <Row label="Tăng ca"             value={fmt(rec.otPay)} highlight={rec.otPay > 0} />
+                  <Row label="Thu nhập tăng thêm"  value={fmt(rec.salaryIncrement)} highlight={rec.salaryIncrement > 0} />
                   <Row label="Lương gộp"           value={fmt(rec.grossSalary)} bold />
                   <Row label="BHXH (8%)"           value={`- ${fmt(rec.bhxhEmployee)}`} red />
                   <Row label="BHYT (1.5%)"         value={`- ${fmt(rec.bhytEmployee)}`} red />

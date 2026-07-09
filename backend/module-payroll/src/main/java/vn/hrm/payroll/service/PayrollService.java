@@ -154,6 +154,41 @@ public class PayrollService {
                 .orElseThrow(() -> new IllegalStateException("Chưa cấu hình lương tăng thêm cho nhân viên này"));
     }
 
+    /**
+     * Duyệt cấu hình TNTT — chỉ bản DRAFT mới được duyệt; sau khi APPROVED
+     * mới được dùng để tính vào bảng lương.
+     */
+    @Transactional
+    public SalaryIncrementConfigResponse approveSalaryIncrement(UUID id, String actor) {
+        SalaryIncrementConfig cfg = salaryIncrementConfigRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cấu hình TNTT"));
+        if (!"DRAFT".equals(cfg.getStatus()))
+            throw new IllegalStateException("Chỉ duyệt cấu hình ở trạng thái DRAFT");
+        cfg.setStatus("APPROVED");
+        cfg.setApprovedBy(actor);
+        cfg.setApprovedAt(LocalDateTime.now());
+        SalaryIncrementConfig saved = salaryIncrementConfigRepo.save(cfg);
+        return SalaryIncrementConfigResponse.from(saved,
+                baseSalaryService.getBaseSalary(saved.getEffectiveFrom()));
+    }
+
+    /**
+     * Tính TNTT của nhân viên tại kỳ lương từ cấu hình đã DUYỆT hiệu lực tại
+     * thời điểm đó. Ngày công lấy theo dữ liệu chấm công (actualDays/workingDays)
+     * để thống nhất một nguồn với lương cơ bản.
+     */
+    private BigDecimal computeSalaryIncrement(UUID empId, int year, int month,
+                                              BigDecimal luongCoSo, int actualDays, int workingDays) {
+        return salaryIncrementConfigRepo
+                .findTopByEmployeeIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                        empId, LocalDate.of(year, month, 1))
+                .filter(c -> "APPROVED".equals(c.getStatus()))
+                .map(c -> SalaryIncrementCalculator
+                        .compute(c, luongCoSo, actualDays, workingDays > 0 ? workingDays : 22)
+                        .incrementAmount())
+                .orElse(BigDecimal.ZERO);
+    }
+
     public IncrementCoefficientOptionsResponse getIncrementCoefficientOptions() {
         List<CoefficientOption> responsibility = jdbc.query(
                 "SELECT id, position_name, coefficient FROM payroll.responsibility_coefficients ORDER BY display_order",
@@ -240,8 +275,15 @@ public class PayrollService {
         BigDecimal otPay = hourlyRate.multiply(new BigDecimal("1.5")).multiply(otHours)
                 .setScale(0, RoundingMode.HALF_UP);
 
+        // ── 4b. Thu nhập tăng thêm (TNTT) — cấu hình đã DUYỆT hiệu lực tại kỳ ─
+        // Dùng ngày công thực tế từ chấm công (thống nhất nguồn với lương cơ bản)
+        // thay cho số nhập tay trong cấu hình. TNTT chịu thuế TNCN, KHÔNG BHXH.
+        BigDecimal salaryIncrement = computeSalaryIncrement(empId, year, month, luongCoSo,
+                actualDays, workingDays);
+
         // ── 5. Gross ──────────────────────────────────────────────────────────
-        BigDecimal gross = basicPro.add(taxableAllowance).add(taxExemptAllowance).add(otPay);
+        BigDecimal gross = basicPro.add(taxableAllowance).add(taxExemptAllowance)
+                .add(otPay).add(salaryIncrement);
         // (bonus = 0 khi generate hàng loạt, HR sẽ điều chỉnh thủ công nếu cần)
 
         // ── 6. BHXH / BHYT / BHTN nhân viên ─────────────────────────────────
@@ -292,6 +334,7 @@ public class PayrollService {
                 .taxExemptAllowance(taxExemptAllowance)
                 .bonus(BigDecimal.ZERO)
                 .otPay(otPay)
+                .salaryIncrement(salaryIncrement)
                 .grossSalary(gross)
                 .bhxhEmployee(bhxh)
                 .bhytEmployee(bhyt)

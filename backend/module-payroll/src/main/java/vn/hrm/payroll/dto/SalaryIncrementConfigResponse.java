@@ -37,6 +37,9 @@ public record SalaryIncrementConfigResponse(
 
         BigDecimal incrementAmount,     // TNTT dự kiến = lương cơ sở × totalCoefficient × rating% × (ngày công) × số lần chi trả
 
+        String status,                  // DRAFT | APPROVED
+        String approvedBy,
+
         LocalDate effectiveFrom,
         LocalDate effectiveTo
 ) {
@@ -54,6 +57,7 @@ public record SalaryIncrementConfigResponse(
                 c.getRatingCode(), c.getRatingPercentage(),
                 c.getWorkdaysActual(), c.getWorkdaysStandard(), c.getPaymentMultiplier(),
                 r.incrementAmount(),
+                c.getStatus(), c.getApprovedBy(),
                 c.getEffectiveFrom(), c.getEffectiveTo()
         );
     }

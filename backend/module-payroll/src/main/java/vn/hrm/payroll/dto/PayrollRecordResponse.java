@@ -22,6 +22,7 @@ public record PayrollRecordResponse(
         BigDecimal taxExemptAllowance,
         BigDecimal bonus,
         BigDecimal otPay,
+        BigDecimal salaryIncrement,
         BigDecimal grossSalary,
 
         // Khấu trừ nhân viên
@@ -65,7 +66,7 @@ public record PayrollRecordResponse(
                 r.getPeriodYear(), r.getPeriodMonth(),
                 r.getBasicSalary(), r.getTotalAllowance(),
                 orZero(r.getTaxExemptAllowance()), orZero(r.getBonus()),
-                r.getOtPay(), r.getGrossSalary(),
+                r.getOtPay(), orZero(r.getSalaryIncrement()), r.getGrossSalary(),
                 r.getBhxhEmployee(), r.getBhytEmployee(), r.getBhtnEmployee(),
                 orZero(r.getPersonalDeduction()), orZero(r.getDependentDeduction()),
                 orZero(r.getTaxableIncome()), r.getPit(),
