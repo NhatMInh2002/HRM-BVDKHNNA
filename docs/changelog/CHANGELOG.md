@@ -5,6 +5,48 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 ---
 
+## [2026-07-09] — FEAT: Báo cáo Excel chấm công + Hồ sơ lý lịch PDF + Hoàn thiện TNTT
+
+**Người thực hiện:** NhatMInh2002
+**Phiên làm việc:** 2026-07-09
+**Branch:** `claude/salary-config-details-qeytz1`
+**Hướng dẫn chi tiết:** `docs/guides/salary-attendance-profile-flow.md`
+
+### Giai đoạn 0 — Nền tảng chung
+
+- `V37__base_salary_configs.sql` + `BaseSalaryService`: lương cơ sở tra theo ngày hiệu lực, **bỏ hard-code 2.530.000đ** ở `PayrollService` và `SalaryIncrementConfigResponse`. Đổi Nghị định chỉ cần INSERT 1 dòng.
+- Tách `SalaryIncrementCalculator` (dùng chung preview + sinh bảng lương), có overload nhận ngày công từ chấm công.
+- **Mã hóa AES-256-GCM** cột `national_id` (`V38` + `PiiCrypto`/`EncryptedPiiConverter` trong shared-kernel) — NĐ 13/2023. Đọc được plaintext cũ, ghi luôn mã hóa. Khóa từ env `HRM_ENCRYPTION_KEY`.
+
+### Hạng mục A — 10 báo cáo Excel chấm công
+
+- `AttendanceExcelService` + `AttendanceReportController`: 10 endpoint `GET /attendance/export/*.xlsx` (bảng chấm công 01a-LĐTL toàn viện/theo khoa, đi muộn-về sớm, vắng không phép, tăng ca, nghỉ phép theo loại, số dư phép năm, đối soát công-lương, so sánh chuyên cần giữa khoa, chi tiết 1 NV).
+- Frontend: card "Xuất báo cáo Excel chấm công" trên trang Báo cáo (`reports/page.tsx`).
+
+### Hạng mục B — Hồ sơ lý lịch HS02-VC/BNV + PDF
+
+- `V39`: ~25 cột bổ sung `employees` + 4 bảng con (quá trình công tác, đào tạo, quan hệ gia đình, khen thưởng/kỷ luật). Số BHXH/BHYT/sức khỏe mã hóa PII.
+- `EmployeeProfileService` + `ProfilePdfService`: xuất Sơ yếu lý lịch viên chức mẫu HS02-VC/BNV (TT 07/2019/TT-BNV).
+- Frontend: `EmployeeProfileModal` 7 tab + nút Xuất PDF, mở từ bảng nhân sự.
+
+### Hạng mục C — Tích hợp TNTT vào bảng lương
+
+- `V40`: bảng `specialty_department_multipliers` (% đặc thù khoa/phòng, mặc định 100% chờ TCCB xác nhận); cột `salary_increment` trên `payroll_records`; workflow duyệt cấu hình TNTT (`status` DRAFT/APPROVED).
+- `generatePeriod`: cộng TNTT (**chỉ bản đã duyệt**) vào gross — **chịu thuế TNCN, KHÔNG tính đóng BHXH**; ngày công lấy từ chấm công.
+- Phiếu lương PDF + Excel + phiếu lương cá nhân: thêm mục/cột **Thu nhập tăng thêm**.
+
+### Kiểm thử
+
+- `SalaryIncrementCalculatorTest`: **6/6 pass** — kiểm chứng công thức TNTT bằng ví dụ tính tay (Trưởng khoa+BS A1 = 16.445.000đ, kiêm nhiệm 25%, thiếu CCHN 85%×đặc thù 120%, C2=0đ, ngày công 18/22, A2 80%).
+
+### Còn phụ thuộc nghiệp vụ (chờ Phòng TCCB)
+
+- Danh sách **% đặc thù khoa/phòng** (110-135%) — đang seed 100% để không tự đổi lương.
+- Xác nhận cách tính **thuế/BHXH của TNTT** và cơ chế hồi tố/truy lĩnh.
+- Đặt `HRM_ENCRYPTION_KEY` ở production (hiện fallback khóa dev + log cảnh báo).
+
+---
+
 ## [2026-06-24] — FEAT: UI overhaul + Nhân sự nâng cao + Danh mục + Sidebar + RBAC planning
 
 **Người thực hiện:** NhatMInh2002
