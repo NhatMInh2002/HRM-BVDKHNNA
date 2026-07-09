@@ -71,12 +71,13 @@ public final class PiiCrypto {
             RANDOM.nextBytes(iv);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, key(), new GCMParameterSpec(GCM_TAG_BITS, iv));
-            // ct.length ≤ MAX_PLAINTEXT_LEN×4 (UTF-8) + tag → phép cộng dưới đây luôn bị giới hạn
             byte[] ct = cipher.doFinal(plain.getBytes(StandardCharsets.UTF_8));
-            byte[] out = new byte[iv.length + ct.length];
-            System.arraycopy(iv, 0, out, 0, iv.length);
-            System.arraycopy(ct, 0, out, iv.length, ct.length);
-            return PREFIX + Base64.getEncoder().encodeToString(out);
+            // Ghép IV + ciphertext qua stream — tránh phép cộng độ dài mảng trên
+            // dữ liệu không kiểm soát (CodeQL: uncontrolled arithmetic overflow).
+            var combined = new java.io.ByteArrayOutputStream();
+            combined.writeBytes(iv);
+            combined.writeBytes(ct);
+            return PREFIX + Base64.getEncoder().encodeToString(combined.toByteArray());
         } catch (Exception e) {
             throw new IllegalStateException("Mã hóa PII thất bại", e);
         }
