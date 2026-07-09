@@ -1,4 +1,12 @@
 {
+  "extraKnownMarketplaces": {
+    "effective-html": {
+      "source": { "source": "github", "repo": "plannotator/effective-html" }
+    }
+  },
+  "enabledPlugins": {
+    "plannotator-effective-html@effective-html": true
+  },
   "permissions": {
     "allow": [
       "Bash(git *)",
