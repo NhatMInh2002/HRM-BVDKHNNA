@@ -88,12 +88,12 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 ### Chất lượng
 
 - Fix `.gitignore`: `**/target/` thay vì `backend/target/` — không còn track compiled artifacts
-- Tạo `docs/TEST_STRATEGY.md` — 50+ test cases phân loại P0/P1/P2
+- Tạo `docs/guides/testing-strategy.md` — 50+ test cases phân loại P0/P1/P2
 
 ### Quyết định kiến trúc
 
 - **RBAC Phase 1**: `canWrite = !!session` (mọi user đăng nhập đều có quyền) — chấp nhận tạm thời
-- **RBAC Phase 2** (kế hoạch): triển khai phân quyền thực theo roles — xem `docs/RBAC_PLAN.md`
+- **RBAC Phase 2** (kế hoạch): triển khai phân quyền thực theo roles — xem `docs/implementation/rbac-plan.md`
 
 ---
 

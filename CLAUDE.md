@@ -23,6 +23,11 @@ SSO: Azure AD / AD FS (SAML 2.0) · Deploy: On-premises · Repo: NhatMInh2002/HR
 
 | Khi nào | File |
 |---|---|
+| Xem toàn bộ tài liệu (index) | `docs/README.md` |
+| Chạy project local / onboarding | `docs/guides/developer-guide.md` |
+| Luồng truy cập & phân quyền | `docs/guides/user-access-flow.md` · `docs/implementation/rbac-plan.md` |
+| Kiểm thử | `docs/guides/testing-strategy.md` |
+| Nghiệp vụ lương/chấm công/hồ sơ | `docs/guides/salary-attendance-profile-flow.md` |
 | Hỏi về tiến độ / phase | `docs/implementation/phased-plan.md` |
 | Hỏi về quy định pháp lý | `docs/compliance/regulatory-checklist.md` |
 | Hỏi về quyết định kiến trúc | `docs/adr/ADR-001-architecture-evaluation.md` |
