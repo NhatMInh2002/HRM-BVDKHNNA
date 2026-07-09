@@ -26,6 +26,9 @@ public final class PiiCrypto {
     private static final String DEV_FALLBACK = "hrm-dev-only-key-DO-NOT-USE-IN-PROD";
     private static final int GCM_IV_BYTES = 12;
     private static final int GCM_TAG_BITS = 128;
+    /** Trần độ dài plaintext PII (ký tự). Các trường PII đều ngắn (CCCD, số BHXH,
+     *  tình trạng sức khỏe); chặn ở đây để phép cộng độ dài mảng luôn bị giới hạn. */
+    private static final int MAX_PLAINTEXT_LEN = 10_000;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private static volatile SecretKeySpec key;
@@ -60,11 +63,15 @@ public final class PiiCrypto {
     /** Mã hóa; trả về nguyên trạng nếu null/blank hoặc đã mã hóa sẵn. */
     public static String encrypt(String plain) {
         if (plain == null || plain.isBlank() || plain.startsWith(PREFIX)) return plain;
+        if (plain.length() > MAX_PLAINTEXT_LEN)
+            throw new IllegalArgumentException(
+                    "Dữ liệu PII vượt quá độ dài cho phép (" + MAX_PLAINTEXT_LEN + " ký tự)");
         try {
             byte[] iv = new byte[GCM_IV_BYTES];
             RANDOM.nextBytes(iv);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, key(), new GCMParameterSpec(GCM_TAG_BITS, iv));
+            // ct.length ≤ MAX_PLAINTEXT_LEN×4 (UTF-8) + tag → phép cộng dưới đây luôn bị giới hạn
             byte[] ct = cipher.doFinal(plain.getBytes(StandardCharsets.UTF_8));
             byte[] out = new byte[iv.length + ct.length];
             System.arraycopy(iv, 0, out, 0, iv.length);
