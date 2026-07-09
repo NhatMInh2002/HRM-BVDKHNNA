@@ -293,3 +293,88 @@ export function getEmployeeDocuments(employeeId: string) {
 export function verifyEmployeeDocument(id: string) {
   return apiFetch<EmployeeDocument>(`/personnel/employee-documents/${id}/verify`, { method: 'PATCH' })
 }
+
+// ── Hồ sơ lý lịch HS02-VC/BNV ───────────────────────────────────────────────
+
+export interface WorkHistoryItem {
+  fromDate: string | null; toDate: string | null
+  unit: string; position: string | null; note: string | null
+}
+export interface TrainingItem {
+  fromDate: string | null; toDate: string | null; institution: string
+  field: string | null; form: string | null; degree: string | null
+}
+export interface FamilyRelationItem {
+  side: 'SELF' | 'SPOUSE'; relation: string; fullName: string
+  birthYear: number | null; detail: string | null
+}
+export interface AwardItem {
+  type: 'AWARD' | 'DISCIPLINE'; year: number | null
+  title: string; decisionNo: string | null; level: string | null
+}
+
+export interface EmployeeProfile {
+  birthPlace: string | null
+  nationalIdIssueDate: string | null
+  nationalIdIssuePlace: string | null
+  socialInsuranceNo: string | null
+  healthInsuranceNo: string | null
+  familyOrigin: string | null
+  jobBeforeRecruitment: string | null
+  recruitmentDate: string | null
+  recruitmentAgency: string | null
+  ngachCode: string | null
+  salaryGrade: number | null
+  salaryCoefficient: number | null
+  salaryEffectiveDate: string | null
+  educationGeneral: string | null
+  professionalDegree: string | null
+  politicalTheory: string | null
+  stateManagement: string | null
+  foreignLanguage: string | null
+  informaticsLevel: string | null
+  partyJoinDate: string | null
+  partyOfficialDate: string | null
+  youthUnionJoinDate: string | null
+  militaryServiceFrom: string | null
+  militaryServiceTo: string | null
+  warInvalidClass: string | null
+  policyFamilyType: string | null
+  healthStatus: string | null
+  heightCm: number | null
+  weightKg: number | null
+  bloodType: string | null
+  personalHistory: string | null
+  familyEconomy: string | null
+  workHistory: WorkHistoryItem[]
+  trainings: TrainingItem[]
+  familyRelations: FamilyRelationItem[]
+  awards: AwardItem[]
+}
+
+export function getEmployeeProfile(employeeId: string) {
+  return apiFetch<EmployeeProfile>(`/personnel/employees/${employeeId}/profile`)
+}
+
+export function saveEmployeeProfile(employeeId: string, dto: EmployeeProfile) {
+  return apiFetch<EmployeeProfile>(`/personnel/employees/${employeeId}/profile`, {
+    method: 'PUT',
+    body: JSON.stringify(dto),
+  })
+}
+
+export async function downloadProfilePdf(employeeId: string, employeeName: string) {
+  const { getSession } = await import('next-auth/react')
+  const session = await getSession()
+  const res = await fetch(`/api/personnel/employees/${employeeId}/profile/pdf`, {
+    headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
+  })
+  if (!res.ok) throw new Error('Không thể tải sơ yếu lý lịch')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `so-yeu-ly-lich-${employeeName.replace(/\s+/g, '-')}.pdf`
+  a.click()
+  URL.revokeObjectURL(url)
+}
