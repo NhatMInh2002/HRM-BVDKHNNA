@@ -74,8 +74,13 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 filePathCallback?.onReceiveValue(null)
                 filePathCallback = callback
+                val intent = params?.createIntent()
+                if (intent == null) {
+                    filePathCallback = null
+                    return false
+                }
                 return try {
-                    fileChooserLauncher.launch(params?.createIntent())
+                    fileChooserLauncher.launch(intent)
                     true
                 } catch (e: Exception) {
                     filePathCallback = null
