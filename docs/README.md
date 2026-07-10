@@ -10,8 +10,29 @@ docs/
 ├── changelog/      — Nhật ký thay đổi + log các phiên làm việc
 ├── compliance/     — Tuân thủ pháp lý (NĐ 13/2023, TT12/2022…)
 ├── guides/         — Hướng dẫn vận hành & phát triển
-└── implementation/ — Kế hoạch triển khai & spec
+├── implementation/ — Kế hoạch triển khai & spec
+└── security/       — Báo cáo bảo mật (gitignore — không commit, xem security/README.md)
 ```
+
+## Tự động phân loại
+
+Mỗi khi thêm 1 file `.md` mới vào **gốc** `docs/`, nó được tự động chuyển vào đúng
+thư mục con theo từ khóa tên file — chạy bởi `scripts/classify-docs.sh` qua hook `Stop`
+trong `.claude/settings.json` (cuối mỗi lượt làm việc), hoặc chạy tay:
+
+```bash
+bash scripts/classify-docs.sh
+```
+
+| Từ khóa trong tên file | → Thư mục |
+|---|---|
+| `guide`, `flow`, `onboarding`, `tutorial`, `how-to` | `guides/` |
+| `plan`, `rbac`, `roadmap`, `phase`, `spec`, `design` | `implementation/` |
+| `adr`, `architecture-decision` | `adr/` |
+| `changelog`, `session`, `release` | `changelog/` |
+| `compliance`, `regulatory`, `checklist`, `nd13`, `tt12` | `compliance/` |
+| `security`, `assessment`, `pentest`, `audit`, `threat` | `security/` |
+| _(không khớp)_ | giữ nguyên + cảnh báo phân loại tay |
 
 ## Mục lục theo chủ đề
 
@@ -38,6 +59,11 @@ docs/
 | Tài liệu | Nội dung |
 |---|---|
 | [compliance/regulatory-checklist.md](compliance/regulatory-checklist.md) | Checklist tuân thủ quy định pháp lý |
+
+### 🔒 Bảo mật
+| Tài liệu | Nội dung |
+|---|---|
+| [security/README.md](security/README.md) | Chính sách báo cáo bảo mật (báo cáo chi tiết **không** commit — gitignore) |
 
 ### 📝 Lịch sử
 | Tài liệu | Nội dung |
