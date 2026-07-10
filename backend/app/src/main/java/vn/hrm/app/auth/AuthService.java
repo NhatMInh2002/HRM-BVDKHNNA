@@ -27,6 +27,7 @@ public class AuthService {
     private final TotpService totpService;
     private final QrCodeService qrCodeService;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttemptService;
 
     @Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
@@ -59,16 +60,30 @@ public class AuthService {
     }
 
     public Map<String, Object> login(String email, String password) {
+        // Chặn brute-force: nếu email đang bị khóa tạm do sai nhiều lần thì từ chối ngay.
+        long locked = loginAttemptService.lockedMinutesRemaining(email);
+        if (locked > 0) {
+            throw HrmException.badRequest("ACCOUNT_LOCKED",
+                    "Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau " + locked + " phút.");
+        }
+
         var employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
+                .orElseThrow(() -> {
+                    loginAttemptService.recordFailure(email);
+                    return new RuntimeException("Email không tồn tại");
+                });
 
         if (employee.getPasswordHash() == null) {
             throw new RuntimeException("Tài khoản chưa được kích hoạt, liên hệ quản trị viên");
         }
 
         if (!passwordEncoder.matches(password, employee.getPasswordHash())) {
+            loginAttemptService.recordFailure(email);
             throw new RuntimeException("Mật khẩu không đúng");
         }
+
+        // Mật khẩu đúng → xóa bộ đếm (kể cả khi còn bước 2FA phía sau).
+        loginAttemptService.reset(email);
 
         if (employee.isTotpEnabled()) {
             String pendingToken = jwtService.generatePending2faToken(employee.getId(), employee.getEmail());

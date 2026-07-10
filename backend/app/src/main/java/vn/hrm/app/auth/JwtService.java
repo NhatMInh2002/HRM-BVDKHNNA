@@ -17,7 +17,7 @@ import java.util.UUID;
 @Service
 public class JwtService {
 
-    @Value("${app.jwt.secret:hrm-secret-key-min-32-chars-long-for-hs256}")
+    @Value("${app.jwt.secret:}")
     private String secret;
 
     @Value("${app.jwt.expiration-ms:86400000}") // 24h
@@ -25,14 +25,28 @@ public class JwtService {
 
     private SecretKey key;
 
+    /** Các giá trị mặc định từng ship kèm mã nguồn — TUYỆT ĐỐI không được dùng ở production. */
+    private static final java.util.Set<String> WEAK_DEFAULTS = java.util.Set.of(
+            "hrm-secret-key-min-32-chars-long-for-hs256",
+            "hrm-bvnghean-secret-key-2025-must-be-at-least-32-chars");
+
     @PostConstruct
     public void init() {
+        // Fail-fast: không cho khởi động với secret trống, secret mặc định công khai,
+        // hoặc secret quá ngắn (< 32 byte). Trước đây secret ngắn bị zero-pad làm giảm entropy,
+        // và thiếu JWT_SECRET thì âm thầm dùng chuỗi nằm trong repo → giả mạo được token ADMIN.
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "Chưa cấu hình JWT_SECRET. Đặt biến môi trường JWT_SECRET (>= 32 ký tự ngẫu nhiên) trước khi chạy.");
+        }
+        if (WEAK_DEFAULTS.contains(secret)) {
+            throw new IllegalStateException(
+                    "JWT_SECRET đang dùng giá trị mặc định công khai trong mã nguồn — hãy đổi sang chuỗi bí mật riêng.");
+        }
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
-        // Đảm bảo đủ 32 bytes cho HS256
         if (bytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(bytes, 0, padded, 0, bytes.length);
-            bytes = padded;
+            throw new IllegalStateException(
+                    "JWT_SECRET quá ngắn (" + bytes.length + " byte) — cần tối thiểu 32 byte cho HS256.");
         }
         key = Keys.hmacShaKeyFor(bytes);
     }
