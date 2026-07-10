@@ -5,6 +5,37 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 ---
 
+## [2026-07-10] — CHORE: Sắp xếp lại tài liệu docs + hợp nhất vào main
+
+**Người thực hiện:** NhatMInh2002
+**Branch:** `claude/salary-config-details-qeytz1` → merge `main`
+
+### Sắp xếp lại toàn bộ `docs/`
+
+Trước đây các file nằm phẳng ở gốc `docs/` (`DEVELOPER_GUIDE.md`, `RBAC_PLAN.md`,
+`TEST_STRATEGY.md`, `USER_ACCESS_FLOW.md`, `SESSION-2026-07-01.md`). Nay phân loại
+toàn bộ vào thư mục con theo chủ đề, đổi tên chuẩn kebab-case:
+
+| Cũ (gốc `docs/`) | Mới |
+|---|---|
+| `DEVELOPER_GUIDE.md` | `guides/developer-guide.md` |
+| `USER_ACCESS_FLOW.md` | `guides/user-access-flow.md` |
+| `TEST_STRATEGY.md` | `guides/testing-strategy.md` |
+| `RBAC_PLAN.md` | `implementation/rbac-plan.md` |
+| `changelog/SESSION-2026-07-01.md` | `changelog/sessions/session-2026-07-01.md` |
+
+- Thêm `docs/README.md` làm mục lục toàn bộ tài liệu.
+- Thêm `scripts/classify-docs.sh` + hook `Stop` trong `.claude/settings.json`: mỗi
+  file `.md` mới thả vào gốc `docs/` sẽ **tự động phân loại** vào đúng thư mục con.
+- Cấu trúc chuẩn: `adr/ · changelog/ · compliance/ · guides/ · implementation/ · security/`.
+
+### Hợp nhất vào `main`
+
+PR #12 gộp toàn bộ: GĐ0 (nền tảng) + Hạng mục A/B/C (Excel/PDF/TNTT) + font PDF
+tiếng Việt nhúng sẵn + chuẩn hóa Excel + sắp xếp docs — được merge vào `main`.
+
+---
+
 ## [2026-07-10] — FIX/POLISH: Font PDF tiếng Việt nhúng sẵn + chuẩn hóa Excel
 
 **Người thực hiện:** NhatMInh2002
