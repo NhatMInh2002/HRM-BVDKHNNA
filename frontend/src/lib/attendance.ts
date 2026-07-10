@@ -176,8 +176,6 @@ export interface LeaveRequest {
   createdAt: string
 }
 
-export interface CheckInDto { employeeId: string; note?: string }
-export interface CheckOutDto { employeeId: string }
 export interface CreateLeaveDto {
   employeeId: string
   leaveType: LeaveType
@@ -188,11 +186,8 @@ export interface CreateLeaveDto {
   attachmentName?: string
 }
 
-export const checkIn = (data: CheckInDto) =>
-  apiFetch<AttendanceRecord>('/attendance/check-in', { method: 'POST', body: JSON.stringify(data) })
-
-export const checkOut = (data: CheckOutDto) =>
-  apiFetch<AttendanceRecord>('/attendance/check-out', { method: 'POST', body: JSON.stringify(data) })
+// Chấm công tự phục vụ (check-in/check-out) đã bỏ — chấm công thực hiện tại
+// máy chấm công đặt trong bệnh viện; dữ liệu đổ trực tiếp vào backend.
 
 export const getDailyAttendance = (date: string, page = 0) =>
   apiFetch<AttendancePage>(`/attendance/daily?date=${date}&page=${page}&size=30`)
