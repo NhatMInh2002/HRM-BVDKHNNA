@@ -34,6 +34,7 @@ export interface PayrollRecord {
   basicSalary: number
   totalAllowance: number
   otPay: number
+  salaryIncrement: number       // thu nhập tăng thêm (TNTT)
   grossSalary: number
   bhxhEmployee: number
   bhytEmployee: number
@@ -167,6 +168,8 @@ export interface SalaryIncrementConfig {
   workdaysStandard: number
   paymentMultiplier: number
   incrementAmount: number
+  status: 'DRAFT' | 'APPROVED'
+  approvedBy: string | null
   effectiveFrom: string
   effectiveTo: string | null
 }
@@ -231,6 +234,12 @@ export function getSalaryIncrementHistory(employeeId: string) {
 
 export function getCurrentSalaryIncrement(employeeId: string) {
   return apiFetch<SalaryIncrementConfig>(`/payroll/salary-increment/${employeeId}/current`)
+}
+
+export function approveSalaryIncrement(configId: string) {
+  return apiFetch<SalaryIncrementConfig>(`/payroll/salary-increment/config/${configId}/approve`, {
+    method: 'PUT',
+  })
 }
 
 export async function exportPayrollExcel(year: number, month: number) {

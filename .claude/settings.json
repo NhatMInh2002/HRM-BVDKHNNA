@@ -1,4 +1,26 @@
 {
+  "extraKnownMarketplaces": {
+    "effective-html": {
+      "source": { "source": "github", "repo": "plannotator/effective-html" }
+    }
+  },
+  "enabledPlugins": {
+    "plannotator-effective-html@effective-html": true
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/classify-docs.sh",
+            "statusMessage": "Phân loại file docs mới...",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(git *)",

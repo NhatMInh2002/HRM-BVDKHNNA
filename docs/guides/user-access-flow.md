@@ -1,7 +1,7 @@
 # Luồng truy cập hệ thống — HRM BVHN Đa khoa Nghệ An
 
 > Tài liệu này mô tả **luồng** người dùng đi qua hệ thống — từ đăng nhập đến khi gọi một API cụ thể — bằng sơ đồ trực quan (Mermaid).
-> Ma trận quyền chi tiết theo module: xem [`RBAC_PLAN.md`](./RBAC_PLAN.md). Tài liệu này không lặp lại bảng quyền, chỉ mô tả **cách hệ thống xử lý** một request.
+> Ma trận quyền chi tiết theo module: xem [`rbac-plan.md`](../implementation/rbac-plan.md). Tài liệu này không lặp lại bảng quyền, chỉ mô tả **cách hệ thống xử lý** một request.
 
 ---
 
@@ -108,7 +108,7 @@ flowchart LR
 
 ## 5. Điều hướng menu theo role (tóm tắt)
 
-Chi tiết đầy đủ từng chức năng: xem mục *"3. Navigation theo Role"* trong [`RBAC_PLAN.md`](./RBAC_PLAN.md). Tóm tắt nhanh:
+Chi tiết đầy đủ từng chức năng: xem mục *"3. Navigation theo Role"* trong [`rbac-plan.md`](../implementation/rbac-plan.md). Tóm tắt nhanh:
 
 | Role | Phạm vi dữ liệu | Ví dụ module thấy trên menu |
 |---|---|---|

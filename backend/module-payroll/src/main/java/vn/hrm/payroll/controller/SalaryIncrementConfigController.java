@@ -49,4 +49,12 @@ public class SalaryIncrementConfigController {
             @PathVariable UUID employeeId) {
         return ResponseEntity.ok(ApiResponse.ok(payrollService.getCurrentSalaryIncrement(employeeId)));
     }
+
+    /** Duyệt cấu hình TNTT — chỉ APPROVED mới được tính vào bảng lương. */
+    @PutMapping("/config/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public ResponseEntity<ApiResponse<SalaryIncrementConfigResponse>> approve(
+            @PathVariable UUID id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.ok(payrollService.approveSalaryIncrement(id, auth.getName())));
+    }
 }

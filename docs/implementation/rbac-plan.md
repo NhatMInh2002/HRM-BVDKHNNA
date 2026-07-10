@@ -236,5 +236,5 @@ flowchart LR
 ### Còn thiếu / cần làm tiếp
 
 - [ ] Department scoping cho module **Tuyển dụng** (hiện DEPT_MANAGER xem được toàn bộ candidate, chưa lọc theo khoa)
-- [ ] Test matrix: mỗi role → thử truy cập tất cả endpoint (xem [`TEST_STRATEGY.md`](./TEST_STRATEGY.md) §7 Bảo mật — SEC-06)
+- [ ] Test matrix: mỗi role → thử truy cập tất cả endpoint (xem [`testing-strategy.md`](../guides/testing-strategy.md) §7 Bảo mật — SEC-06)
 - [ ] Thống nhất `DEPARTMENT_MANAGER` (role cũ) → chuyển hẳn sang `DEPT_HEAD`/`NURSE_MANAGER` hoặc xóa khỏi các `@PreAuthorize` nếu không còn tài khoản nào mang role này
