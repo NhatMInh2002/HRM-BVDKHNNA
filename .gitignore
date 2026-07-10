@@ -52,3 +52,13 @@ backend_logs.txt
 
 # Data scripts / dumps chứa dữ liệu nhạy cảm (mật khẩu, PII) — không commit
 scripts/data/
+
+# Gradle build cache (Android app) — chỉ commit source, không commit cache build
+.gradle/
+**/.gradle/
+mobile/build/
+mobile/app/build/
+
+# Báo cáo đánh giá bảo mật — chứa chi tiết lỗ hổng, KHÔNG commit lên git
+docs/security/*.md
+!docs/security/README.md
