@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import vn.hrm.personnel.dto.EmployeeProfileDto;
 import vn.hrm.personnel.dto.EmployeeProfileDto.*;
+import vn.hrm.shared.pdf.PdfFonts;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -264,9 +265,9 @@ public class ProfilePdfService {
 
     // ── Khung dựng bảng/ô ──
 
-    private void initFonts() throws Exception {
-        bf = loadFont(false);
-        bfBold = loadFont(true);
+    private void initFonts() {
+        bf = PdfFonts.baseRegular();
+        bfBold = PdfFonts.baseBold();
         h1 = new Font(bfBold, 15, Font.NORMAL, Color.decode("#1e3a5f"));
         h2 = new Font(bfBold, 12);
         section = new Font(bfBold, 11, Font.NORMAL, Color.decode("#1e40af"));
@@ -274,7 +275,7 @@ public class ProfilePdfService {
         value = new Font(bf, 9.5f);
         valueBold = new Font(bfBold, 9.5f);
         small = new Font(bf, 9);
-        italic = new Font(bf, 9, Font.ITALIC);
+        italic = PdfFonts.italic(9);
     }
 
     private Paragraph sectionHeader(String text) {
@@ -364,25 +365,4 @@ public class ProfilePdfService {
     private String nz(String v) { return v != null ? v : ""; }
     private boolean notBlank(String v) { return v != null && !v.isBlank(); }
     private boolean isEmpty(List<?> l) { return l == null || l.isEmpty(); }
-
-    private static final String[] FONT_PATHS = {
-        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "C:/Windows/Fonts/arial.ttf"
-    };
-    private static final String[] FONT_BOLD_PATHS = {
-        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "C:/Windows/Fonts/arialbd.ttf"
-    };
-
-    private BaseFont loadFont(boolean bold) throws Exception {
-        for (String path : bold ? FONT_BOLD_PATHS : FONT_PATHS) {
-            if (new java.io.File(path).exists())
-                return BaseFont.createFont(path, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
-        }
-        return BaseFont.createFont(
-                bold ? BaseFont.HELVETICA_BOLD : BaseFont.HELVETICA,
-                BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
-    }
 }

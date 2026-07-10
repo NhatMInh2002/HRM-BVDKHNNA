@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import vn.hrm.payroll.domain.PayrollRecord;
 import vn.hrm.payroll.repository.PayrollRecordRepository;
+import vn.hrm.shared.pdf.PdfFonts;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -252,30 +253,8 @@ public class PayslipPdfService {
 
     private String str(Object v) { return v != null ? v.toString() : ""; }
 
-    private static final String[] FONT_PATHS = {
-        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "C:/Windows/Fonts/arial.ttf"
-    };
-    private static final String[] FONT_BOLD_PATHS = {
-        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "C:/Windows/Fonts/arialbd.ttf"
-    };
+    // Font Unicode tiếng Việt nhúng sẵn trong classpath (shared-kernel) — xem PdfFonts.
+    private BaseFont loadUnicodeFont() { return PdfFonts.baseRegular(); }
 
-    private BaseFont loadUnicodeFont() throws DocumentException, java.io.IOException {
-        for (String path : FONT_PATHS) {
-            if (new java.io.File(path).exists())
-                return BaseFont.createFont(path, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
-        }
-        return BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
-    }
-
-    private BaseFont loadUnicodeFontBold() throws DocumentException, java.io.IOException {
-        for (String path : FONT_BOLD_PATHS) {
-            if (new java.io.File(path).exists())
-                return BaseFont.createFont(path, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
-        }
-        return BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
-    }
+    private BaseFont loadUnicodeFontBold() { return PdfFonts.baseBold(); }
 }

@@ -1,0 +1,27 @@
+Liberation Serif (Regular / Bold / Italic)
+==========================================
+
+Các file font trong thư mục này:
+  - LiberationSerif-Regular.ttf
+  - LiberationSerif-Bold.ttf
+  - LiberationSerif-Italic.ttf
+
+Bản quyền:
+  Digitized data copyright (c) 2010 Google Corporation
+    with Reserved Font Name "Tinos".
+  Copyright (c) 2012 Red Hat, Inc.
+    with Reserved Font Name "Liberation".
+
+Giấy phép: SIL Open Font License, Version 1.1 (SIL-OFL-1.1)
+  Toàn văn: http://scripts.sil.org/OFL
+  Nguồn upstream: https://github.com/liberationfonts
+
+Lý do nhúng vào repo:
+  Liberation Serif tương thích metric với Times New Roman và có đầy đủ
+  glyph tiếng Việt (Latin Extended Additional, U+1EA0–U+1EFF) cùng ký hiệu
+  đồng ₫. Font được đóng gói làm classpath resource để mọi văn bản PDF
+  (phiếu lương, sơ yếu lý lịch HS02-VC, đơn nghỉ phép) luôn hiển thị đúng
+  dấu tiếng Việt, không phụ thuộc font cài trên máy chủ.
+
+OFL cho phép nhúng, đóng gói và phân phối kèm phần mềm miễn là không bán
+riêng font và không dùng lại Reserved Font Name cho tác phẩm phái sinh.

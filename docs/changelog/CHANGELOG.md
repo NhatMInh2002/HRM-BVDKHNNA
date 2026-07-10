@@ -5,6 +5,25 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 ---
 
+## [2026-07-10] — FIX/POLISH: Font PDF tiếng Việt nhúng sẵn + chuẩn hóa Excel
+
+**Người thực hiện:** NhatMInh2002
+**Branch:** `claude/salary-config-details-qeytz1`
+
+### 🔤 Font PDF — sửa lỗi vỡ dấu tiếng Việt trên máy chủ
+
+- **Vấn đề:** 3 service PDF (`PayslipPdfService`, `ProfilePdfService`, `LeavePdfService`) trước đây dò font DejaVu ở đường dẫn hệ điều hành hoặc `fonts/times.ttf` (đường dẫn tương đối) — không có font nào nhúng trong repo. Nếu máy chủ bệnh viện không cài đúng font → fallback Helvetica/CP1252 **mất toàn bộ dấu tiếng Việt** trên phiếu lương, sơ yếu lý lịch, đơn nghỉ phép.
+- **Giải pháp:** nhúng **Liberation Serif** (Regular/Bold/Italic, tương thích Times New Roman, phủ đủ Latin Extended Additional + ký hiệu đồng ₫, giấy phép SIL OFL 1.1) làm **classpath resource** trong `shared-kernel/src/main/resources/fonts/`.
+- `vn.hrm.shared.pdf.PdfFonts`: tiện ích nạp `BaseFont` từ classpath (cache tĩnh, IDENTITY_H + EMBEDDED), dùng chung cho cả 3 service — không còn phụ thuộc font máy chủ.
+- `PdfFontsTest`: sinh PDF thử và trích xuất lại chữ để khẳng định dấu tiếng Việt + `₫` hiển thị đúng (**2/2 pass**). Bảo vệ hồi quy nếu ai xóa/đổi tên file font.
+
+### 📊 Excel — chuẩn hóa theo bảng biểu hành chính
+
+- `EmployeeExcelService` viết lại đồng bộ chuẩn với `AttendanceExcelService`: tiêu đề bệnh viện + tên báo cáo (merge ô), **header có dấu tiếng Việt** (trước là "Ma NV/Ho ten" không dấu), đóng khung viền, tô nền header, **freeze** dòng tiêu đề, dòng chân "Tổng số N nhân viên · Xuất lúc …".
+- 10 báo cáo chấm công: thêm **freeze pane** giữ tiêu đề/cột định danh khi cuộn danh sách dài.
+
+---
+
 ## [2026-07-09] — FEAT: Báo cáo Excel chấm công + Hồ sơ lý lịch PDF + Hoàn thiện TNTT
 
 **Người thực hiện:** NhatMInh2002

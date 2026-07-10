@@ -120,6 +120,8 @@ public class AttendanceExcelService {
 
             legend(sheet, rowIdx + 1, st,
                     "Ký hiệu: x = đủ công · M = đi muộn · 1/2 = nửa công · P = nghỉ phép · V = vắng");
+            // Cố định 4 cột trái (STT, Mã NV, Họ tên, Khoa) + dòng tiêu đề/header khi cuộn
+            sheet.createFreezePane(4, 4);
             sizeColumns(sheet, 4, days);
             wb.write(bos);
             return bos.toByteArray();
@@ -370,6 +372,7 @@ public class AttendanceExcelService {
                     else cell(row, i + 1, str(v), st.body);
                 }
             }
+            sheet.createFreezePane(0, 4); // giữ tiêu đề + dòng header khi cuộn
             for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
             wb.write(bos);
             return bos.toByteArray();
