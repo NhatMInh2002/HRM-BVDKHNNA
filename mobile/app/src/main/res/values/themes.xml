@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.HRM" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:statusBarColor">#1E3A5F</item>
+    </style>
+</resources>
