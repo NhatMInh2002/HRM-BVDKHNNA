@@ -3,5 +3,5 @@
     <!-- ====== ĐỔI ĐỊA CHỈ MÁY CHỦ HRM NỘI BỘ Ở ĐÂY rồi build lại apk ======
          Ví dụ: https://hrm.bvnghean.vn  hoặc  http://192.168.1.10:3000
          (Máy ảo Android trỏ về localhost máy tính: http://10.0.2.2:3000) -->
-    <string name="server_url" translatable="false">https://hrm.bvnghean.vn</string>
+    <string name="server_url" translatable="false">http://10.5.5.109:3000</string>
 </resources>
