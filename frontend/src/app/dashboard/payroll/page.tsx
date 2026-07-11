@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRoles } from '@/hooks/useRoles'
+import { SignedDocPanel } from '@/components/signed-doc-panel'
 import {
   listPayroll, generatePayroll, approvePayroll, markPaid,
   downloadPayslipPdf, exportPayrollExcel,
@@ -187,6 +188,7 @@ export default function PayrollPage() {
                     >
                       PDF
                     </button>
+                    <SignedDocPanel type="payslip" refId={rec.id} canUpload={isAdmin || isHr} compact />
                   </div>
                 </td>
               </tr>
