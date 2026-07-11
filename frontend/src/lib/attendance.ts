@@ -256,3 +256,54 @@ export async function demoVgcaSign(id: string, stage: 'dept' | 'hr') {
   if (!result.Status) throw new Error(result.Message || 'Ký thất bại')
   return result
 }
+
+// ── Xuất báo cáo Excel chấm công (10 báo cáo — Phòng TCCB) ──────────────────
+
+async function downloadXlsx(path: string, params: Record<string, string | number>, filename: string) {
+  const { getSession } = await import('next-auth/react')
+  const session = await getSession()
+  const qs = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
+  ).toString()
+  const res = await fetch(`/api/attendance/export/${path}?${qs}`, {
+    headers: { Authorization: `Bearer ${(session as any)?.accessToken ?? ''}` },
+  })
+  if (!res.ok) throw new Error('Không thể xuất báo cáo Excel')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${filename}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export const exportMonthlyGrid = (year: number, month: number) =>
+  downloadXlsx('monthly-grid.xlsx', { year, month }, `cham-cong-toan-vien-${month}-${year}`)
+
+export const exportDepartmentGrid = (year: number, month: number, departmentId: string) =>
+  downloadXlsx('department-grid.xlsx', { year, month, departmentId }, `cham-cong-khoa-phong-${month}-${year}`)
+
+export const exportLateEarly = (year: number, month: number) =>
+  downloadXlsx('late-early.xlsx', { year, month }, `di-muon-ve-som-${month}-${year}`)
+
+export const exportUnexcusedAbsence = (year: number, month: number) =>
+  downloadXlsx('unexcused-absence.xlsx', { year, month }, `vang-khong-phep-${month}-${year}`)
+
+export const exportOvertime = (year: number, month: number) =>
+  downloadXlsx('overtime.xlsx', { year, month }, `tang-ca-${month}-${year}`)
+
+export const exportLeaveByType = (year: number, month: number) =>
+  downloadXlsx('leave-by-type.xlsx', { year, month }, `nghi-phep-theo-loai-${month}-${year}`)
+
+export const exportLeaveBalance = (year: number) =>
+  downloadXlsx('leave-balance.xlsx', { year }, `so-du-phep-${year}`)
+
+export const exportPayrollReconciliation = (year: number, month: number) =>
+  downloadXlsx('payroll-reconciliation.xlsx', { year, month }, `doi-soat-cong-luong-${month}-${year}`)
+
+export const exportDeptComparison = (year: number, month: number) =>
+  downloadXlsx('dept-comparison.xlsx', { year, month }, `so-sanh-chuyen-can-${month}-${year}`)
+
+export const exportEmployeeDetail = (employeeId: string, from: string, to: string) =>
+  downloadXlsx('employee-detail.xlsx', { employeeId, from, to }, 'chi-tiet-cham-cong')

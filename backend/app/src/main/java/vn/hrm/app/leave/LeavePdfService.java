@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import vn.hrm.app.storage.StorageService;
 import vn.hrm.attendance.domain.LeaveRequest;
 import vn.hrm.attendance.domain.enums.LeaveType;
+import vn.hrm.shared.pdf.PdfFonts;
 
 import java.awt.Color;
 import java.io.ByteArrayInputStream;
@@ -77,16 +78,10 @@ public class LeavePdfService {
         PdfWriter.getInstance(doc, out);
         doc.open();
 
-        // Fonts — dùng font built-in, tiếng Việt cần BaseFont hỗ trợ Unicode
-        BaseFont bf;
-        BaseFont bfBold;
-        try {
-            bf     = BaseFont.createFont("fonts/times.ttf",     BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
-            bfBold = BaseFont.createFont("fonts/timesbd.ttf",   BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
-        } catch (Exception ex) {
-            bf     = BaseFont.createFont(BaseFont.HELVETICA,     BaseFont.CP1252, false);
-            bfBold = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, false);
-        }
+        // Fonts — Liberation Serif Unicode nhúng sẵn trong classpath (shared-kernel),
+        // hiển thị đúng dấu tiếng Việt không phụ thuộc font máy chủ. Xem PdfFonts.
+        BaseFont bf     = PdfFonts.baseRegular();
+        BaseFont bfBold = PdfFonts.baseBold();
 
         Font fontNormal  = new Font(bf,   11, Font.NORMAL);
         Font fontBold    = new Font(bfBold, 11, Font.BOLD);

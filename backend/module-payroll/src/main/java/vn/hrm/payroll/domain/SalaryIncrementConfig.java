@@ -98,6 +98,14 @@ public class SalaryIncrementConfig {
 
     private LocalDate effectiveTo;
 
+    /** DRAFT = chờ duyệt (không tính lương), APPROVED = đã duyệt (được tính vào bảng lương) */
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String status = "DRAFT";
+
+    private String approvedBy;
+    private LocalDateTime approvedAt;
+
     @Column(nullable = false)
     private String createdBy;
 

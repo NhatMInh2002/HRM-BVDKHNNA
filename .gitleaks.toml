@@ -1,0 +1,25 @@
+# Cấu hình Gitleaks cho HRM.
+# Vẫn dùng toàn bộ rule mặc định của Gitleaks (extend useDefault) — chỉ thêm
+# allowlist cho các giá trị DEV/ví dụ đã biết, không phải secret thật.
+
+title = "HRM Gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Giá trị dev/mẫu tài liệu — không phải secret thật"
+
+# Chuỗi JWT_SECRET default dùng cho môi trường dev. Đây là giá trị công khai,
+# đã có sẵn trong backend/app/src/main/resources/application.yml; production
+# bắt buộc override qua biến môi trường JWT_SECRET. Bỏ qua ở mọi nơi xuất hiện
+# (.env.example và tài liệu hướng dẫn).
+regexes = [
+  '''hrm-bvnghean-secret-key-2025-must-be-at-least-32-chars''',
+]
+
+# .env.example là file MẪU — theo thiết kế chỉ chứa giá trị giả/dev, không bao
+# giờ chứa secret thật. Secret thật nằm ở .env (đã gitignore) nên không bị quét.
+paths = [
+  '''^\.env\.example$''',
+]

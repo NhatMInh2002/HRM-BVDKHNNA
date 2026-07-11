@@ -38,8 +38,9 @@ public class Employee {
 
     private LocalDate dateOfBirth;
 
-    // CCCD — không log, mã hóa ở tầng DB
-    @Column(length = 12)
+    // CCCD — không log; mã hóa AES-GCM khi lưu (NĐ 13/2023)
+    @Convert(converter = vn.hrm.shared.crypto.EncryptedPiiConverter.class)
+    @Column(length = 255)
     private String nationalId;
 
     private LocalDate joinDate;
@@ -105,4 +106,92 @@ public class Employee {
     private boolean totpEnabled;
 
     private java.time.OffsetDateTime totpConfirmedAt;
+
+    // ── Hồ sơ lý lịch HS02-VC/BNV (TT 07/2019/TT-BNV) — V39 ─────────────────
+
+    @Column(length = 200)
+    private String birthPlace;
+
+    private LocalDate nationalIdIssueDate;
+
+    @Column(length = 200)
+    private String nationalIdIssuePlace;
+
+    /** Số sổ BHXH — mã hóa (NĐ 13/2023) */
+    @Convert(converter = vn.hrm.shared.crypto.EncryptedPiiConverter.class)
+    @Column(length = 255)
+    private String socialInsuranceNo;
+
+    /** Số thẻ BHYT — mã hóa (NĐ 13/2023) */
+    @Convert(converter = vn.hrm.shared.crypto.EncryptedPiiConverter.class)
+    @Column(length = 255)
+    private String healthInsuranceNo;
+
+    @Column(length = 100)
+    private String familyOrigin;
+
+    @Column(length = 200)
+    private String jobBeforeRecruitment;
+
+    private LocalDate recruitmentDate;
+
+    @Column(length = 200)
+    private String recruitmentAgency;
+
+    @Column(length = 20)
+    private String ngachCode;
+
+    private Short salaryGrade;
+
+    @Column(precision = 5, scale = 2)
+    private java.math.BigDecimal salaryCoefficient;
+
+    private LocalDate salaryEffectiveDate;
+
+    @Column(length = 50)
+    private String educationGeneral;
+
+    @Column(length = 200)
+    private String professionalDegree;
+
+    @Column(length = 100)
+    private String politicalTheory;
+
+    @Column(length = 100)
+    private String stateManagement;
+
+    @Column(length = 200)
+    private String foreignLanguage;
+
+    @Column(length = 100)
+    private String informaticsLevel;
+
+    private LocalDate partyJoinDate;
+    private LocalDate partyOfficialDate;
+    private LocalDate youthUnionJoinDate;
+    private LocalDate militaryServiceFrom;
+    private LocalDate militaryServiceTo;
+
+    @Column(length = 50)
+    private String warInvalidClass;
+
+    @Column(length = 100)
+    private String policyFamilyType;
+
+    /** Tình trạng sức khỏe — mã hóa (NĐ 13/2023, dữ liệu sức khỏe nhạy cảm) */
+    @Convert(converter = vn.hrm.shared.crypto.EncryptedPiiConverter.class)
+    @Column(length = 255)
+    private String healthStatus;
+
+    private Short heightCm;
+    private Short weightKg;
+
+    @Column(length = 10)
+    private String bloodType;
+
+    @Column(columnDefinition = "TEXT")
+    private String personalHistory;
+
+    @Column(columnDefinition = "TEXT")
+    private String familyEconomy;
 }

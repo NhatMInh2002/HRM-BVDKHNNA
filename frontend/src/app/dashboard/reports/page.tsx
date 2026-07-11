@@ -2,6 +2,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
+import { searchEmployees, getDepartments } from '@/lib/personnel'
+import {
+  exportMonthlyGrid, exportDepartmentGrid, exportLateEarly, exportUnexcusedAbsence,
+  exportOvertime, exportLeaveByType, exportLeaveBalance, exportPayrollReconciliation,
+  exportDeptComparison, exportEmployeeDetail,
+} from '@/lib/attendance'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Overview {
@@ -379,6 +385,101 @@ export default function ReportsPage() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Xuất báo cáo Excel chấm công */}
+      <AttendanceExportCard year={year} month={month} />
+    </div>
+  )
+}
+
+// ── Xuất 10 báo cáo Excel chấm công (Phòng TCCB) ─────────────────────────────
+function AttendanceExportCard({ year, month }: { year: number; month: number }) {
+  const [busy, setBusy]         = useState<string | null>(null)
+  const [deptId, setDeptId]     = useState('')
+  const [empSearch, setEmpSearch] = useState('')
+  const [empId, setEmpId]       = useState('')
+  const [from, setFrom]         = useState(`${year}-${String(month).padStart(2, '0')}-01`)
+  const [to, setTo]             = useState(new Date().toISOString().slice(0, 10))
+
+  const { data: departments = [] } = useQuery({ queryKey: ['departments'], queryFn: getDepartments })
+  const { data: empResults } = useQuery({
+    queryKey: ['export-emp-search', empSearch],
+    queryFn: () => searchEmployees({ keyword: empSearch, page: 0, size: 10 }),
+    enabled: empSearch.length >= 2,
+  })
+
+  const run = async (key: string, fn: () => Promise<void>) => {
+    setBusy(key)
+    try { await fn() } catch (e) { alert((e as Error).message) } finally { setBusy(null) }
+  }
+
+  const btn = (key: string, label: string, fn: () => Promise<void>, disabled = false) => (
+    <button key={key} type="button" disabled={disabled || busy !== null}
+      onClick={() => run(key, fn)}
+      className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-emerald-50 hover:border-emerald-300 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-left">
+      <span>{busy === key ? '⏳' : '📥'}</span>{label}
+    </button>
+  )
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <h3 className="text-sm font-semibold text-gray-700">📊 Xuất báo cáo Excel chấm công — kỳ {month}/{year}</h3>
+      <p className="text-xs text-gray-400 mt-0.5 mb-4">10 báo cáo phục vụ Phòng TCCB. Kỳ báo cáo lấy theo bộ chọn tháng/năm ở đầu trang.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {btn('grid',   '1 · Bảng chấm công toàn viện (01a-LĐTL)', () => exportMonthlyGrid(year, month))}
+        {btn('late',   '3 · Đi muộn / về sớm',            () => exportLateEarly(year, month))}
+        {btn('absent', '4 · Vắng mặt không phép',          () => exportUnexcusedAbsence(year, month))}
+        {btn('ot',     '5 · Làm thêm giờ (OT)',            () => exportOvertime(year, month))}
+        {btn('leave',  '6 · Nghỉ phép đã duyệt theo loại', () => exportLeaveByType(year, month))}
+        {btn('bal',    `7 · Số dư phép năm ${year}`,       () => exportLeaveBalance(year))}
+        {btn('recon',  '8 · Đối soát ngày công – lương',   () => exportPayrollReconciliation(year, month))}
+        {btn('cmp',    '9 · So sánh chuyên cần giữa khoa', () => exportDeptComparison(year, month))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+        {/* 2. Theo khoa/phòng */}
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1">2 · Bảng chấm công theo khoa/phòng</label>
+            <select value={deptId} onChange={e => setDeptId(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="">— Chọn khoa/phòng —</option>
+              {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          {btn('dept', 'Xuất', () => exportDepartmentGrid(year, month, deptId), !deptId)}
+        </div>
+
+        {/* 10. Chi tiết 1 nhân viên */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">10 · Chi tiết chấm công 1 nhân viên</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[160px]">
+              <input value={empSearch} onChange={e => { setEmpSearch(e.target.value); setEmpId('') }}
+                placeholder="Tìm tên / mã NV…"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              {empSearch.length >= 2 && !empId && (empResults as any)?.content?.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow max-h-44 overflow-auto">
+                  {(empResults as any).content.map((e: any) => (
+                    <button key={e.id} type="button"
+                      onClick={() => { setEmpId(e.id); setEmpSearch(`${e.employeeCode} — ${e.fullName}`) }}
+                      className="block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50">
+                      {e.employeeCode} — {e.fullName}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+              className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+            <span className="text-gray-400 text-sm">→</span>
+            <input type="date" value={to} onChange={e => setTo(e.target.value)}
+              className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+            {btn('empdetail', 'Xuất', () => exportEmployeeDetail(empId, from, to), !empId || !from || !to)}
+          </div>
         </div>
       </div>
     </div>

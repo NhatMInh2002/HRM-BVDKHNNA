@@ -5,6 +5,98 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 
 ---
 
+## [2026-07-10] — CHORE: Sắp xếp lại tài liệu docs + hợp nhất vào main
+
+**Người thực hiện:** NhatMInh2002
+**Branch:** `claude/salary-config-details-qeytz1` → merge `main`
+
+### Sắp xếp lại toàn bộ `docs/`
+
+Trước đây các file nằm phẳng ở gốc `docs/` (`DEVELOPER_GUIDE.md`, `RBAC_PLAN.md`,
+`TEST_STRATEGY.md`, `USER_ACCESS_FLOW.md`, `SESSION-2026-07-01.md`). Nay phân loại
+toàn bộ vào thư mục con theo chủ đề, đổi tên chuẩn kebab-case:
+
+| Cũ (gốc `docs/`) | Mới |
+|---|---|
+| `DEVELOPER_GUIDE.md` | `guides/developer-guide.md` |
+| `USER_ACCESS_FLOW.md` | `guides/user-access-flow.md` |
+| `TEST_STRATEGY.md` | `guides/testing-strategy.md` |
+| `RBAC_PLAN.md` | `implementation/rbac-plan.md` |
+| `changelog/SESSION-2026-07-01.md` | `changelog/sessions/session-2026-07-01.md` |
+
+- Thêm `docs/README.md` làm mục lục toàn bộ tài liệu.
+- Thêm `scripts/classify-docs.sh` + hook `Stop` trong `.claude/settings.json`: mỗi
+  file `.md` mới thả vào gốc `docs/` sẽ **tự động phân loại** vào đúng thư mục con.
+- Cấu trúc chuẩn: `adr/ · changelog/ · compliance/ · guides/ · implementation/ · security/`.
+
+### Hợp nhất vào `main`
+
+PR #12 gộp toàn bộ: GĐ0 (nền tảng) + Hạng mục A/B/C (Excel/PDF/TNTT) + font PDF
+tiếng Việt nhúng sẵn + chuẩn hóa Excel + sắp xếp docs — được merge vào `main`.
+
+---
+
+## [2026-07-10] — FIX/POLISH: Font PDF tiếng Việt nhúng sẵn + chuẩn hóa Excel
+
+**Người thực hiện:** NhatMInh2002
+**Branch:** `claude/salary-config-details-qeytz1`
+
+### 🔤 Font PDF — sửa lỗi vỡ dấu tiếng Việt trên máy chủ
+
+- **Vấn đề:** 3 service PDF (`PayslipPdfService`, `ProfilePdfService`, `LeavePdfService`) trước đây dò font DejaVu ở đường dẫn hệ điều hành hoặc `fonts/times.ttf` (đường dẫn tương đối) — không có font nào nhúng trong repo. Nếu máy chủ bệnh viện không cài đúng font → fallback Helvetica/CP1252 **mất toàn bộ dấu tiếng Việt** trên phiếu lương, sơ yếu lý lịch, đơn nghỉ phép.
+- **Giải pháp:** nhúng **Liberation Serif** (Regular/Bold/Italic, tương thích Times New Roman, phủ đủ Latin Extended Additional + ký hiệu đồng ₫, giấy phép SIL OFL 1.1) làm **classpath resource** trong `shared-kernel/src/main/resources/fonts/`.
+- `vn.hrm.shared.pdf.PdfFonts`: tiện ích nạp `BaseFont` từ classpath (cache tĩnh, IDENTITY_H + EMBEDDED), dùng chung cho cả 3 service — không còn phụ thuộc font máy chủ.
+- `PdfFontsTest`: sinh PDF thử và trích xuất lại chữ để khẳng định dấu tiếng Việt + `₫` hiển thị đúng (**2/2 pass**). Bảo vệ hồi quy nếu ai xóa/đổi tên file font.
+
+### 📊 Excel — chuẩn hóa theo bảng biểu hành chính
+
+- `EmployeeExcelService` viết lại đồng bộ chuẩn với `AttendanceExcelService`: tiêu đề bệnh viện + tên báo cáo (merge ô), **header có dấu tiếng Việt** (trước là "Ma NV/Ho ten" không dấu), đóng khung viền, tô nền header, **freeze** dòng tiêu đề, dòng chân "Tổng số N nhân viên · Xuất lúc …".
+- 10 báo cáo chấm công: thêm **freeze pane** giữ tiêu đề/cột định danh khi cuộn danh sách dài.
+
+---
+
+## [2026-07-09] — FEAT: Báo cáo Excel chấm công + Hồ sơ lý lịch PDF + Hoàn thiện TNTT
+
+**Người thực hiện:** NhatMInh2002
+**Phiên làm việc:** 2026-07-09
+**Branch:** `claude/salary-config-details-qeytz1`
+**Hướng dẫn chi tiết:** `docs/guides/salary-attendance-profile-flow.md`
+
+### Giai đoạn 0 — Nền tảng chung
+
+- `V37__base_salary_configs.sql` + `BaseSalaryService`: lương cơ sở tra theo ngày hiệu lực, **bỏ hard-code 2.530.000đ** ở `PayrollService` và `SalaryIncrementConfigResponse`. Đổi Nghị định chỉ cần INSERT 1 dòng.
+- Tách `SalaryIncrementCalculator` (dùng chung preview + sinh bảng lương), có overload nhận ngày công từ chấm công.
+- **Mã hóa AES-256-GCM** cột `national_id` (`V38` + `PiiCrypto`/`EncryptedPiiConverter` trong shared-kernel) — NĐ 13/2023. Đọc được plaintext cũ, ghi luôn mã hóa. Khóa từ env `HRM_ENCRYPTION_KEY`.
+
+### Hạng mục A — 10 báo cáo Excel chấm công
+
+- `AttendanceExcelService` + `AttendanceReportController`: 10 endpoint `GET /attendance/export/*.xlsx` (bảng chấm công 01a-LĐTL toàn viện/theo khoa, đi muộn-về sớm, vắng không phép, tăng ca, nghỉ phép theo loại, số dư phép năm, đối soát công-lương, so sánh chuyên cần giữa khoa, chi tiết 1 NV).
+- Frontend: card "Xuất báo cáo Excel chấm công" trên trang Báo cáo (`reports/page.tsx`).
+
+### Hạng mục B — Hồ sơ lý lịch HS02-VC/BNV + PDF
+
+- `V39`: ~25 cột bổ sung `employees` + 4 bảng con (quá trình công tác, đào tạo, quan hệ gia đình, khen thưởng/kỷ luật). Số BHXH/BHYT/sức khỏe mã hóa PII.
+- `EmployeeProfileService` + `ProfilePdfService`: xuất Sơ yếu lý lịch viên chức mẫu HS02-VC/BNV (TT 07/2019/TT-BNV).
+- Frontend: `EmployeeProfileModal` 7 tab + nút Xuất PDF, mở từ bảng nhân sự.
+
+### Hạng mục C — Tích hợp TNTT vào bảng lương
+
+- `V40`: bảng `specialty_department_multipliers` (% đặc thù khoa/phòng, mặc định 100% chờ TCCB xác nhận); cột `salary_increment` trên `payroll_records`; workflow duyệt cấu hình TNTT (`status` DRAFT/APPROVED).
+- `generatePeriod`: cộng TNTT (**chỉ bản đã duyệt**) vào gross — **chịu thuế TNCN, KHÔNG tính đóng BHXH**; ngày công lấy từ chấm công.
+- Phiếu lương PDF + Excel + phiếu lương cá nhân: thêm mục/cột **Thu nhập tăng thêm**.
+
+### Kiểm thử
+
+- `SalaryIncrementCalculatorTest`: **6/6 pass** — kiểm chứng công thức TNTT bằng ví dụ tính tay (Trưởng khoa+BS A1 = 16.445.000đ, kiêm nhiệm 25%, thiếu CCHN 85%×đặc thù 120%, C2=0đ, ngày công 18/22, A2 80%).
+
+### Còn phụ thuộc nghiệp vụ (chờ Phòng TCCB)
+
+- Danh sách **% đặc thù khoa/phòng** (110-135%) — đang seed 100% để không tự đổi lương.
+- Xác nhận cách tính **thuế/BHXH của TNTT** và cơ chế hồi tố/truy lĩnh.
+- Đặt `HRM_ENCRYPTION_KEY` ở production (hiện fallback khóa dev + log cảnh báo).
+
+---
+
 ## [2026-06-24] — FEAT: UI overhaul + Nhân sự nâng cao + Danh mục + Sidebar + RBAC planning
 
 **Người thực hiện:** NhatMInh2002
@@ -46,12 +138,12 @@ Format: `## [YYYY-MM-DD] — [Loại thay đổi]: [Tiêu đề ngắn]`
 ### Chất lượng
 
 - Fix `.gitignore`: `**/target/` thay vì `backend/target/` — không còn track compiled artifacts
-- Tạo `docs/TEST_STRATEGY.md` — 50+ test cases phân loại P0/P1/P2
+- Tạo `docs/guides/testing-strategy.md` — 50+ test cases phân loại P0/P1/P2
 
 ### Quyết định kiến trúc
 
 - **RBAC Phase 1**: `canWrite = !!session` (mọi user đăng nhập đều có quyền) — chấp nhận tạm thời
-- **RBAC Phase 2** (kế hoạch): triển khai phân quyền thực theo roles — xem `docs/RBAC_PLAN.md`
+- **RBAC Phase 2** (kế hoạch): triển khai phân quyền thực theo roles — xem `docs/implementation/rbac-plan.md`
 
 ---
 
