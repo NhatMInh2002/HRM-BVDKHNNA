@@ -276,10 +276,13 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
                     />
                   </Field>
                   <Field label="Chức vụ">
-                    <select {...register('position')} className="input">
-                      <option value="">— Chọn chức vụ —</option>
-                      {positions.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                    <SearchSelect
+                      className="input"
+                      value={watch('position') ?? ''}
+                      onChange={v => setValue('position', v)}
+                      options={positions.map(p => ({ value: p, label: p }))}
+                      placeholder="Gõ để tìm chức vụ..."
+                    />
                   </Field>
                 </div>
 
@@ -308,10 +311,13 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
                     </select>
                   </Field>
                   <Field label="Dân tộc">
-                    <select {...register('ethnicity')} className="input">
-                      <option value="">— Chọn dân tộc —</option>
-                      {ethnicities.map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
+                    <SearchSelect
+                      className="input"
+                      value={watch('ethnicity') ?? ''}
+                      onChange={v => setValue('ethnicity', v)}
+                      options={ethnicities.map(e => ({ value: e, label: e }))}
+                      placeholder="Gõ để tìm dân tộc..."
+                    />
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

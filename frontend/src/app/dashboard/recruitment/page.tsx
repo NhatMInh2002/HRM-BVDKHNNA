@@ -424,6 +424,7 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
   })
   const [activeSection, setActiveSection] = useState<'description' | 'requirements' | 'benefits'>('description')
   const [loading, setLoading] = useState(false)
+  const [titleError, setTitleError] = useState(false)
 
   // Fetch danh sách phòng ban để chọn
   const { data: depts = [] } = useQuery({
@@ -434,7 +435,7 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
   // statusOverride để "Lưu nháp" gửi đúng DRAFT — không dựa vào setForm (bất
   // đồng bộ) rồi submit ngay, vì submit sẽ đọc phải state cũ.
   const submit = async (statusOverride?: string) => {
-    if (!form.title) return
+    if (!form.title.trim()) { setTitleError(true); return }
     setLoading(true)
     try {
       const payload = statusOverride ? { ...form, status: statusOverride } : form
@@ -467,10 +468,13 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <Field label="Tiêu đề tin *">
               <input
                 value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                className={inputCls}
+                onChange={e => { setForm(f => ({ ...f, title: e.target.value })); if (titleError) setTitleError(false) }}
+                className={`${inputCls} ${titleError ? 'border-red-400 ring-1 ring-red-300' : ''}`}
                 placeholder="VD: Điều dưỡng hạng III — Khoa Ngoại"
               />
+              {titleError && (
+                <p className="mt-1 text-xs text-red-500">Vui lòng nhập tiêu đề tin trước khi đăng.</p>
+              )}
             </Field>
 
             <Field label="Loại tuyển dụng *">
@@ -648,14 +652,14 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
             </button>
             <button
               onClick={() => submit('DRAFT')}
-              disabled={loading || !form.title}
+              disabled={loading}
               className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
             >
               💾 Lưu nháp
             </button>
             <button
               onClick={() => submit()}
-              disabled={loading || !form.title}
+              disabled={loading}
               className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? 'Đang lưu...' : '🟢 Đăng tin ngay'}
