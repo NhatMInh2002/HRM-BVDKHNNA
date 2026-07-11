@@ -16,6 +16,7 @@ import { EmployeeProfileModal } from '@/components/personnel/employee-profile-mo
 import { format } from 'date-fns'
 import { useRoles } from '@/hooks/useRoles'
 import { ModalPortal } from '@/components/modal-portal'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 const STATUS_VARIANT = {
   ACTIVE: 'green',
@@ -68,16 +69,16 @@ export default function PersonnelPage() {
     setPage(0)
   }
 
+  const [terminateTarget, setTerminateTarget] = useState<{ id: string; name: string } | null>(null)
   const terminate = useMutation({
     mutationFn: terminateEmployee,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['employees'] })
+      setTerminateTarget(null)
+    },
   })
 
-  const handleTerminate = (id: string, name: string) => {
-    if (confirm(`Ẩn nhân viên "${name}"?\nDữ liệu vẫn được lưu trong hệ thống, có thể khôi phục sau.`)) {
-      terminate.mutate(id)
-    }
-  }
+  const handleTerminate = (id: string, name: string) => setTerminateTarget({ id, name })
 
   const DEFAULT_PASSWORD = 'NgheAn@2026'
 
@@ -360,6 +361,17 @@ export default function PersonnelPage() {
           onClose={() => setProfileTarget(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!terminateTarget}
+        variant="danger"
+        title={`Cho thôi việc "${terminateTarget?.name ?? ''}"?`}
+        message={'Nhân viên sẽ được ẩn khỏi danh sách đang làm việc.\nDữ liệu vẫn được lưu trong hệ thống và có thể khôi phục sau.'}
+        confirmLabel="Cho thôi việc"
+        loading={terminate.isPending}
+        onConfirm={() => terminateTarget && terminate.mutate(terminateTarget.id)}
+        onCancel={() => setTerminateTarget(null)}
+      />
 
       {/* Modal đặt lại mật khẩu */}
       {resetTarget && (
