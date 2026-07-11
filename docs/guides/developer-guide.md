@@ -76,19 +76,23 @@ HRM/
 ### 3.1 Root — file `.env` (copy từ `.env.example`)
 
 ```bash
-cp .env.example .env
+cp .env.example .env      # Windows PowerShell: Copy-Item .env.example .env
 ```
 
-Điền giá trị thật vào `.env`:
+**Chạy được ngay, không cần sửa gì** — `.env.example` đã đặt sẵn giá trị dev **khớp** với default backend:
 
 ```env
 POSTGRES_PASSWORD=hrm_dev_pass
-JWT_SECRET=<chuỗi random tối thiểu 32 ký tự>
-NEXTAUTH_SECRET=<chuỗi random bất kỳ, ví dụ: openssl rand -base64 32>
-MINIO_ROOT_PASSWORD=hrm_minio_dev
+MINIO_ROOT_PASSWORD=hrm_minio_pass
+JWT_SECRET=hrm-bvnghean-secret-key-2025-must-be-at-least-32-chars
+NEXTAUTH_SECRET=doi-thanh-chuoi-random-cho-nextauth
 ```
 
-`.env` chỉ dùng cho `docker compose` (mục 4) — chạy `docker compose up postgres redis minio -d` sẽ đọc các giá trị này để khởi tạo container.
+> ⚠️ **Bẫy hay gặp:** `.env` khởi tạo mật khẩu cho **container** Postgres/MinIO, còn backend hot-reload lại dùng mật khẩu **default trong `application.yml`** (vì backend không đọc `.env` — xem 3.3). Hai giá trị `POSTGRES_PASSWORD`/`MINIO_ROOT_PASSWORD` ở trên **phải khớp** default đó, nếu không backend báo `password authentication failed for user "hrm"`.
+>
+> Nếu bạn **đã lỡ** chạy `docker compose up` với mật khẩu khác trước đó: sửa `.env` thôi **chưa đủ** — mật khẩu chỉ được ghi lần đầu tạo volume. Phải xóa volume rồi tạo lại: `docker compose down -v` (xem mục 4).
+
+`.env` chỉ dùng cho `docker compose` — `docker compose up postgres redis minio -d` (mục 4) đọc các giá trị này để khởi tạo container.
 
 ### 3.2 Frontend — tạo file `frontend/.env.local`
 
@@ -113,7 +117,7 @@ app:
     secret: ${JWT_SECRET:...}   # ký JWT tự quản lý — không phụ thuộc IdP ngoài
 ```
 
-> ⚠️ **Vì Spring Boot không tự nạp `.env`**, nếu bạn đổi `MINIO_ROOT_PASSWORD` ở mục 3.1 khác giá trị mặc định trong `application.yml` (`hrm_minio_pass`) mà chạy backend qua `mvn spring-boot:run` (mục 5) **không export lại biến đó**, upload avatar/chữ ký/file đính kèm sẽ lỗi 403/500 vì backend và container MinIO đang dùng mật khẩu khác nhau. Cách export đúng xem ở mục 5.
+> ⚠️ **Vì Spring Boot không tự nạp `.env`**, nếu bạn đổi `MINIO_ROOT_PASSWORD` ở mục 3.1 khác giá trị mặc định trong `application.yml` (`hrm_minio_pass`) mà chạy backend qua `mvnw spring-boot:run` (mục 5) **không export lại biến đó**, upload avatar/chữ ký/file đính kèm sẽ lỗi 403/500 vì backend và container MinIO đang dùng mật khẩu khác nhau. Cách export đúng xem ở mục 5.
 
 Auth tự quản lý: `POST /api/auth/login` nhận `email` + `password`, so khớp BCrypt với `employees.password_hash`, trả về JWT ký bằng `JWT_SECRET`. Không có Keycloak/Azure AD nào tham gia ở giai đoạn hiện tại (xem `docs/implementation/phased-plan.md` — SSO/AD FS là việc của Phase 5, chưa triển khai).
 
@@ -121,7 +125,11 @@ Auth tự quản lý: `POST /api/auth/login` nhận `email` + `password`, so kh�
 
 ## 4. Khởi động hạ tầng (Docker: PostgreSQL, Redis, MinIO)
 
-Backend và frontend chạy hot-reload trực tiếp trên máy (không qua Docker), nhưng **PostgreSQL, Redis, MinIO luôn chạy qua Docker**:
+> 📌 **Hai chế độ chạy — đừng nhầm:**
+> - **Dev (hot-reload — mục 4→6, khuyến nghị):** chỉ **PostgreSQL, Redis, MinIO** chạy trong Docker. **Frontend & backend chạy trực tiếp trên máy** (`npm run dev`, `mvnw spring-boot:run`) — **KHÔNG** phải container. Vì vậy `docker compose ps` **chỉ hiện 3 container** là **đúng**, không phải thiếu file.
+> - **Full Docker (mục 10):** mọi thứ chạy trong container (`docker compose up --build -d`), frontend ở cổng **4000**. Dùng khi test production-like.
+
+Khởi động 3 dịch vụ hạ tầng:
 
 ```bash
 docker compose up postgres redis minio -d
@@ -130,8 +138,10 @@ docker compose up postgres redis minio -d
 Chờ healthy trước khi qua bước tiếp theo:
 
 ```bash
-docker compose ps        # cột STATUS phải là "healthy"
+docker compose ps        # đúng: thấy 3 container (postgres/redis/minio), STATUS = "healthy"
 ```
+
+> Lỡ chạy trước đó bằng mật khẩu khác (backend báo `password authentication failed`)? Reset volume: `docker compose down -v` rồi `docker compose up postgres redis minio -d` lại.
 
 **Services và port:**
 
@@ -139,7 +149,7 @@ docker compose ps        # cột STATUS phải là "healthy"
 |---|---|---|
 | PostgreSQL | `localhost:5432` DB: `hrm` | `hrm` / `hrm_dev_pass` |
 | Redis | `localhost:6379` | — |
-| MinIO Console | http://localhost:9001 | `hrm_minio` / `hrm_minio_dev` |
+| MinIO Console | http://localhost:9001 | `hrm_minio` / `hrm_minio_pass` |
 | pgAdmin (tùy chọn, `docker compose up pgadmin -d`) | http://localhost:5050 | xem `.env` → `PGADMIN_DEFAULT_EMAIL` |
 | Nginx (tùy chọn, xem mục 10) | https://localhost | TLS tự ký, dùng cho test production-like |
 
@@ -149,18 +159,38 @@ docker compose ps        # cột STATUS phải là "healthy"
 
 ## 5. Chạy backend (hot-reload)
 
-Nếu `.env` ở mục 3.1 dùng giá trị khác default trong `application.yml` (đặc biệt `MINIO_ROOT_PASSWORD`), export cùng giá trị đó trước khi chạy — nếu không, upload file sẽ auth-fail với MinIO trong Docker:
+> 💡 **Không cần cài Maven** — dùng wrapper `mvnw` (macOS/Linux) hoặc `mvnw.cmd` (Windows) trong `backend/`, nó tự tải Maven 3.9.6 về. Nếu máy đã cài sẵn Maven hệ thống thì thay `./mvnw` / `.\mvnw.cmd` bằng `mvn`.
+
+### 5.1 Lần đầu — build & cài các module vào local repo (`.m2`)
+
+Đây là dự án **multi-module**: module `app` phụ thuộc `shared-kernel`, `module-personnel`, `module-attendance`, `module-payroll`. Phải build & cài chúng vào `.m2` **một lần** trước, nếu không sẽ lỗi:
+`Could not resolve dependencies for project vn.hrm:app ... shared-kernel ... (absent)`.
 
 ```bash
 cd backend
-export MINIO_ROOT_PASSWORD=hrm_minio_dev   # PowerShell: $env:MINIO_ROOT_PASSWORD = "hrm_minio_dev"
-mvn spring-boot:run -pl app
-# hoặc dùng wrapper nếu chưa cài Maven hệ thống: ./mvnw spring-boot:run -pl app (Windows: mvnw.cmd)
+./mvnw clean install -DskipTests          # Windows PowerShell: .\mvnw.cmd clean install -DskipTests
 ```
 
-Flyway tự chạy migration khi backend khởi động — không cần thao tác DB thủ công.
+> Về sau chỉ cần cài lại (`install`) khi bạn **sửa code** trong `shared-kernel` / `module-*`. Sửa riêng trong `app` thì không cần.
+
+### 5.2 Chạy backend
+
+```bash
+# macOS/Linux
+./mvnw spring-boot:run -pl app
+# Windows PowerShell (chú ý .\ ở đầu)
+.\mvnw.cmd spring-boot:run -pl app
+```
+
+> Muốn gộp một lệnh (tự build cả module phụ thuộc mỗi lần chạy) thì thêm `-am`:
+> `./mvnw -pl app -am spring-boot:run` (Windows: `.\mvnw.cmd -pl app -am spring-boot:run`).
+
+Flyway tự chạy migration khi backend khởi động — không cần thao tác DB thủ công. Chạy đúng khi thấy dòng `Started ... in X seconds`.
 
 Backend chạy tại http://localhost:8080, context path `/api`. Health check: http://localhost:8080/api/actuator/health
+
+> ⚠️ **Nếu `.env` đổi `MINIO_ROOT_PASSWORD` khác default `hrm_minio_pass`:** backend hot-reload không đọc `.env` nên phải export cùng giá trị trước khi chạy, nếu không upload file lỗi 403/500:
+> `export MINIO_ROOT_PASSWORD=...` (Windows: `$env:MINIO_ROOT_PASSWORD = "..."`). Giữ giá trị mặc định trong `.env.example` thì bỏ qua bước này.
 
 ---
 
@@ -366,6 +396,24 @@ Mỗi PR chạy 3 workflow tự động, tổng cộng 9 check độc lập:
 ---
 
 ## 13. Troubleshooting
+
+### `mvn : The term 'mvn' is not recognized` (Windows) / `mvn: command not found`
+
+Máy chưa cài Maven hệ thống. **Không cần cài** — dùng wrapper trong `backend/`:
+`.\mvnw.cmd spring-boot:run -pl app` (Windows, chú ý `.\` ở đầu) hoặc `./mvnw spring-boot:run -pl app` (macOS/Linux). Xem mục 5.
+
+### Backend lỗi `Could not resolve dependencies ... shared-kernel / module-* ... (absent)`
+
+Bạn chạy `spring-boot:run -pl app` khi các module phụ thuộc **chưa được cài vào `.m2`**. Cài chúng trước (chỉ 1 lần):
+`cd backend && .\mvnw.cmd clean install -DskipTests` (Windows) hoặc `./mvnw clean install -DskipTests`. Xem mục 5.1. Cách khác: chạy kèm `-am`, ví dụ `.\mvnw.cmd -pl app -am spring-boot:run`.
+
+### `docker compose ps` không thấy container `frontend`/`backend`
+
+**Đúng như thiết kế** ở chế độ dev (mục 4): frontend & backend chạy hot-reload trực tiếp trên máy, chỉ Postgres/Redis/MinIO ở trong Docker. Muốn chạy cả hai trong Docker thì dùng full-Docker (mục 10): `docker compose up --build -d` (frontend ở cổng 4000).
+
+### Backend lỗi `password authentication failed for user "hrm"`
+
+Mật khẩu Postgres trong volume (đặt lần đầu từ `.env`) lệch với mật khẩu backend dùng (`hrm_dev_pass` default). Đặt `POSTGRES_PASSWORD=hrm_dev_pass` trong `.env` **và** reset volume: `docker compose down -v && docker compose up postgres redis minio -d`. Xem mục 3.1.
 
 ### Backend lỗi `401 Unauthorized`
 
