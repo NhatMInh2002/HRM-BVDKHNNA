@@ -6,6 +6,7 @@ import { getDepartments } from '@/lib/personnel'
 import { RichEditor } from '@/components/rich-editor'
 import { ModalPortal } from '@/components/modal-portal'
 import { ResizableModal } from '@/components/resizable-modal'
+import { SearchSelect } from '@/components/search-select'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -423,6 +424,7 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
   })
   const [activeSection, setActiveSection] = useState<'description' | 'requirements' | 'benefits'>('description')
   const [loading, setLoading] = useState(false)
+  const [titleError, setTitleError] = useState(false)
 
   // Fetch danh sách phòng ban để chọn
   const { data: depts = [] } = useQuery({
@@ -430,11 +432,14 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
     queryFn: getDepartments,
   })
 
-  const submit = async () => {
-    if (!form.title) return
+  // statusOverride để "Lưu nháp" gửi đúng DRAFT — không dựa vào setForm (bất
+  // đồng bộ) rồi submit ngay, vì submit sẽ đọc phải state cũ.
+  const submit = async (statusOverride?: string) => {
+    if (!form.title.trim()) { setTitleError(true); return }
     setLoading(true)
     try {
-      await apiFetch('/recruitment/postings', { method: 'POST', body: JSON.stringify(form) })
+      const payload = statusOverride ? { ...form, status: statusOverride } : form
+      await apiFetch('/recruitment/postings', { method: 'POST', body: JSON.stringify(payload) })
       onCreated()
     } finally { setLoading(false) }
   }
@@ -459,17 +464,21 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Left: meta fields */}
-          <div className="w-72 flex-shrink-0 border-r bg-gray-50 overflow-y-auto p-5 space-y-4">
-            <Field label="Tiêu đề tin *">
+          <div className="w-80 flex-shrink-0 border-r bg-gray-50/70 overflow-y-auto px-5 py-5 space-y-4">
+            <SectionLabel>Thông tin tin tuyển</SectionLabel>
+            <Field label="Tiêu đề tin" required>
               <input
                 value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                className={inputCls}
+                onChange={e => { setForm(f => ({ ...f, title: e.target.value })); if (titleError) setTitleError(false) }}
+                className={`${inputCls} ${titleError ? 'border-red-400 ring-1 ring-red-300' : ''}`}
                 placeholder="VD: Điều dưỡng hạng III — Khoa Ngoại"
               />
+              {titleError && (
+                <p className="mt-1 text-xs text-red-500">Vui lòng nhập tiêu đề tin trước khi đăng.</p>
+              )}
             </Field>
 
-            <Field label="Loại tuyển dụng *">
+            <Field label="Loại tuyển dụng" required>
               <select
                 value={form.recruitmentType}
                 onChange={e => setForm(f => ({ ...f, recruitmentType: e.target.value, workCategory: '', contractDurationMonths: '' }))}
@@ -516,18 +525,17 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
             </Field>
 
             <Field label="Phòng ban / Khoa">
-              <select
+              <SearchSelect
                 value={form.departmentId}
-                onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))}
+                onChange={v => setForm(f => ({ ...f, departmentId: v }))}
+                options={(depts as any[]).map((d: any) => ({ value: d.id, label: d.name }))}
+                placeholder="Gõ tên khoa/phòng để tìm..."
                 className={inputCls}
-              >
-                <option value="">Chưa chọn</option>
-                {(depts as any[]).map((d: any) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+              />
             </Field>
 
+            <div className="pt-2 border-t border-gray-200" />
+            <SectionLabel>Chỉ tiêu & điều kiện</SectionLabel>
             <Field label="Số lượng cần tuyển">
               <input
                 type="number" min={1}
@@ -555,6 +563,8 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
               />
             </Field>
 
+            <div className="pt-2 border-t border-gray-200" />
+            <SectionLabel>Xuất bản</SectionLabel>
             <Field label="Trạng thái">
               <select
                 value={form.status}
@@ -646,15 +656,15 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
               Hủy
             </button>
             <button
-              onClick={() => { setForm(f => ({ ...f, status: 'DRAFT' })); submit() }}
-              disabled={loading || !form.title}
+              onClick={() => submit('DRAFT')}
+              disabled={loading}
               className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
             >
               💾 Lưu nháp
             </button>
             <button
-              onClick={submit}
-              disabled={loading || !form.title}
+              onClick={() => submit()}
+              disabled={loading}
               className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? 'Đang lưu...' : '🟢 Đăng tin ngay'}
@@ -904,13 +914,27 @@ function CandidateDrawer({ candidate, onClose, onStageChanged }:
 
 // ── Micro helpers ──────────────────────────────────────────────────────────
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, required, hint, children }: {
+  label: string; required?: boolean; hint?: string; children: React.ReactNode
+}) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="block text-[13px] font-medium text-gray-700 mb-1">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {children}
+      {hint && <p className="mt-1 text-[11px] text-gray-400">{hint}</p>}
+    </div>
+  )
+}
+
+/** Tiêu đề nhóm trường — tạo phân cấp cho panel meta. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 pt-1">
       {children}
     </div>
   )
 }
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none'
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-shadow'
