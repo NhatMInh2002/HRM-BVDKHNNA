@@ -7,7 +7,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import vn.hrm.personnel.domain.Employee;
 import vn.hrm.personnel.repository.EmployeeRepository;
-import vn.hrm.shared.event.CheckedInEvent;
 import vn.hrm.shared.event.LeaveStatusChangedEvent;
 import vn.hrm.shared.event.LeaveSubmittedEvent;
 
@@ -86,19 +85,4 @@ public class NotificationEventListener {
         }
     }
 
-    @Async
-    @EventListener
-    public void onCheckedIn(CheckedInEvent event) {
-        try {
-            String time = event.checkInTime()
-                .atZoneSameInstant(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
-                .format(DateTimeFormatter.ofPattern("HH:mm"));
-            notificationService.create(event.employeeId(), "CHECKIN",
-                "Chấm công thành công",
-                "Bạn đã check-in lúc " + time,
-                "/dashboard/attendance", null);
-        } catch (Exception e) {
-            log.error("Failed to create check-in notification", e);
-        }
-    }
 }

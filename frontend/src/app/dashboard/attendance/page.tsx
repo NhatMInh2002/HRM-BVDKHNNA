@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useRoles } from '@/hooks/useRoles'
 import { useCurrentEmployee } from '@/hooks/useCurrentEmployee'
 import { format, getDaysInMonth, startOfMonth, getDay, parseISO, differenceInMinutes } from 'date-fns'
@@ -8,8 +8,6 @@ import { vi } from 'date-fns/locale'
 import {
   getDailyAttendance,
   getMonthlyReport,
-  checkIn,
-  checkOut,
   type AttendanceRecord,
   type AttendanceStatus,
 } from '@/lib/attendance'
@@ -65,7 +63,6 @@ function EmployeeAttendance() {
   const today = new Date()
   const [year, setYear]   = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
-  const qc = useQueryClient()
   const { data: me }      = useCurrentEmployee()
 
   const { data: records = [], isLoading } = useQuery<AttendanceRecord[]>({
@@ -76,15 +73,6 @@ function EmployeeAttendance() {
 
   const todayStr  = format(today, 'yyyy-MM-dd')
   const todayRec  = records.find(r => r.workDate === todayStr)
-
-  const ciMut = useMutation({
-    mutationFn: checkIn,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
-  })
-  const coMut = useMutation({
-    mutationFn: checkOut,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
-  })
 
   // helpers for stats
   const getMins = (r: AttendanceRecord) =>
@@ -114,9 +102,6 @@ function EmployeeAttendance() {
     if (month === 12) { setYear(y => y + 1); setMonth(1) } else setMonth(m => m + 1)
   }
 
-  const canCheckIn  = !!me && !todayRec?.checkIn
-  const canCheckOut = !!me && !!todayRec?.checkIn && !todayRec?.checkOut
-
   return (
     <div className="space-y-6">
 
@@ -125,22 +110,6 @@ function EmployeeAttendance() {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Chấm công</h1>
           <p className="text-sm text-gray-500 mt-0.5">Theo dõi thời gian làm việc của bạn</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => me && ciMut.mutate({ employeeId: me.id })}
-            disabled={!canCheckIn || ciMut.isPending}
-            className="bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
-          >
-            {ciMut.isPending ? 'Đang xử lý...' : 'Check-in'}
-          </button>
-          <button
-            onClick={() => me && coMut.mutate({ employeeId: me.id })}
-            disabled={!canCheckOut || coMut.isPending}
-            className="bg-gray-700 hover:bg-gray-800 disabled:opacity-40 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
-          >
-            {coMut.isPending ? 'Đang xử lý...' : 'Check-out'}
-          </button>
         </div>
       </div>
 
@@ -308,22 +277,11 @@ function AdminAttendance() {
   const today   = format(new Date(), 'yyyy-MM-dd')
   const [date, setDate]   = useState(today)
   const [page, setPage]   = useState(0)
-  const qc = useQueryClient()
-  const { data: me }      = useCurrentEmployee()
 
   const { data, isLoading } = useQuery({
     queryKey: ['daily-attendance', date, page],
     queryFn:  () => getDailyAttendance(date, page),
     placeholderData: prev => prev,
-  })
-
-  const ciMut = useMutation({
-    mutationFn: checkIn,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['daily-attendance'] }),
-  })
-  const coMut = useMutation({
-    mutationFn: checkOut,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['daily-attendance'] }),
   })
 
   return (
@@ -334,18 +292,6 @@ function AdminAttendance() {
           <p className="text-sm text-gray-500 mt-0.5">
             {data ? `${data.totalElements} nhân viên` : '—'} ngày {format(new Date(date), 'dd/MM/yyyy')}
           </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => me && ciMut.mutate({ employeeId: me.id })}
-            disabled={ciMut.isPending || !me}
-            className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-          >Check-in</button>
-          <button
-            onClick={() => me && coMut.mutate({ employeeId: me.id })}
-            disabled={coMut.isPending || !me}
-            className="bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-          >Check-out</button>
         </div>
       </div>
 

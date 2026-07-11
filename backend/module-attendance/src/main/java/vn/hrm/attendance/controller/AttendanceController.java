@@ -1,6 +1,5 @@
 package vn.hrm.attendance.controller;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,8 +9,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.hrm.attendance.dto.AttendanceRecordResponse;
-import vn.hrm.attendance.dto.CheckInRequest;
-import vn.hrm.attendance.dto.CheckOutRequest;
 import vn.hrm.attendance.domain.enums.AttendanceStatus;
 import vn.hrm.attendance.repository.AttendanceRepository;
 import vn.hrm.attendance.service.AttendanceService;
@@ -36,23 +33,9 @@ public class AttendanceController {
     private final AttendanceRepository attendanceRepository;
     private final DepartmentScopePort departmentScopePort;
 
-    @PostMapping("/check-in")
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','EMPLOYEE')")
-    public ApiResponse<AttendanceRecordResponse> checkIn(
-        @Valid @RequestBody CheckInRequest req,
-        Authentication auth
-    ) {
-        return ApiResponse.ok(attendanceService.checkIn(req, auth.getName()));
-    }
-
-    @PostMapping("/check-out")
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER','EMPLOYEE')")
-    public ApiResponse<AttendanceRecordResponse> checkOut(
-        @Valid @RequestBody CheckOutRequest req,
-        Authentication auth
-    ) {
-        return ApiResponse.ok(attendanceService.checkOut(req.employeeId()));
-    }
+    // Chấm công tự phục vụ (check-in/check-out) đã bỏ — chấm công thực hiện tại
+    // máy chấm công đặt trong bệnh viện; dữ liệu đổ trực tiếp vào
+    // attendance.attendance_records. Các API dưới chỉ để xem/thống kê.
 
     @GetMapping("/daily")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','DEPARTMENT_MANAGER')")
