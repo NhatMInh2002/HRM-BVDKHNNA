@@ -267,12 +267,13 @@ export function EmployeeFormModal({ editId, onClose, onSuccess }: Props) {
 
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Phòng ban">
-                    <select {...register('departmentId')} className="input">
-                      <option value="">— Chọn phòng ban —</option>
-                      {departments.filter(d => !d.code.startsWith('GRP-')).map(d => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </select>
+                    <SearchSelect
+                      className="input"
+                      value={watch('departmentId') ?? ''}
+                      onChange={v => setValue('departmentId', v)}
+                      options={departments.filter(d => !d.code.startsWith('GRP-')).map(d => ({ value: d.id, label: d.name }))}
+                      placeholder="Gõ tên khoa/phòng để tìm..."
+                    />
                   </Field>
                   <Field label="Chức vụ">
                     <select {...register('position')} className="input">

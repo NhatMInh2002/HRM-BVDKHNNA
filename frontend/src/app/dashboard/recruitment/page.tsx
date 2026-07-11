@@ -6,6 +6,7 @@ import { getDepartments } from '@/lib/personnel'
 import { RichEditor } from '@/components/rich-editor'
 import { ModalPortal } from '@/components/modal-portal'
 import { ResizableModal } from '@/components/resizable-modal'
+import { SearchSelect } from '@/components/search-select'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -430,11 +431,14 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
     queryFn: getDepartments,
   })
 
-  const submit = async () => {
+  // statusOverride để "Lưu nháp" gửi đúng DRAFT — không dựa vào setForm (bất
+  // đồng bộ) rồi submit ngay, vì submit sẽ đọc phải state cũ.
+  const submit = async (statusOverride?: string) => {
     if (!form.title) return
     setLoading(true)
     try {
-      await apiFetch('/recruitment/postings', { method: 'POST', body: JSON.stringify(form) })
+      const payload = statusOverride ? { ...form, status: statusOverride } : form
+      await apiFetch('/recruitment/postings', { method: 'POST', body: JSON.stringify(payload) })
       onCreated()
     } finally { setLoading(false) }
   }
@@ -516,16 +520,13 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
             </Field>
 
             <Field label="Phòng ban / Khoa">
-              <select
+              <SearchSelect
                 value={form.departmentId}
-                onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))}
+                onChange={v => setForm(f => ({ ...f, departmentId: v }))}
+                options={(depts as any[]).map((d: any) => ({ value: d.id, label: d.name }))}
+                placeholder="Gõ tên khoa/phòng để tìm..."
                 className={inputCls}
-              >
-                <option value="">Chưa chọn</option>
-                {(depts as any[]).map((d: any) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+              />
             </Field>
 
             <Field label="Số lượng cần tuyển">
@@ -646,14 +647,14 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
               Hủy
             </button>
             <button
-              onClick={() => { setForm(f => ({ ...f, status: 'DRAFT' })); submit() }}
+              onClick={() => submit('DRAFT')}
               disabled={loading || !form.title}
               className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
             >
               💾 Lưu nháp
             </button>
             <button
-              onClick={submit}
+              onClick={() => submit()}
               disabled={loading || !form.title}
               className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
