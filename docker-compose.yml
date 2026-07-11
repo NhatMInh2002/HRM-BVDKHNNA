@@ -72,7 +72,10 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.local
+      # Dockerfile tự build jar trong image (multi-stage) → `docker compose up
+      # --build` chạy được ngay, không cần cài Maven / build jar trước ở host.
+      # (Dockerfile.local chỉ COPY jar dựng sẵn — dùng cho luồng docker cp ở mục 10.)
+      dockerfile: Dockerfile
     container_name: hrm-backend
     restart: unless-stopped
     environment:

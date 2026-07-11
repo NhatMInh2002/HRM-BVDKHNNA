@@ -301,15 +301,18 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 
 ## 10. Chạy full stack bằng Docker
 
-Khi cần test production-like (không dùng hot-reload):
+Khi muốn **cả frontend + backend cũng chạy trong Docker** (test production-like, không cần cài Java/Maven/Node ở host):
 
 ```bash
-# Build và chạy tất cả
+# Build image (tự build jar + next standalone TRONG Docker) và chạy tất cả
 docker compose up --build -d
 
 # Xem log
 docker compose logs -f backend
 docker compose logs -f frontend
+
+# Kiểm tra: đủ 5 container (postgres, redis, minio, backend, frontend)
+docker compose ps
 
 # Dừng tất cả
 docker compose down
@@ -317,6 +320,10 @@ docker compose down
 # Dừng và xóa volume (reset database)
 docker compose down -v
 ```
+
+> ⏳ **Lần `--build` đầu tiên chậm (~3–5 phút):** backend build bằng `backend/Dockerfile` (multi-stage) — tự tải dependency Maven và compile jar bên trong image, nên **không cần** cài Maven hay build jar trước ở host. Các lần sau dùng cache nên nhanh.
+>
+> ✅ Xong sẽ thấy **5 container** ở `docker compose ps`; mở **http://localhost:4000** (frontend). Đây chính là câu trả lời cho "không thấy frontend/backend trong Docker" — ở chế độ dev (mục 4) chúng chạy ngoài Docker, còn muốn thấy chúng là container thì dùng lệnh này.
 
 **Cổng khi chạy qua Docker (khác với hot-reload ở mục 5–6):**
 
@@ -329,8 +336,8 @@ docker compose down -v
 Đẩy code mới lên container đang chạy mà không rebuild image (nhanh hơn nhiều, xem thêm trong memory `feedback-deploy-workflow`):
 
 ```bash
-# Backend
-cd backend && mvn package -q -DskipTests
+# Backend  (Windows: .\mvnw.cmd package -q -DskipTests)
+cd backend && ./mvnw package -q -DskipTests
 docker cp app/target/app-1.0.0-SNAPSHOT.jar hrm-backend:/app/app.jar
 docker restart hrm-backend
 
