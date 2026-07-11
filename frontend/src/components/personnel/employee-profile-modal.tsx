@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ModalPortal } from '@/components/modal-portal'
+import { SignedDocPanel } from '@/components/signed-doc-panel'
 import {
   getEmployeeProfile, saveEmployeeProfile, downloadProfilePdf,
   type EmployeeProfile, type WorkHistoryItem, type TrainingItem,
@@ -76,11 +77,12 @@ export function EmployeeProfileModal({ employeeId, employeeName, canWrite, onClo
               <h2 className="text-lg font-bold text-gray-900">Sơ yếu lý lịch — {employeeName}</h2>
               <p className="text-xs text-gray-400">Mẫu HS02-VC/BNV (Thông tư 07/2019/TT-BNV)</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button onClick={exportPdf}
                 className="px-3 py-1.5 text-sm rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50">
                 📄 Xuất PDF
               </button>
+              <SignedDocPanel type="hs02" refId={employeeId} canUpload={canWrite} compact />
               <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600">✕</button>
             </div>
           </div>
