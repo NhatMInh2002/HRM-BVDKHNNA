@@ -464,8 +464,9 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Left: meta fields */}
-          <div className="w-72 flex-shrink-0 border-r bg-gray-50 overflow-y-auto p-5 space-y-4">
-            <Field label="Tiêu đề tin *">
+          <div className="w-80 flex-shrink-0 border-r bg-gray-50/70 overflow-y-auto px-5 py-5 space-y-4">
+            <SectionLabel>Thông tin tin tuyển</SectionLabel>
+            <Field label="Tiêu đề tin" required>
               <input
                 value={form.title}
                 onChange={e => { setForm(f => ({ ...f, title: e.target.value })); if (titleError) setTitleError(false) }}
@@ -477,7 +478,7 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
               )}
             </Field>
 
-            <Field label="Loại tuyển dụng *">
+            <Field label="Loại tuyển dụng" required>
               <select
                 value={form.recruitmentType}
                 onChange={e => setForm(f => ({ ...f, recruitmentType: e.target.value, workCategory: '', contractDurationMonths: '' }))}
@@ -533,6 +534,8 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
               />
             </Field>
 
+            <div className="pt-2 border-t border-gray-200" />
+            <SectionLabel>Chỉ tiêu & điều kiện</SectionLabel>
             <Field label="Số lượng cần tuyển">
               <input
                 type="number" min={1}
@@ -560,6 +563,8 @@ function NewPostingModal({ onClose, onCreated }: { onClose: () => void; onCreate
               />
             </Field>
 
+            <div className="pt-2 border-t border-gray-200" />
+            <SectionLabel>Xuất bản</SectionLabel>
             <Field label="Trạng thái">
               <select
                 value={form.status}
@@ -909,13 +914,27 @@ function CandidateDrawer({ candidate, onClose, onStageChanged }:
 
 // ── Micro helpers ──────────────────────────────────────────────────────────
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, required, hint, children }: {
+  label: string; required?: boolean; hint?: string; children: React.ReactNode
+}) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="block text-[13px] font-medium text-gray-700 mb-1">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {children}
+      {hint && <p className="mt-1 text-[11px] text-gray-400">{hint}</p>}
+    </div>
+  )
+}
+
+/** Tiêu đề nhóm trường — tạo phân cấp cho panel meta. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 pt-1">
       {children}
     </div>
   )
 }
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none'
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-shadow'
